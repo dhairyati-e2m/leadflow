@@ -7,9 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.database import get_db_session
 from backend.app.core.deps import TenantContext, get_tenant_context, require_role
 from backend.app.domain.crawler.service import CrawlerService
-from backend.app.models.entities import Lead
+from backend.app.domain.scoring_service import ScoringService
+from backend.app.models.entities import Lead, Score
+from backend.app.repositories.engines import EngineRepository
 from backend.app.repositories.enrichments import EnrichmentRepository
 from backend.app.repositories.leads import LeadRepository
+from backend.app.repositories.scores import ScoreRepository
 
 router = APIRouter()
 
@@ -45,8 +48,22 @@ class EnrichmentSummary(BaseModel):
     evidence: Dict[str, Any] = Field(default_factory=dict)
 
 
+class ScoreSummary(BaseModel):
+    id: str
+    engine_version: str
+    final_score: float
+    qualification_band: str
+    website_group_score: float
+    marketing_group_score: float
+    ideal_client_bonus_applied: bool
+    signal_breakdown: Dict[str, Any] = Field(default_factory=dict)
+    config_snapshot: Dict[str, Any] = Field(default_factory=dict)
+    created_at: Optional[str] = None
+
+
 class LeadDetailOut(LeadOut):
     latest_enrichment: Optional[EnrichmentSummary] = None
+    latest_score_record: Optional[ScoreSummary] = None
 
 
 class UpdateLeadRequest(BaseModel):
@@ -76,6 +93,21 @@ def serialize_lead(lead: Lead) -> LeadOut:
         score_band=lead.score_band,
         latest_score=lead.latest_score,
         created_at=lead.created_at.isoformat() if lead.created_at else None,
+    )
+
+
+def serialize_score(score: Score) -> ScoreSummary:
+    return ScoreSummary(
+        id=score.id,
+        engine_version=score.engine_version,
+        final_score=score.final_score,
+        qualification_band=score.qualification_band,
+        website_group_score=score.website_group_score,
+        marketing_group_score=score.marketing_group_score,
+        ideal_client_bonus_applied=score.ideal_client_bonus_applied,
+        signal_breakdown=score.signal_breakdown or {},
+        config_snapshot=score.config_snapshot or {},
+        created_at=score.created_at.isoformat() if score.created_at else None,
     )
 
 
@@ -115,7 +147,7 @@ async def list_leads(
 @router.get(
     "/{lead_id}",
     response_model=LeadDetailOut,
-    summary="Get lead details along with latest crawl enrichment evidence",
+    summary="Get lead details along with latest crawl enrichment and 22-signal score evidence",
 )
 async def get_lead_detail(
     lead_id: str,
@@ -124,12 +156,14 @@ async def get_lead_detail(
 ) -> LeadDetailOut:
     lead_repo = LeadRepository(session, ctx.org_id)
     enrichment_repo = EnrichmentRepository(session, ctx.org_id)
+    score_repo = ScoreRepository(session, ctx.org_id)
 
     lead = await lead_repo.get_by_id(lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
 
     latest_enrich = await enrichment_repo.get_latest_for_lead(lead.id)
+    latest_score_obj = await score_repo.get_latest_for_lead(lead.id)
 
     enrich_summary = None
     if latest_enrich:
@@ -142,10 +176,13 @@ async def get_lead_detail(
             evidence=latest_enrich.evidence or {},
         )
 
+    score_summary = serialize_score(latest_score_obj) if latest_score_obj else None
+
     base = serialize_lead(lead)
     return LeadDetailOut(
         **base.model_dump(),
         latest_enrichment=enrich_summary,
+        latest_score_record=score_summary,
     )
 
 
@@ -183,6 +220,47 @@ async def crawl_lead(
             evidence=enrichment.evidence or {},
         ),
     )
+
+
+@router.post(
+    "/{lead_id}/score",
+    response_model=ScoreSummary,
+    summary="Evaluate lead against 22 qualification signals and active organization ICP criteria",
+)
+async def score_lead(
+    lead_id: str,
+    ctx: TenantContext = Depends(require_role(["owner", "admin", "analyst"])),
+    session: AsyncSession = Depends(get_db_session),
+) -> ScoreSummary:
+    lead_repo = LeadRepository(session, ctx.org_id)
+    enrichment_repo = EnrichmentRepository(session, ctx.org_id)
+    score_repo = ScoreRepository(session, ctx.org_id)
+    engine_repo = EngineRepository(session, ctx.org_id)
+
+    lead = await lead_repo.get_by_id(lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    scoring_service = ScoringService(lead_repo, enrichment_repo, score_repo, engine_repo)
+    score_record, _ = await scoring_service.evaluate_and_score_lead(lead)
+    await session.commit()
+
+    return serialize_score(score_record)
+
+
+@router.get(
+    "/{lead_id}/scores",
+    response_model=List[ScoreSummary],
+    summary="List history of qualification evaluations for a lead",
+)
+async def list_lead_scores(
+    lead_id: str,
+    ctx: TenantContext = Depends(get_tenant_context),
+    session: AsyncSession = Depends(get_db_session),
+) -> List[ScoreSummary]:
+    score_repo = ScoreRepository(session, ctx.org_id)
+    scores = await score_repo.list_for_lead(lead_id)
+    return [serialize_score(s) for s in scores]
 
 
 @router.patch(

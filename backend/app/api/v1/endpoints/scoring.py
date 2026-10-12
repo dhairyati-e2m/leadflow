@@ -1,18 +1,22 @@
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.core.database import get_db_session
+from backend.app.core.deps import TenantContext, get_tenant_context, require_role
 from backend.app.domain.scoring import (
     OverallScoreResult,
     ScoringEngineConfig,
     calculate_overall_score,
 )
-from backend.app.domain.signals.catalog import SIGNAL_CATALOG, ALL_SIGNAL_KEYS
+from backend.app.domain.signals.catalog import ALL_SIGNAL_KEYS, SIGNAL_CATALOG
 from backend.app.domain.signals.evaluators import (
     CrawlData,
     SignalResult,
     evaluate_all_signals,
 )
+from backend.app.repositories.engines import EngineRepository
 
 router = APIRouter()
 
@@ -44,7 +48,40 @@ def get_signal_catalog() -> Dict[str, Any]:
     }
 
 
-@router.post("/evaluate", response_model=OverallScoreResult, summary="Evaluate 22 Signals and Calculate Score")
+@router.get(
+    "/config",
+    response_model=ScoringEngineConfig,
+    summary="Get Organization ICP Scoring Configuration and Weights",
+)
+async def get_scoring_config(
+    ctx: TenantContext = Depends(get_tenant_context),
+    session: AsyncSession = Depends(get_db_session),
+) -> ScoringEngineConfig:
+    engine_repo = EngineRepository(session, ctx.org_id)
+    return await engine_repo.get_or_create_config()
+
+
+@router.put(
+    "/config",
+    response_model=ScoringEngineConfig,
+    summary="Update Organization ICP Scoring Configuration and Weights",
+)
+async def update_scoring_config(
+    new_config: ScoringEngineConfig,
+    ctx: TenantContext = Depends(require_role(["owner", "admin"])),
+    session: AsyncSession = Depends(get_db_session),
+) -> ScoringEngineConfig:
+    engine_repo = EngineRepository(session, ctx.org_id)
+    updated = await engine_repo.update_config(new_config)
+    await session.commit()
+    return updated
+
+
+@router.post(
+    "/evaluate",
+    response_model=OverallScoreResult,
+    summary="Evaluate 22 Signals and Calculate Score (Sandbox / On-The-Fly)",
+)
 def evaluate_prospect(request: ScoreEvaluationRequest) -> OverallScoreResult:
     """
     Evaluates a prospect website against all 22 deterministic signals,

@@ -12,8 +12,8 @@ This document outlines the detailed roadmap for LeadFlow across all phases. Each
 | **Phase 1** | Foundation (Backend, Database, Redis, CI) | **Completed** | No |
 | **Phase 2** | Authentication & Tenant Isolation (RLS) | **Completed** | No |
 | **Phase 3** | CSV Import & Safe Website Crawler | **Completed** | No |
-| **Phase 4** | The 22-Signal Qualification Engine | Up Next | No (Pure deterministic domain logic) |
-| **Phase 5** | Job Orchestration (ARQ & Redis) | Pending | No (Local Redis queue) |
+| **Phase 4** | The 22-Signal Qualification Engine | **Completed** | No |
+| **Phase 5** | Job Orchestration (ARQ & Redis) | Up Next | No (Local Redis queue) |
 | **Phase 6** | Free Live Integrations Evaluation & Adapters | Pending | Yes (Provider by provider confirmation) |
 | **Phase 7** | Human Review, Approval & Optional AI Drafting | Pending | Optional (Free LLM / Ollama configuration) |
 | **Phase 8** | CRM Integration (HubSpot Free Developer App) | Pending | Yes (HubSpot Private App / OAuth setup) |
@@ -110,15 +110,16 @@ This document outlines the detailed roadmap for LeadFlow across all phases. Each
   20. `ppc_spend` (Google Tag / Meta Pixel / Ads script presence)
   21. `hiring` (careers page, job board links, ATS detection)
   22. `low_review_rating` (legitimate review schema/links; explicit unavailable if missing)
-- **Scoring Semantics:**
-  - Missing/unavailable data produces `available: false` with zero weight penalty (does not artificially penalize score).
-  - Normalization to 0–100 per signal.
-  - Group scores: Website Signals and Marketing Signals.
-  - Configurable weights, ICP threshold boundaries.
-  - Ideal-client bonus logic requiring minimum coverage in both groups.
-  - Qualification bands: `disqualified`, `review`, `qualified`.
-  - Versioned snapshot of engine configuration for every run.
-- **Verification:** Unit tests for all 22 evaluators, scoring boundary tests, missing data handling, and snapshot persistence.
+- **Deliverables & Verification:**
+  - [x] All 22 deterministic signal evaluators implemented and verified without LLM dependency.
+  - [x] Category grouping: Website Signals (1-10) and Marketing Signals (11-22).
+  - [x] Configurable tenant ICP thresholds and custom weights via `EngineRepository` (`GET/PUT /v1/scoring/config`).
+  - [x] Missing data handling: missing signals do not penalize scores.
+  - [x] Ideal Customer Profile (+10 pts) bonus logic with minimum coverage requirements.
+  - [x] Score persistence to PostgreSQL `scores` table with full explainable JSON breakdown and configuration snapshots.
+  - [x] Lead evaluation endpoint (`POST /v1/leads/{lead_id}/score`) and score history endpoint (`GET /v1/leads/{lead_id}/scores`).
+  - [x] Next.js interactive UI: real-time scoring trigger, qualification badges, ICP criteria control, and 22-signal explainable modal breakdown.
+  - [x] All 36 automated unit, security, and integration tests passing cleanly.
 
 ---
 
