@@ -31,18 +31,28 @@ def get_database_url() -> str:
     return settings.DATABASE_URL
 
 
+from sqlalchemy.pool import NullPool
+
 def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
         db_url = get_database_url()
         connect_args = {}
+        pool_kwargs = {}
+        if settings.ENVIRONMENT == "testing":
+            pool_kwargs["poolclass"] = NullPool
+        else:
+            pool_kwargs["pool_size"] = 10
+            pool_kwargs["max_overflow"] = 20
+
         if "sqlite" in db_url:
             connect_args = {"check_same_thread": False}
+
         _engine = create_async_engine(
             db_url,
             echo=False,
-            pool_pre_ping=True,
             connect_args=connect_args,
+            **pool_kwargs,
         )
     return _engine
 

@@ -6,6 +6,7 @@ python-multipart>=0.0.9
 # Data validation & Configuration
 pydantic>=2.8.2
 pydantic-settings>=2.4.0
+email-validator>=2.0.0
 
 # Database & Migrations (PostgreSQL 16 target)
 sqlalchemy==2.0.36

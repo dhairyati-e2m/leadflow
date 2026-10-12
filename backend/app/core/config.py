@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     )
 
     # Redis (Redis 7 target)
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str = "redis://127.0.0.1:6379/0"
 
     # Provider Operational Modes
     PROVIDER_ENRICHMENT_MODE: Literal["mock", "live", "disabled"] = "mock"

@@ -9,9 +9,9 @@ This document outlines the detailed roadmap for LeadFlow across all phases. Each
 | Phase | Description | Status | Manual Config Required? |
 |---|---|---|---|
 | **Phase 0** | Repository Inspection & Implementation Plan | **Completed** | No |
-| **Phase 1** | Foundation (Backend, Database, Redis, CI) | **Completed** | No (Decoupled Foundation Active) |
-| **Phase 2** | Authentication & Tenant Isolation (RLS) | Up Next | No (Local secure auth) |
-| **Phase 3** | CSV Import & Safe Website Crawler | Pending | No (Pure OSS / httpx / BeautifulSoup) |
+| **Phase 1** | Foundation (Backend, Database, Redis, CI) | **Completed** | No |
+| **Phase 2** | Authentication & Tenant Isolation (RLS) | **Completed** | No |
+| **Phase 3** | CSV Import & Safe Website Crawler | Up Next | No (Pure OSS / httpx / BeautifulSoup) |
 | **Phase 4** | The 22-Signal Qualification Engine | Pending | No (Pure deterministic domain logic) |
 | **Phase 5** | Job Orchestration (ARQ & Redis) | Pending | No (Local Redis queue) |
 | **Phase 6** | Free Live Integrations Evaluation & Adapters | Pending | Yes (Provider by provider confirmation) |
@@ -56,13 +56,14 @@ This document outlines the detailed roadmap for LeadFlow across all phases. Each
 ### Phase 2: Authentication and Tenant Isolation
 - **Goals:** Multi-tenant organization boundaries, user accounts, and PostgreSQL Row-Level Security (RLS).
 - **Deliverables:**
-  - Entities: `orgs`, `users`, `memberships`, `audit_log`.
-  - Roles: `owner`, `admin`, `analyst`, `reviewer`.
-  - Secure local authentication (bcrypt/Argon2 password hashing, short-lived JWT access tokens, rotating refresh tokens stored in HTTP-only secure cookies).
-  - PostgreSQL RLS policies ensuring tenant isolation at the database layer (`SET LOCAL app.current_org_id = :org_id`).
-  - Tenant-scoped repository pattern in FastAPI dependencies.
-  - Cross-tenant security tests executing queries under a non-superuser PostgreSQL role.
-- **Verification:** Test that Organization A's users cannot read, mutate, or query Organization B's data under any condition.
+  - [x] Entities: `orgs`, `users`, `memberships`, `audit_log`.
+  - [x] Roles: `owner`, `admin`, `analyst`, `reviewer`.
+  - [x] Secure local authentication (bcrypt password hashing, short-lived JWT access tokens, rotating refresh tokens).
+  - [x] PostgreSQL RLS policies ensuring tenant isolation at the database layer (`SET LOCAL app.current_org_id = :org_id`).
+  - [x] Tenant-scoped repository pattern in FastAPI dependencies.
+  - [x] Cross-tenant security tests executing queries under a non-superuser PostgreSQL role (`leadflow_app`).
+  - [x] Multi-tenant organization switching, invite flow, and RBAC permission checks.
+- **Verification:** Test that Organization A's users cannot read, mutate, or query Organization B's data under any condition. All 26 unit and security tests passing.
 
 ---
 

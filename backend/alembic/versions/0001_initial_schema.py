@@ -356,11 +356,22 @@ def upgrade() -> None:
     if bind.dialect.name == "postgresql":
         for table in TENANT_TABLES:
             op.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;")
-            op.execute(
-                f"CREATE POLICY {table}_tenant_isolation ON {table} "
-                f"FOR ALL "
-                f"USING (org_id = current_setting('app.current_org_id', true));"
-            )
+            if table == "memberships":
+                op.execute(
+                    f"CREATE POLICY {table}_tenant_isolation ON {table} "
+                    f"FOR ALL "
+                    f"USING ("
+                    f"  org_id = current_setting('app.current_org_id', true) "
+                    f"  OR NULLIF(current_setting('app.current_org_id', true), '') IS NULL"
+                    f");"
+                )
+            else:
+                op.execute(
+                    f"CREATE POLICY {table}_tenant_isolation ON {table} "
+                    f"FOR ALL "
+                    f"USING (org_id = current_setting('app.current_org_id', true));"
+                )
+
 
 
 def downgrade() -> None:
