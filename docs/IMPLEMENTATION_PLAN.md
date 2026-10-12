@@ -8,9 +8,9 @@ This document outlines the detailed roadmap for LeadFlow across all phases. Each
 
 | Phase | Description | Status | Manual Config Required? |
 |---|---|---|---|
-| **Phase 0** | Repository Inspection & Implementation Plan | **In Progress** | Yes (Review & confirm DB strategy) |
-| **Phase 1** | Foundation (Backend, Database, Redis, CI) | Pending | Yes (PostgreSQL & Redis provisioning) |
-| **Phase 2** | Authentication & Tenant Isolation (RLS) | Pending | No (Local secure auth) |
+| **Phase 0** | Repository Inspection & Implementation Plan | **Completed** | No |
+| **Phase 1** | Foundation (Backend, Database, Redis, CI) | **Completed** | No (Decoupled Foundation Active) |
+| **Phase 2** | Authentication & Tenant Isolation (RLS) | Up Next | No (Local secure auth) |
 | **Phase 3** | CSV Import & Safe Website Crawler | Pending | No (Pure OSS / httpx / BeautifulSoup) |
 | **Phase 4** | The 22-Signal Qualification Engine | Pending | No (Pure deterministic domain logic) |
 | **Phase 5** | Job Orchestration (ARQ & Redis) | Pending | No (Local Redis queue) |

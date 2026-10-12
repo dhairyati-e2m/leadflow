@@ -76,3 +76,18 @@ This document records the architectural and engineering decisions made throughou
   3. *Shared Database with Row-Level Security (RLS) + Tenant-Scoped Repositories:* PostgreSQL RLS enforces tenant boundaries at the database engine level via `SET LOCAL app.current_org_id`, complemented by SQLAlchemy tenant-scoped queries.
 - **Decision:** Use a shared PostgreSQL database with `org_id` foreign keys, PostgreSQL Row-Level Security policies tested with a non-superuser role, and tenant-scoped repository wrappers in the application layer.
 - **Consequences:** Multi-layered defense-in-depth preventing accidental data leakage across organizations.
+
+---
+
+## ADR-006: Decoupled Docker-Independent Development & Testing Strategy
+
+- **Status:** Accepted (Phase 1)
+- **Date:** 2026-10-12
+- **Context:** Host machine virtualization (Windows Virtual Machine Platform) is currently unavailable, postponing Docker Desktop. Development must continue without stalling architectural progress, while maintaining strict adherence to PostgreSQL 16 and Redis 7 as production requirements.
+- **Alternatives Considered:**
+  1. *Halt progress until Windows virtualization is resolved:* Unnecessary blocker that stalls domain modeling, scoring algorithms, crawlers, and API scaffolding.
+  2. *Replace PostgreSQL with SQLite in production code:* Violates Rule D and project requirements; SQLite lacks PostgreSQL JSONB operators, concurrency locking, and native Row-Level Security (RLS).
+  3. *Decoupled Architecture with Mock/In-Memory Test Adapters:* Retain PostgreSQL 16 schemas, Alembic migrations, and SQLAlchemy async models as primary. Implement repository interfaces with tenant isolation. Use in-memory data structures / SQLite strictly for local unit test execution of domain logic, while clearly flagging PostgreSQL RLS and Redis ARQ integration tests as pending until real infrastructure is connected.
+- **Decision:** Adopt Alternative 3. All domain models, Alembic migrations, and SQL schemas remain 100% PostgreSQL-native. Unit tests (scoring, crawler, CSV, schemas, validation) run completely offline without Docker. Integration tests requiring live PostgreSQL/Redis are gated by explicit connection checks and marked as skipped/pending when unconfigured.
+- **Consequences:** Zero blocked progress. Complete fidelity to production PostgreSQL schema without premature dependency on local Docker containers.
+
