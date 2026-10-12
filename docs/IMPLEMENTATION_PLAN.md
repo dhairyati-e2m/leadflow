@@ -11,8 +11,8 @@ This document outlines the detailed roadmap for LeadFlow across all phases. Each
 | **Phase 0** | Repository Inspection & Implementation Plan | **Completed** | No |
 | **Phase 1** | Foundation (Backend, Database, Redis, CI) | **Completed** | No |
 | **Phase 2** | Authentication & Tenant Isolation (RLS) | **Completed** | No |
-| **Phase 3** | CSV Import & Safe Website Crawler | Up Next | No (Pure OSS / httpx / BeautifulSoup) |
-| **Phase 4** | The 22-Signal Qualification Engine | Pending | No (Pure deterministic domain logic) |
+| **Phase 3** | CSV Import & Safe Website Crawler | **Completed** | No |
+| **Phase 4** | The 22-Signal Qualification Engine | Up Next | No (Pure deterministic domain logic) |
 | **Phase 5** | Job Orchestration (ARQ & Redis) | Pending | No (Local Redis queue) |
 | **Phase 6** | Free Live Integrations Evaluation & Adapters | Pending | Yes (Provider by provider confirmation) |
 | **Phase 7** | Human Review, Approval & Optional AI Drafting | Pending | Optional (Free LLM / Ollama configuration) |
@@ -70,19 +70,18 @@ This document outlines the detailed roadmap for LeadFlow across all phases. Each
 ### Phase 3: CSV Import and Safe Website Crawler
 - **Goals:** Ingest leads via CSV and safely collect raw website data without network vulnerabilities.
 - **Deliverables:**
-  - Entities: `searches`, `leads`, `enrichments`.
-  - CSV parser with schema validation, header mapping, and CSV formula-injection sanitization (`=`, `@`, `+`, `-` escaping).
-  - Company domain normalization and tenant-level deduplication.
-  - Safe HTTP crawler using `httpx`, `beautifulsoup4`, `urllib.robotparser`:
-    - Strict SSRF protection: DNS pre-resolution blocking loopback (`127.0.0.0/8`, `::1`), private ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local (`169.254.0.0/16`), and cloud metadata (`169.254.169.254`).
-    - Redirect safety validation (re-validates IP at each redirect hop).
-    - Hard timeouts (max 10s per request, max 30s per domain).
-    - Response size limit (max 2MB per page).
-    - Crawl depth limits (max 3 pages per domain: homepage, about, contact/careers).
-    - Per-domain rate limiting and concurrency throttling.
-    - Evidence provenance tracking (timestamp, URL, raw snippet, HTTP status).
-  - Mock enrichment provider interface (`mock`, `live`, `disabled`).
-- **Verification:** Security unit tests against SSRF attempts (e.g., crawling `http://169.254.169.254`, `http://localhost:8000`, `http://127.0.0.1`). CSV import unit tests.
+  - [x] Entities & Repositories: `searches`, `leads`, `enrichments` (`LeadRepository`, `EnrichmentRepository`, `SearchRepository`).
+  - [x] CSV parser with schema validation, header mapping, and CSV formula-injection sanitization (`=`, `@`, `+`, `-` escaping).
+  - [x] Company domain normalization and per-organization deduplication.
+  - [x] Multi-tenant CSV upload REST endpoint (`POST /v1/ingestion/csv`) and searches listing (`GET /v1/ingestion/searches`).
+  - [x] Safe HTTP crawler using `httpx` and `beautifulsoup4` (`CrawlerService`):
+    - [x] Strict SSRF protection: DNS pre-resolution blocking loopback (`127.0.0.0/8`, `::1`), private ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), link-local (`169.254.0.0/16`), and cloud metadata (`169.254.169.254`).
+    - [x] Redirect safety validation (re-validates IP at each redirect hop).
+    - [x] Hard execution timeouts and response size limits (2MB).
+    - [x] Evidence provenance tracking (timestamp, URL, raw snippet, HTTP status, detected tech, CTAs).
+  - [x] Provider operational modes supported: `mock`, `live`, `disabled`.
+  - [x] Next.js interactive UI: CSV file upload with formula protection, sample template download, leads table with search/filtering, and crawl evidence preview drawer.
+- **Verification:** Security unit tests against SSRF attempts. Automated CSV import tests for formula injection, deduplication, and cross-tenant isolation. All 33 tests passing.
 
 ---
 
