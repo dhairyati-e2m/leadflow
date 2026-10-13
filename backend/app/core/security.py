@@ -71,3 +71,30 @@ def create_refresh_token(
 def decode_token(token: str) -> Dict[str, Any]:
     """Decodes and validates JWT signature and expiration."""
     return jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+
+
+_REVOKED_TOKENS_MEM: set = set()
+
+
+async def revoke_token(jti: str, ttl_seconds: int = 3600) -> None:
+    """Revokes a token identifier (jti) in Redis with fallback to in-memory set."""
+    _REVOKED_TOKENS_MEM.add(jti)
+    try:
+        from backend.app.workers.arq_pool import get_arq_redis_pool
+        redis = await get_arq_redis_pool()
+        await redis.setex(f"token:revoked:{jti}", max(int(ttl_seconds), 60), "1")
+    except Exception:
+        pass
+
+
+async def is_token_revoked(jti: str) -> bool:
+    """Checks whether a token jti is revoked in Redis or in-memory set."""
+    if jti in _REVOKED_TOKENS_MEM:
+        return True
+    try:
+        from backend.app.workers.arq_pool import get_arq_redis_pool
+        redis = await get_arq_redis_pool()
+        val = await redis.get(f"token:revoked:{jti}")
+        return val is not None
+    except Exception:
+        return False

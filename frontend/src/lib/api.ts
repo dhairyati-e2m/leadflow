@@ -62,11 +62,155 @@ export interface UsageLedgerResponse {
   enrichments_called: number;
 }
 
+let _authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  _authToken = token;
+  if (typeof window !== "undefined") {
+    if (token) {
+      localStorage.setItem("leadflow_token", token);
+    } else {
+      localStorage.removeItem("leadflow_token");
+    }
+  }
+}
+
+export function getAuthToken(): string | null {
+  if (_authToken) return _authToken;
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("leadflow_token");
+    if (stored) {
+      _authToken = stored;
+      return stored;
+    }
+  }
+  return null;
+}
+
+export async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const token = getAuthToken();
+  const headers = new Headers(init.headers || {});
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  return fetch(input, {
+    ...init,
+    headers,
+  });
+}
+
+export interface UserMembership {
+  org_id: string;
+  org_name: string;
+  org_slug: string;
+  role: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  memberships: UserMembership[];
+}
+
+export interface AuthTokenResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  user_id: string;
+  org_id: string;
+  role: string;
+}
+
+export async function apiLogin(credentials: { email: string; password: string; org_id?: string }): Promise<AuthTokenResponse> {
+  const res = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(credentials),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Login failed" }));
+    throw new Error(err.detail || "Invalid email or password.");
+  }
+  const data: AuthTokenResponse = await res.json();
+  setAuthToken(data.access_token);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("leadflow_refresh_token", data.refresh_token);
+    localStorage.setItem("leadflow_active_org", data.org_id);
+  }
+  return data;
+}
+
+export async function apiRegister(payload: { email: string; password: string; full_name: string; org_name: string }): Promise<AuthTokenResponse> {
+  const res = await fetch(`${API_BASE}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Registration failed" }));
+    throw new Error(err.detail || "Registration failed.");
+  }
+  const data: AuthTokenResponse = await res.json();
+  setAuthToken(data.access_token);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("leadflow_refresh_token", data.refresh_token);
+    localStorage.setItem("leadflow_active_org", data.org_id);
+  }
+  return data;
+}
+
+export async function apiRefreshToken(refreshToken: string, orgId?: string): Promise<AuthTokenResponse> {
+  const res = await fetch(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken, org_id: orgId }),
+  });
+  if (!res.ok) {
+    setAuthToken(null);
+    throw new Error("Session expired. Please sign in again.");
+  }
+  const data: AuthTokenResponse = await res.json();
+  setAuthToken(data.access_token);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("leadflow_refresh_token", data.refresh_token);
+    localStorage.setItem("leadflow_active_org", data.org_id);
+  }
+  return data;
+}
+
+export async function apiLogout(): Promise<void> {
+  const refreshToken = typeof window !== "undefined" ? localStorage.getItem("leadflow_refresh_token") : null;
+  try {
+    await authenticatedFetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  } catch {
+    // Continue cleanup even if server is offline
+  } finally {
+    setAuthToken(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("leadflow_refresh_token");
+      localStorage.removeItem("leadflow_active_org");
+    }
+  }
+}
+
+export async function apiGetMe(): Promise<UserProfile> {
+  const res = await authenticatedFetch(`${API_BASE}/auth/me`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error("Failed to load user profile");
+  }
+  return res.json();
+}
+
 export async function createBatchRun(
   leadIds?: string[],
   syncExecution: boolean = false
 ): Promise<BatchRunResponse> {
-  const res = await fetch(`${API_BASE}/jobs/runs`, {
+  const res = await authenticatedFetch(`${API_BASE}/jobs/runs`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -81,7 +225,7 @@ export async function createBatchRun(
 }
 
 export async function fetchRunStatus(runId: string): Promise<BatchRunResponse> {
-  const res = await fetch(`${API_BASE}/jobs/runs/${runId}`, { cache: "no-store" });
+  const res = await authenticatedFetch(`${API_BASE}/jobs/runs/${runId}`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Failed to fetch run status: ${res.statusText}`);
   }
@@ -89,7 +233,7 @@ export async function fetchRunStatus(runId: string): Promise<BatchRunResponse> {
 }
 
 export async function cancelRun(runId: string): Promise<BatchRunResponse> {
-  const res = await fetch(`${API_BASE}/jobs/runs/${runId}/cancel`, {
+  const res = await authenticatedFetch(`${API_BASE}/jobs/runs/${runId}/cancel`, {
     method: "POST",
   });
   if (!res.ok) {
@@ -99,7 +243,7 @@ export async function cancelRun(runId: string): Promise<BatchRunResponse> {
 }
 
 export async function fetchUsageLedger(): Promise<UsageLedgerResponse> {
-  const res = await fetch(`${API_BASE}/jobs/usage`, { cache: "no-store" });
+  const res = await authenticatedFetch(`${API_BASE}/jobs/usage`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`Failed to fetch usage ledger: ${res.statusText}`);
   }

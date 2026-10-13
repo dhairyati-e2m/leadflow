@@ -1,17 +1,22 @@
+from datetime import datetime, timezone
 import re
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Security, status
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.core.config import settings
 from backend.app.core.database import get_db_session, set_rls_tenant_context
-from backend.app.core.deps import get_current_user
+from backend.app.core.deps import get_current_user, security_scheme
 from backend.app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
     hash_password,
+    is_token_revoked,
+    revoke_token,
     verify_password,
 )
 from backend.app.models.entities import Membership, Organization, User
@@ -34,6 +39,11 @@ class LoginRequest(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+    org_id: Optional[str] = None  # Explicit organization target to preserve context
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: Optional[str] = None
 
 
 class TokenResponse(BaseModel):
@@ -178,20 +188,51 @@ async def refresh_token_endpoint(
 ) -> TokenResponse:
     try:
         payload = decode_token(data.refresh_token)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has expired.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type.")
 
+    jti = payload.get("jti")
+    if jti and await is_token_revoked(jti):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has been revoked.")
+
     user_id = payload.get("sub")
+
+    # Verify user exists and is active
+    user_stmt = select(User).where(User.id == user_id, User.is_active == True)
+    user = (await session.execute(user_stmt)).scalars().first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User account is deactivated or not found.")
+
     mem_stmt = select(Membership).where(Membership.user_id == user_id)
     memberships = list((await session.execute(mem_stmt)).scalars().all())
 
     if not memberships:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No active organization found.")
 
-    active_mem = memberships[0]
+    # Preserve requested org_id if specified and member, otherwise default to first
+    active_mem = None
+    if data.org_id:
+        active_mem = next((m for m in memberships if m.org_id == data.org_id), None)
+    if not active_mem:
+        active_mem = memberships[0]
+
+    # One-time rotation: revoke old refresh token jti
+    if jti:
+        await revoke_token(jti, ttl_seconds=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400)
+
     access_token = create_access_token(user_id=user_id, org_id=active_mem.org_id, role=active_mem.role)
     new_refresh = create_refresh_token(user_id=user_id)
 
@@ -202,6 +243,41 @@ async def refresh_token_endpoint(
         org_id=active_mem.org_id,
         role=active_mem.role,
     )
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK, summary="Revoke Tokens & End Session")
+async def logout_endpoint(
+    data: Optional[LogoutRequest] = None,
+    auth: Optional[HTTPAuthorizationCredentials] = Security(security_scheme),
+) -> Dict[str, str]:
+    """Revokes active access token and refresh token in Redis."""
+    # Revoke access token if present in Authorization header
+    if auth and auth.credentials:
+        try:
+            payload = decode_token(auth.credentials)
+            jti = payload.get("jti")
+            exp = payload.get("exp", 0)
+            now = int(datetime.now(timezone.utc).timestamp())
+            ttl = max(exp - now, 60)
+            if jti:
+                await revoke_token(jti, ttl_seconds=ttl)
+        except Exception:
+            pass
+
+    # Revoke refresh token if provided
+    if data and data.refresh_token:
+        try:
+            payload = decode_token(data.refresh_token)
+            jti = payload.get("jti")
+            exp = payload.get("exp", 0)
+            now = int(datetime.now(timezone.utc).timestamp())
+            ttl = max(exp - now, 60)
+            if jti:
+                await revoke_token(jti, ttl_seconds=ttl)
+        except Exception:
+            pass
+
+    return {"message": "Logged out successfully."}
 
 
 @router.get("/me", response_model=UserProfileResponse, summary="Get Current User Profile")

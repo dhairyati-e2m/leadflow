@@ -91,3 +91,21 @@ This document records the architectural and engineering decisions made throughou
 - **Decision:** Adopt Alternative 3. All domain models, Alembic migrations, and SQL schemas remain 100% PostgreSQL-native. Unit tests (scoring, crawler, CSV, schemas, validation) run completely offline without Docker. Integration tests requiring live PostgreSQL/Redis are gated by explicit connection checks and marked as skipped/pending when unconfigured.
 - **Consequences:** Zero blocked progress. Complete fidelity to production PostgreSQL schema without premature dependency on local Docker containers.
 
+---
+
+## ADR-007: Token-Based Authentication with Redis Revocation Denylist and Tenant Session Preservation
+
+- **Status:** Accepted (Phase 6)
+- **Date:** 2026-10-13
+- **Context:** Authentication and authorization defects were identified: frontend was disconnected from backend auth, tenant context was clobbered during refresh for multi-org users, expired tokens were indistinguishable from invalid tokens, deactivated users could indefinitely refresh tokens, and logout was purely client-side without token invalidation.
+- **Alternatives Considered:**
+  1. *Stateless JWT with no revocation:* Easy to deploy but impossible to revoke compromised tokens or log out securely until token naturally expires.
+  2. *Server-side stateful sessions in database:* Requires database read on every HTTP request, adding I/O latency under concurrent usage.
+  3. *Short-lived JWT (60m) + Refresh Token Rotation + Redis Revocation Denylist (`jti`)*: Fast stateless token verification with sub-millisecond Redis check for revoked tokens. Token rotation enforces single-use refresh tokens.
+- **Decision:** Implement Alternative 3:
+  - Short-lived signed JWT access tokens containing user ID, organization ID, and role claim.
+  - Refresh token endpoint validates active user state (`user.is_active == True`), respects target `org_id` to preserve multi-tenant context, and rotates the refresh token.
+  - `/v1/auth/logout` revokes access and refresh tokens by recording their unique JWT ID (`jti`) in Redis with TTL equal to the remaining token lifespan.
+  - Next.js client encapsulates token management, transparent refresh retry on expired tokens, and multi-tenant organization switching in `AuthProvider`.
+- **Consequences:** High security with token revocation capability, zero cross-tenant session corruption, and seamless frontend authentication state.
+

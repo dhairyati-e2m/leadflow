@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import jwt
 
 from backend.app.core.database import get_db_session, set_rls_tenant_context
-from backend.app.core.security import decode_token
+from backend.app.core.security import decode_token, is_token_revoked
 from backend.app.models.entities import Membership, Organization, User
 
 security_scheme = HTTPBearer(auto_error=False)
@@ -54,6 +54,14 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    jti = payload.get("jti")
+    if jti and await is_token_revoked(jti):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user_id = payload.get("sub")
     stmt = select(User).where(User.id == user_id, User.is_active == True)
     result = await session.execute(stmt)
@@ -86,10 +94,24 @@ async def get_tenant_context(
 
     try:
         payload = decode_token(auth.credentials)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    jti = payload.get("jti")
+    if jti and await is_token_revoked(jti):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
