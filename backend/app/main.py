@@ -1,8 +1,16 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
+from backend.app.workers.arq_pool import close_arq_redis_pool
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await close_arq_redis_pool()
 
 
 def create_application() -> FastAPI:
@@ -12,6 +20,7 @@ def create_application() -> FastAPI:
         version="1.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     # CORS configuration allowing frontend origin

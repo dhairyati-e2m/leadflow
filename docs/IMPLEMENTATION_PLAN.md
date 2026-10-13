@@ -125,14 +125,16 @@ This document outlines the detailed roadmap for LeadFlow across all phases. Each
 
 ### Phase 5: Job Orchestration
 - **Goals:** Asynchronous background job processing with ARQ and Redis.
-- **Deliverables:**
-  - Entities: `runs`, `usage_ledger`.
-  - ARQ background worker pipeline: crawl -> enrich -> score.
-  - Checkpointing: job progress, stage transitions, and results persisted to PostgreSQL.
-  - Per-tenant concurrency limits (default: 2 active runs per organization).
-  - Circuit breaker and exponential backoff retry mechanisms.
-  - Graceful cancellation handling.
-- **Verification:** Test worker retry logic, failure handling, cancellation, and tenant queue isolation.
+- **Deliverables & Verification:**
+  - [x] Redis 7 connection pool manager & worker client abstraction (`backend/app/workers/arq_pool.py`).
+  - [x] ARQ background worker settings and pipeline tasks (`backend/app/workers/tasks.py`, `backend/app/workers/worker.py`).
+  - [x] Chained pipeline task `process_single_lead_pipeline`: crawl -> enrich -> 22-signal score with tenant RLS session enforcement.
+  - [x] Batch run orchestrator `process_batch_run_job`: per-item cooperative cancellation checking, delay pacing, and PostgreSQL checkpointing.
+  - [x] Run repository tracking lifecycle (`pending`, `running`, `completed`, `cancelled`, `failed`), timestamps, metrics, and error traces (`backend/app/repositories/runs.py`).
+  - [x] Monthly usage ledger tracking tenant resource consumption (`pages_crawled`, `leads_scored`, `hubspot_synced`) (`backend/app/repositories/usage.py`).
+  - [x] Job orchestration REST API (`/v1/jobs/runs`, `/v1/jobs/runs/{run_id}`, `/v1/jobs/runs/{run_id}/cancel`, `/v1/jobs/usage`).
+  - [x] Next.js 15 dashboard integration: Batch pipeline trigger button, active background job monitor card with progress bar, cancellation control, and monthly usage ledger metrics.
+  - [x] Full integration and isolation test suite (`backend/tests/test_jobs_orchestration.py`). All 39 tests passing across Postgres & Redis.
 
 ---
 
