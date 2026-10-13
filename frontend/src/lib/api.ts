@@ -249,3 +249,43 @@ export async function fetchUsageLedger(): Promise<UsageLedgerResponse> {
   }
   return res.json();
 }
+
+export interface ProviderControlItem {
+  key: string;
+  name: string;
+  category: string;
+  enabled: boolean;
+  mode: string;
+  free_quota_description: string;
+  is_configured: boolean;
+  status_label: string;
+}
+
+export interface IntegrationSettingsResponse {
+  master_switch_enabled: boolean;
+  providers: ProviderControlItem[];
+}
+
+export async function fetchIntegrationSettings(): Promise<IntegrationSettingsResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/settings/integrations`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch integrations: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function updateIntegrationSettings(payload: {
+  master_switch_enabled?: boolean;
+  provider_toggles?: Record<string, boolean>;
+}): Promise<IntegrationSettingsResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/settings/integrations`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to update integrations" }));
+    throw new Error(err.detail || "Failed to update settings");
+  }
+  return res.json();
+}
