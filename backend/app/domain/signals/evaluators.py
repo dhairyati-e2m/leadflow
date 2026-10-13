@@ -88,6 +88,31 @@ def evaluate_legacy_platform(crawl: CrawlData, soup: BeautifulSoup) -> SignalRes
 def evaluate_slow_site(crawl: CrawlData, soup: BeautifulSoup) -> SignalResult:
     key = "slow_site"
     weight = SIGNAL_CATALOG[key].default_weight
+
+    # Check for external Google PageSpeed audit data if available
+    pagespeed_data = crawl.external_data.get("pagespeed") if crawl.external_data else None
+    if pagespeed_data and isinstance(pagespeed_data, dict) and pagespeed_data.get("performance_score") is not None:
+        perf_score = float(pagespeed_data["performance_score"])
+        # High performance score (100) indicates fast site (low issue/opportunity ~0).
+        # Low performance score indicates slow site (high issue/opportunity ~100).
+        issue_score = round(max(0.0, min(100.0, 100.0 - perf_score)), 1)
+        return SignalResult(
+            signal_key=key,
+            available=True,
+            raw_value={"performance_score": perf_score, "core_web_vitals": pagespeed_data},
+            normalized_score=issue_score,
+            weight=weight,
+            evidence={
+                "provider": "google_pagespeed",
+                "performance_score": perf_score,
+                "largest_contentful_paint_ms": pagespeed_data.get("largest_contentful_paint_ms"),
+                "core_web_vitals_passed": pagespeed_data.get("core_web_vitals_passed"),
+                "load_time_ms": crawl.load_time_ms,
+            },
+            source="pagespeed_v5",
+            confidence=0.98,
+        )
+
     if crawl.load_time_ms is None:
         return SignalResult(signal_key=key, available=False, weight=weight, error_code="NO_TIMING_DATA")
 
@@ -113,6 +138,7 @@ def evaluate_slow_site(crawl: CrawlData, soup: BeautifulSoup) -> SignalResult:
         source="crawler_latency",
         confidence=0.90,
     )
+
 
 
 def evaluate_old_design(crawl: CrawlData, soup: BeautifulSoup) -> SignalResult:

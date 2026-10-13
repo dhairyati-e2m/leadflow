@@ -120,6 +120,14 @@ class CrawlerService:
             if "hubspot" in html_lower or "hs-scripts" in html_lower:
                 detected_tech.append("HubSpot")
 
+            # Optional Google PageSpeed Core Web Vitals audit
+            if settings.PROVIDER_PAGESPEED_MODE in ("live", "mock"):
+                from backend.app.providers.pagespeed import GooglePageSpeedProvider
+                ps_provider = GooglePageSpeedProvider()
+                ps_result = await ps_provider.execute(target_url)
+                if ps_result.status in ("success", "mock"):
+                    crawl_data.external_data["pagespeed"] = ps_result.data
+
             status = "success" if (200 <= crawl_data.status_code < 400) else "partial"
             if crawl_data.status_code == 0:
                 status = "failed"
