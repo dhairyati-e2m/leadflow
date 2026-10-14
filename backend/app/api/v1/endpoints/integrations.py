@@ -44,64 +44,74 @@ DEFAULT_PROVIDERS_CONFIG = [
         "status_label": "Active (Local native engine)",
     },
     {
+        "key": "brave",
+        "name": "Brave Search API",
+        "category": "Search & Company Discovery",
+        "enabled": False,
+        "mode": settings.PROVIDER_BRAVE_MODE,
+        "free_quota_description": "2,000 queries / month free (1 req/sec). Safety limit: 1,600/mo.",
+        "is_configured": bool(settings.BRAVE_API_KEY),
+        "status_label": "Configured & Active" if settings.BRAVE_API_KEY else "Awaiting Free API Key",
+    },
+    {
+        "key": "gemini",
+        "name": "Google Gemini API (gemini-1.5-flash)",
+        "category": "ICP Matching & Signal AI",
+        "enabled": False,
+        "mode": settings.PROVIDER_GEMINI_MODE,
+        "free_quota_description": "1,500 requests/day, 15 RPM free recurring. Deterministic fallback active.",
+        "is_configured": bool(settings.GEMINI_API_KEY),
+        "status_label": "Configured & Active" if settings.GEMINI_API_KEY else "Awaiting Free API Key",
+    },
+    {
+        "key": "serpapi",
+        "name": "SerpApi Google Search",
+        "category": "Company Discovery",
+        "enabled": False,
+        "mode": settings.PROVIDER_SERPAPI_MODE,
+        "free_quota_description": "100 searches / month free recurring. Safety limit: 80/mo.",
+        "is_configured": bool(settings.SERPAPI_API_KEY),
+        "status_label": "Configured & Active" if settings.SERPAPI_API_KEY else "Awaiting Free API Key",
+    },
+    {
+        "key": "hunter",
+        "name": "Hunter.io Domain Search & Verification",
+        "category": "Email Discovery & Verification",
+        "enabled": False,
+        "mode": settings.PROVIDER_HUNTER_MODE,
+        "free_quota_description": "25 searches + 50 verifications/mo free. Gated to explicit contact reveal.",
+        "is_configured": bool(settings.HUNTER_API_KEY),
+        "status_label": "Configured & Active" if settings.HUNTER_API_KEY else "Awaiting Free API Key",
+    },
+    {
+        "key": "resend",
+        "name": "Resend Transactional Email",
+        "category": "Security & J5 Password Reset",
+        "enabled": False,
+        "mode": settings.PROVIDER_RESEND_MODE,
+        "free_quota_description": "100 emails / day free recurring (Safety limit: 80/day). Strictly transactional.",
+        "is_configured": bool(settings.RESEND_API_KEY),
+        "status_label": "Configured & Active" if settings.RESEND_API_KEY else "Awaiting Free API Key",
+    },
+    {
         "key": "google_pagespeed",
         "name": "Google PageSpeed Insights",
         "category": "Core Web Vitals & Performance",
         "enabled": False,
-        "mode": "disabled",
+        "mode": settings.PROVIDER_PAGESPEED_MODE,
         "free_quota_description": "25,000 queries / day (Free Google Cloud API Key)",
         "is_configured": bool(settings.GOOGLE_PAGESPEED_API_KEY),
-        "status_label": "Ready to configure with free API key",
-    },
-    {
-        "key": "hunter",
-        "name": "Hunter.io Domain Search",
-        "category": "Email Verification",
-        "enabled": False,
-        "mode": "disabled",
-        "free_quota_description": "25 searches / month (Strict free safety budget)",
-        "is_configured": False,
-        "status_label": "Quota-capped free tier",
-    },
-    {
-        "key": "apollo",
-        "name": "Apollo.io API",
-        "category": "Lead Enrichment",
-        "enabled": False,
-        "mode": "disabled",
-        "free_quota_description": "API restricted to paid tiers ($49+/mo). Free web exports only.",
-        "is_configured": False,
-        "status_label": "Disabled by Policy (No free API)",
-    },
-    {
-        "key": "snov",
-        "name": "Snov.io API",
-        "category": "Contact Discovery",
-        "enabled": False,
-        "mode": "disabled",
-        "free_quota_description": "One-time 50 credit trial upon sign-up (No permanent free tier).",
-        "is_configured": False,
-        "status_label": "Disabled by Policy (Paid after trial)",
+        "status_label": "Configured & Active" if settings.GOOGLE_PAGESPEED_API_KEY else "Ready to configure with free key",
     },
     {
         "key": "hubspot",
         "name": "HubSpot CRM Synchronization",
         "category": "CRM Integration",
         "enabled": False,
-        "mode": "disabled",
+        "mode": settings.PROVIDER_HUBSPOT_MODE,
         "free_quota_description": "Free Developer Test Account (100 req / 10s)",
         "is_configured": bool(settings.HUBSPOT_ACCESS_TOKEN),
-        "status_label": "Awaiting Phase 8 developer authorization",
-    },
-    {
-        "key": "openrouter",
-        "name": "OpenRouter AI Personalization",
-        "category": "Outreach Drafting",
-        "enabled": False,
-        "mode": "disabled",
-        "free_quota_description": "Free models (20 req/min, 200/day). Deterministic fallback active.",
-        "is_configured": bool(settings.LLM_API_KEY),
-        "status_label": "Disabled (Deterministic rules active)",
+        "status_label": "Configured" if settings.HUBSPOT_ACCESS_TOKEN else "Awaiting developer authorization",
     },
 ]
 
@@ -158,12 +168,12 @@ async def update_integration_settings(
 
     if data.provider_toggles is not None:
         existing_toggles = dict(curr_integrations.get("provider_toggles", {}))
-        # Protect against enabling policy-disabled providers (Apollo, Snov)
+        # Protect against enabling policy-disabled providers (DataForSEO, Apollo, Snov, OpenRouter)
         for k, v in data.provider_toggles.items():
-            if k in ["apollo", "snov"] and v:
+            if k in ["apollo", "snov", "dataforseo", "openrouter"] and v:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Cannot enable {k}: provider has no permanent free API tier under Rule A.",
+                    detail=f"Cannot enable {k}: provider has no permanent free API tier or is replaced.",
                 )
             existing_toggles[k] = v
         curr_integrations["provider_toggles"] = existing_toggles

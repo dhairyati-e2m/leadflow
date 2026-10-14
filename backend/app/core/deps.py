@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import jwt
 
 from backend.app.core.database import get_db_session, set_rls_tenant_context
-from backend.app.core.security import decode_token, is_token_revoked
+from backend.app.core.security import decode_token, is_token_revoked, is_user_revoked
 from backend.app.models.entities import Membership, Organization, User
 
 security_scheme = HTTPBearer(auto_error=False)
@@ -63,6 +63,14 @@ async def get_current_user(
         )
 
     user_id = payload.get("sub")
+    iat = payload.get("iat")
+    if user_id and await is_user_revoked(user_id, iat):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has been revoked or invalidated. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     stmt = select(User).where(User.id == user_id, User.is_active == True)
     result = await session.execute(stmt)
     user = result.scalars().first()
@@ -117,11 +125,19 @@ async def get_tenant_context(
 
     user_id = payload.get("sub")
     org_id = payload.get("org_id")
+    iat = payload.get("iat")
 
     if not user_id or not org_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token missing user or tenant claim",
+        )
+
+    if await is_user_revoked(user_id, iat):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has been revoked or invalidated. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     # 1. Fetch user

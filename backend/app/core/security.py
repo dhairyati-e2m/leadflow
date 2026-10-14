@@ -98,3 +98,39 @@ async def is_token_revoked(jti: str) -> bool:
         return val is not None
     except Exception:
         return False
+
+
+_REVOKED_USERS_MEM: Dict[str, int] = {}
+
+
+async def revoke_user_sessions(user_id: str, ttl_seconds: int = 86400 * 7) -> None:
+    """Revokes all sessions/tokens issued for user_id before current timestamp."""
+    now = int(datetime.now(timezone.utc).timestamp())
+    _REVOKED_USERS_MEM[user_id] = now
+    try:
+        from backend.app.workers.arq_pool import get_arq_redis_pool
+        redis = await get_arq_redis_pool()
+        await redis.setex(f"user:revoked_before:{user_id}", ttl_seconds, str(now))
+    except Exception:
+        pass
+
+
+async def is_user_revoked(user_id: str, iat: Optional[int]) -> bool:
+    """Checks whether token with issued-at (iat) was issued before user session revocation."""
+    if not iat:
+        return False
+    revoked_before = _REVOKED_USERS_MEM.get(user_id)
+    if revoked_before and iat < revoked_before:
+        return True
+    try:
+        from backend.app.workers.arq_pool import get_arq_redis_pool
+        redis = await get_arq_redis_pool()
+        val = await redis.get(f"user:revoked_before:{user_id}")
+        if val is not None:
+            cutoff = int(val)
+            _REVOKED_USERS_MEM[user_id] = cutoff
+            return iat < cutoff
+    except Exception:
+        pass
+    return False
+

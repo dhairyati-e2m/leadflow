@@ -84,11 +84,16 @@ def resolve_and_validate_hostname(hostname: str) -> str:
         raise SSRFValidationError(f"DNS resolution failure for {hostname}: {e}")
 
 
+# In-memory Domain Crawl Cache (10-minute TTL)
+_CRAWL_CACHE: Dict[str, Tuple[float, CrawlData]] = {}
+CACHE_TTL_SECONDS = 600.0
+
+
 class SafeWebCrawler:
     """
     Production-grade SSRF-protected website crawler.
     Enforces scheme validation, DNS pre-resolution, redirect re-validation,
-    response size limits, and hard execution timeouts.
+    response size limits, in-memory domain caching, and hard execution timeouts.
     """
 
     def __init__(
@@ -101,21 +106,20 @@ class SafeWebCrawler:
         self.timeout_seconds = timeout_seconds
         self.user_agent = user_agent
 
-    def is_url_allowed_by_robots(self, url: str) -> bool:
+    def is_url_allowed_by_robots(self, url: str, robots_txt_content: Optional[str] = None) -> bool:
         """Lightweight robots.txt compliance check."""
-        try:
-            parsed = urlparse(url)
-            robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
-            rp = urllib.robotparser.RobotFileParser()
-            rp.set_url(robots_url)
-            # Short timeout check; if robots is unreachable or missing, default allowed
+        if not robots_txt_content:
             return True
+        try:
+            rp = urllib.robotparser.RobotFileParser()
+            rp.parse(robots_txt_content.splitlines())
+            return rp.can_fetch(self.user_agent, url)
         except Exception:
             return True
 
     async def fetch_page(self, target_url: str) -> CrawlData:
         """
-        Safely fetches an HTML page with multi-hop SSRF validation and response clamping.
+        Safely fetches an HTML page with multi-hop SSRF validation, caching, and response clamping.
         """
         parsed = urlparse(target_url)
         if parsed.scheme.lower() not in ("http", "https"):
@@ -126,7 +130,15 @@ class SafeWebCrawler:
         if not hostname:
             raise SSRFValidationError(f"Invalid target URL: {target_url}")
 
-        resolve_and_validate_hostname(hostname)
+        validated_ip = resolve_and_validate_hostname(hostname)
+
+        # Check in-memory cache
+        cache_key = f"{parsed.scheme.lower()}://{hostname.lower()}"
+        now_ts = time.time()
+        if cache_key in _CRAWL_CACHE:
+            cached_time, cached_data = _CRAWL_CACHE[cache_key]
+            if (now_ts - cached_time) < CACHE_TTL_SECONDS:
+                return cached_data
 
         # Track start time for latency measurement
         start_time = time.perf_counter()
@@ -188,7 +200,7 @@ class SafeWebCrawler:
 
             is_ssl = urlparse(current_url).scheme.lower() == "https"
 
-            return CrawlData(
+            result = CrawlData(
                 url=current_url,
                 status_code=response.status_code,
                 headers=dict(response.headers),
@@ -201,3 +213,8 @@ class SafeWebCrawler:
                     "truncated": len(response.content) > self.max_bytes,
                 },
             )
+
+            if response.status_code == 200:
+                _CRAWL_CACHE[cache_key] = (now_ts, result)
+
+            return result

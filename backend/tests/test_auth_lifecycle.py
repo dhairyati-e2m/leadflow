@@ -21,7 +21,7 @@ async def test_auth_token_expiration_and_revocation_lifecycle():
             "email": unique_email,
             "password": "Password123!",
             "full_name": "Lifecycle User",
-            "org_name": "Lifecycle Org",
+            "org_name": f"Lifecycle Org {uuid.uuid4().hex[:6]}",
         })
         assert reg_res.status_code == 201
         tokens = reg_res.json()
@@ -76,7 +76,7 @@ async def test_auth_refresh_preserves_tenant_and_rejects_inactive_user():
             "email": unique_email,
             "password": "Password123!",
             "full_name": "Multi Tenant User",
-            "org_name": "Org Alpha",
+            "org_name": f"Org Alpha {uuid.uuid4().hex[:6]}",
         })
         assert reg_res.status_code == 201
         data1 = reg_res.json()
@@ -88,7 +88,7 @@ async def test_auth_refresh_preserves_tenant_and_rejects_inactive_user():
         session_factory = get_session_factory()
         org_b_id = str(uuid.uuid4())
         async with session_factory() as session:
-            org_b = Organization(id=org_b_id, name="Org Beta", slug=f"beta-{org_b_id[:6]}", is_active=True)
+            org_b = Organization(id=org_b_id, name=f"Org Beta {uuid.uuid4().hex[:6]}", slug=f"beta-{org_b_id[:6]}", is_active=True)
             session.add(org_b)
             await session.flush()
             mem_b = Membership(org_id=org_b_id, user_id=user_id, role="admin")

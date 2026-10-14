@@ -19,11 +19,11 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login(email, password);
-      if (email.toLowerCase().includes("client")) {
-        router.push("/portal");
-      } else if (email.toLowerCase().includes("superadmin")) {
+      const { isSuperAdmin, role } = await login(email, password);
+      if (isSuperAdmin) {
         router.push("/super-admin");
+      } else if (role === "client_viewer" || role === "reviewer") {
+        router.push("/portal");
       } else {
         router.push("/");
       }
@@ -69,9 +69,17 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 mb-1">
-            Password
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400">
+              Password
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-[11px] text-lilac-600 dark:text-lilac-400 hover:underline font-medium"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <input
             type="password"
             required

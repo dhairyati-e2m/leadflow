@@ -26,6 +26,7 @@ class Organization(Base, TimestampMixin):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    normalized_name: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     slug: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     settings: Mapped[Dict[str, Any]] = mapped_column(JSONVariant, default=dict)
@@ -34,6 +35,12 @@ class Organization(Base, TimestampMixin):
     memberships: Mapped[List["Membership"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
     leads: Mapped[List["Lead"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
     searches: Mapped[List["Search"]] = relationship(back_populates="organization", cascade="all, delete-orphan")
+
+    def __init__(self, **kwargs):
+        if "name" in kwargs and not kwargs.get("normalized_name"):
+            import re
+            kwargs["normalized_name"] = re.sub(r"\s+", " ", kwargs["name"].strip().lower())
+        super().__init__(**kwargs)
 
 
 class User(Base, TimestampMixin):
@@ -45,6 +52,12 @@ class User(Base, TimestampMixin):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # J5 Password Reset & Recovery
+    reset_token_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, index=True)
+    reset_token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    security_question: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    security_answer_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     memberships: Mapped[List["Membership"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
@@ -304,3 +317,60 @@ class UsageLedger(Base):
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     month_period: Mapped[str] = mapped_column(String(7), nullable=False)  # e.g. "2026-10"
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class AccessRequest(Base, TimestampMixin):
+    """User request to join an existing organization or client portal"""
+    __tablename__ = "access_requests"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    org_id: Mapped[str] = mapped_column(String(36), ForeignKey("orgs.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    client_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # Submitted client reference or identifier
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="pending", index=True, nullable=False)  # pending, approved, rejected
+    reviewed_by_user_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    organization: Mapped["Organization"] = relationship()
+    user: Mapped["User"] = relationship(foreign_keys=[user_id])
+    reviewer: Mapped[Optional["User"]] = relationship(foreign_keys=[reviewed_by_user_id])
+
+
+class WorkspaceRequest(Base, TimestampMixin):
+    """User request to create a new workspace organization, subject to Super Admin approval"""
+    __tablename__ = "workspace_requests"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    proposed_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    normalized_name: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="pending", index=True, nullable=False)  # pending, approved, rejected
+    created_org_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("orgs.id", ondelete="SET NULL"), nullable=True)
+    reviewed_by_user_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    user: Mapped["User"] = relationship(foreign_keys=[user_id])
+    reviewer: Mapped[Optional["User"]] = relationship(foreign_keys=[reviewed_by_user_id])
+    created_org: Mapped[Optional["Organization"]] = relationship()
+
+
+class Notification(Base, TimestampMixin):
+    """In-app persistent notification for users and administrators"""
+    __tablename__ = "notifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=generate_uuid)
+    recipient_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    org_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("orgs.id", ondelete="SET NULL"), index=True, nullable=True)
+    type: Mapped[str] = mapped_column(String(50), index=True, nullable=False)  # access_request, access_decision, workspace_request, workspace_decision, system
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    link: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
+    metadata_json: Mapped[Dict[str, Any]] = mapped_column(JSONVariant, default=dict)
+
+    recipient: Mapped["User"] = relationship(foreign_keys=[recipient_id])
+    organization: Mapped[Optional["Organization"]] = relationship(foreign_keys=[org_id])
+

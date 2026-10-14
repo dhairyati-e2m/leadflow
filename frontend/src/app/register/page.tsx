@@ -120,6 +120,9 @@ export default function RegisterPage() {
         >
           {isSubmitting ? "Provisioning..." : "Initialize Workspace"}
         </button>
+        <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 text-center mt-3 leading-relaxed">
+          Belong to an existing organization? After registering, you can submit a membership request to your organization administrator.
+        </p>
       </form>
 
       <div className="mt-6 pt-6 border-t border-cosmic-200 dark:border-obsidian-800 text-center">

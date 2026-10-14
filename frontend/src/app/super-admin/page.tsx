@@ -24,8 +24,8 @@ export default function SuperAdminPage() {
 
   // Check super_admin authorization
   const isSuperAdmin =
-    user.memberships.some((m) => m.role === "super_admin") ||
-    user.email.includes("superadmin");
+    Boolean(user.is_superuser) ||
+    user.memberships.some((m) => m.role === "super_admin");
 
   if (!isSuperAdmin) {
     return (

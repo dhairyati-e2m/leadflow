@@ -17,7 +17,7 @@ async def test_batch_run_execution_checkpointing_and_usage():
             "email": f"orchestrator_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Pipeline Orchestrator",
-            "org_name": "Orchestrator Corp",
+            "org_name": f"Orchestrator Corp {uuid.uuid4().hex[:6]}",
         })
         assert reg.status_code == 201
         token = reg.json()["access_token"]
@@ -99,7 +99,7 @@ async def test_arq_redis_enqueue_and_cancellation():
             "email": f"cancel_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Cancel Tester",
-            "org_name": "Cancel Corp",
+            "org_name": f"Cancel Corp {uuid.uuid4().hex[:6]}",
         })
         token = reg.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
@@ -152,7 +152,7 @@ async def test_cross_tenant_jobs_isolation():
             "email": f"job_a_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Job Alpha",
-            "org_name": "Job Alpha Corp",
+            "org_name": f"Job Alpha Corp {uuid.uuid4().hex[:6]}",
         })
         headers_a = {"Authorization": f"Bearer {reg_a.json()['access_token']}"}
 
@@ -161,7 +161,7 @@ async def test_cross_tenant_jobs_isolation():
             "email": f"job_b_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Job Beta",
-            "org_name": "Job Beta Corp",
+            "org_name": f"Job Beta Corp {uuid.uuid4().hex[:6]}",
         })
         headers_b = {"Authorization": f"Bearer {reg_b.json()['access_token']}"}
 

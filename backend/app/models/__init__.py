@@ -1,5 +1,6 @@
 from backend.app.models.base import Base, JSONVariant, TimestampMixin
 from backend.app.models.entities import (
+    AccessRequest,
     Audience,
     AuditLog,
     Contact,
@@ -10,6 +11,7 @@ from backend.app.models.entities import (
     Enrichment,
     Lead,
     Membership,
+    Notification,
     Organization,
     Run,
     Score,
@@ -17,6 +19,7 @@ from backend.app.models.entities import (
     Search,
     UsageLedger,
     User,
+    WorkspaceRequest,
 )
 
 __all__ = [
@@ -40,4 +43,8 @@ __all__ = [
     "Run",
     "AuditLog",
     "UsageLedger",
+    "AccessRequest",
+    "WorkspaceRequest",
+    "Notification",
 ]
+

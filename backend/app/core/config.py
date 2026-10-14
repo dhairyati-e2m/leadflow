@@ -62,33 +62,49 @@ class Settings(BaseSettings):
     LLM_API_KEY: Optional[str] = None
     LLM_MODEL: str = "llama3:8b"
 
-    # OpenRouter Free AI Summaries & Outreach (Free Models with :free suffix only)
-    PROVIDER_OPENROUTER_MODE: Literal["mock", "live", "disabled"] = "disabled"
-    OPENROUTER_API_KEY: Optional[str] = None
-    OPENROUTER_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
-    OPENROUTER_DAILY_LIMIT: int = 150  # Safety buffer below official 200/day
-    OPENROUTER_RATE_LIMIT_PER_MINUTE: int = 20
+    # Global External API Kill Switch
+    GLOBAL_EXTERNAL_API_KILL_SWITCH: bool = False
 
-    # SerpApi Search-Based Company Discovery (100 searches/month Free Tier)
+    # Password Reset & Security Question Configuration (J5)
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 15
+
+    # 1. Brave Search API (Company Discovery & Public Evidence - 2,000 queries/month Free Tier)
+    PROVIDER_BRAVE_MODE: Literal["mock", "live", "disabled"] = "disabled"
+    BRAVE_API_KEY: Optional[str] = None
+    BRAVE_MONTHLY_LIMIT: int = 1600  # Conservative safety buffer below 2,000/mo
+    BRAVE_DAILY_LIMIT: int = 50
+    BRAVE_RATE_LIMIT_PER_SECOND: int = 1
+
+    # 2. Google Gemini API (ICP Matching, Classification, Evidence Summaries - 1,500 req/day Free Tier)
+    PROVIDER_GEMINI_MODE: Literal["mock", "live", "disabled"] = "disabled"
+    GEMINI_API_KEY: Optional[str] = None
+    GEMINI_MODEL: str = "gemini-1.5-flash"  # Genuinely free Google AI Studio model
+    GEMINI_DAILY_LIMIT: int = 1000  # Conservative safety buffer below 1,500/day
+    GEMINI_RPM_LIMIT: int = 10  # Conservative safety buffer below 15 RPM
+
+    # 3. SerpApi Search-Based Company Discovery (100 searches/month Free Tier)
     PROVIDER_SERPAPI_MODE: Literal["mock", "live", "disabled"] = "disabled"
     SERPAPI_API_KEY: Optional[str] = None
     SERPAPI_MONTHLY_LIMIT: int = 80  # Safety buffer below official 100/mo
 
-    # Hunter.io Domain Email Search & Verification (25 searches/month Free Tier)
+    # 4. Hunter.io Domain Email Search & Verification (25 searches + 50 verifications/month Free Tier)
     PROVIDER_HUNTER_MODE: Literal["mock", "live", "disabled"] = "disabled"
     HUNTER_API_KEY: Optional[str] = None
     HUNTER_MONTHLY_LIMIT: int = 20  # Safety buffer below official 25/mo
+    HUNTER_VERIFY_MONTHLY_LIMIT: int = 40  # Safety buffer below official 50/mo
 
-    # Resend Transactional Email & Security Alerts (100 emails/day Free Tier)
+    # 5. Resend Transactional Email & Security Alerts (100 emails/day Free Tier - J5 Password Reset)
     PROVIDER_RESEND_MODE: Literal["mock", "live", "disabled"] = "disabled"
     RESEND_API_KEY: Optional[str] = None
     RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
     RESEND_DAILY_LIMIT: int = 80  # Safety buffer below official 100/day
 
-    # DataForSEO (Trial only - Permanently disabled by policy to prevent paid usage)
-    PROVIDER_DATAFORSEO_MODE: Literal["disabled"] = "disabled"
-    DATAFORSEO_LOGIN: Optional[str] = None
-    DATAFORSEO_PASSWORD: Optional[str] = None
+    # 6. Firecrawl Web Scraper (Optional External Scraper - 1,000 credits/month Free Tier)
+    PROVIDER_FIRECRAWL_MODE: Literal["mock", "live", "disabled"] = "disabled"
+    FIRECRAWL_API_KEY: Optional[str] = None
+    FIRECRAWL_MONTHLY_LIMIT: int = 800  # Conservative safety buffer below 1,000/mo
+    FIRECRAWL_RPM_LIMIT: int = 8  # Below official 10 RPM
 
 
 settings = Settings()
+

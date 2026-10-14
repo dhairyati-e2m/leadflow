@@ -110,6 +110,7 @@ export interface UserProfile {
   id: string;
   email: string;
   full_name: string;
+  is_superuser?: boolean;
   memberships: UserMembership[];
 }
 
@@ -202,6 +203,63 @@ export async function apiGetMe(): Promise<UserProfile> {
   const res = await authenticatedFetch(`${API_BASE}/auth/me`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error("Failed to load user profile");
+  }
+  return res.json();
+}
+
+export interface ForgotPasswordResult {
+  message: string;
+  has_security_question?: boolean;
+  security_question?: string | null;
+}
+
+export async function apiForgotPassword(email: string): Promise<ForgotPasswordResult> {
+  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to request password reset." }));
+    throw new Error(err.detail || "Failed to request password reset.");
+  }
+  return res.json();
+}
+
+export async function apiVerifyResetToken(token: string): Promise<{ valid: boolean; email?: string; message?: string }> {
+  const res = await fetch(`${API_BASE}/auth/verify-reset-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+  if (!res.ok) {
+    return { valid: false, message: "Network or server error verifying token." };
+  }
+  return res.json();
+}
+
+export async function apiResetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to reset password." }));
+    throw new Error(err.detail || "Failed to reset password.");
+  }
+  return res.json();
+}
+
+export async function apiSecurityQuestionRecover(payload: { email: string; security_answer: string; new_password: string }): Promise<{ message: string }> {
+  const res = await fetch(`${API_BASE}/auth/security-question-recover`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Security recovery failed." }));
+    throw new Error(err.detail || "Incorrect security question answer.");
   }
   return res.json();
 }
@@ -468,4 +526,291 @@ export async function fetchAuditLogs(orgId?: string, limit: number = 50): Promis
   }
   return res.json();
 }
+
+export interface OrgAdminUser {
+  user_id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  is_active?: boolean;
+  created_at?: string;
+}
+
+export async function fetchOrgAdmins(orgId: string): Promise<OrgAdminUser[]> {
+  const res = await authenticatedFetch(`${API_BASE}/admin/orgs/${orgId}/admins`, { cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to fetch organization administrators" }));
+    throw new Error(err.detail || "Failed to fetch organization administrators");
+  }
+  return res.json();
+}
+
+export async function fetchOrgMembersForAdmin(orgId: string): Promise<OrgAdminUser[]> {
+  const res = await authenticatedFetch(`${API_BASE}/admin/orgs/${orgId}/members`, { cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to fetch organization members" }));
+    throw new Error(err.detail || "Failed to fetch organization members");
+  }
+  return res.json();
+}
+
+export async function assignOrgAdmin(orgId: string, email: string): Promise<OrgAdminUser> {
+  const res = await authenticatedFetch(`${API_BASE}/admin/orgs/${orgId}/admins`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to assign administrator" }));
+    throw new Error(err.detail || "Failed to assign administrator");
+  }
+  return res.json();
+}
+
+export async function removeOrgAdmin(orgId: string, userId: string): Promise<{ message: string; user_id: string; new_role: string }> {
+  const res = await authenticatedFetch(`${API_BASE}/admin/orgs/${orgId}/admins/${userId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to remove administrator" }));
+    throw new Error(err.detail || "Failed to remove administrator");
+  }
+  return res.json();
+}
+
+export async function fetchOrgMembers(orgId: string): Promise<OrgAdminUser[]> {
+  const res = await authenticatedFetch(`${API_BASE}/orgs/${orgId}/members`, { cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to fetch organization members" }));
+    throw new Error(err.detail || "Failed to fetch organization members");
+  }
+  return res.json();
+}
+
+export async function transferOrgAdmin(
+  orgId: string,
+  target: { target_user_id?: string; target_email?: string }
+): Promise<{ message: string; target_user_id: string; target_email: string; target_role: string; previous_admin_role: string }> {
+  const res = await authenticatedFetch(`${API_BASE}/orgs/${orgId}/transfer-admin`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(target),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to transfer administration" }));
+    throw new Error(err.detail || "Failed to transfer administration");
+  }
+  return res.json();
+}
+
+export async function apiCreateOrg(name: string): Promise<{ id: string; name: string; slug: string; role: string }> {
+  const res = await authenticatedFetch(`${API_BASE}/orgs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to create organization" }));
+    throw new Error(err.detail || "Failed to create organization");
+  }
+  return res.json();
+}
+
+// ==============================================================================
+// In-App Persistent Notifications API
+// ==============================================================================
+
+export interface NotificationItem {
+  id: string;
+  recipient_id: string;
+  org_id?: string | null;
+  type: string;
+  title: string;
+  message: string;
+  link?: string | null;
+  is_read: boolean;
+  metadata_json: Record<string, any>;
+  created_at: string;
+}
+
+export interface NotificationListResponse {
+  items: NotificationItem[];
+  unread_count: number;
+}
+
+export async function fetchNotifications(limit: number = 30): Promise<NotificationListResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/notifications?limit=${limit}`, { cache: "no-store" });
+  if (!res.ok) {
+    return { items: [], unread_count: 0 };
+  }
+  return res.json();
+}
+
+export async function markNotificationRead(notificationId: string): Promise<NotificationItem> {
+  const res = await authenticatedFetch(`${API_BASE}/notifications/${notificationId}/read`, {
+    method: "PATCH",
+  });
+  if (!res.ok) {
+    throw new Error("Failed to mark notification as read");
+  }
+  return res.json();
+}
+
+export async function markAllNotificationsRead(): Promise<{ status: string; updated_count: number }> {
+  const res = await authenticatedFetch(`${API_BASE}/notifications/read-all`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error("Failed to mark all notifications as read");
+  }
+  return res.json();
+}
+
+// ==============================================================================
+// Organisation Access Requests API
+// ==============================================================================
+
+export interface AccessRequestItem {
+  id: string;
+  org_id: string;
+  org_name: string;
+  user_id: string;
+  user_email: string;
+  user_full_name: string;
+  client_id?: string | null;
+  note?: string | null;
+  status: "pending" | "approved" | "rejected";
+  reviewed_by_user_id?: string | null;
+  reviewed_at?: string | null;
+  rejection_reason?: string | null;
+  created_at: string;
+}
+
+export async function submitAccessRequest(data: { org_name: string; client_id?: string; note?: string }): Promise<AccessRequestItem> {
+  const res = await authenticatedFetch(`${API_BASE}/orgs/access-requests`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to submit access request" }));
+    throw new Error(err.detail || "Failed to submit access request");
+  }
+  return res.json();
+}
+
+export async function fetchMyAccessRequests(): Promise<AccessRequestItem[]> {
+  const res = await authenticatedFetch(`${API_BASE}/orgs/access-requests/my`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function fetchOrgAccessRequests(orgId: string): Promise<AccessRequestItem[]> {
+  const res = await authenticatedFetch(`${API_BASE}/orgs/access-requests/${orgId}`, { cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to fetch organization access requests" }));
+    throw new Error(err.detail || "Failed to fetch organization access requests");
+  }
+  return res.json();
+}
+
+export async function approveAccessRequest(orgId: string, requestId: string, role: string = "client_viewer"): Promise<AccessRequestItem> {
+  const res = await authenticatedFetch(`${API_BASE}/orgs/access-requests/${orgId}/${requestId}/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to approve access request" }));
+    throw new Error(err.detail || "Failed to approve access request");
+  }
+  return res.json();
+}
+
+export async function rejectAccessRequest(orgId: string, requestId: string, rejectionReason?: string): Promise<AccessRequestItem> {
+  const res = await authenticatedFetch(`${API_BASE}/orgs/access-requests/${orgId}/${requestId}/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rejection_reason: rejectionReason }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to reject access request" }));
+    throw new Error(err.detail || "Failed to reject access request");
+  }
+  return res.json();
+}
+
+// ==============================================================================
+// Workspace Creation Requests API
+// ==============================================================================
+
+export interface WorkspaceRequestItem {
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_full_name: string;
+  proposed_name: string;
+  normalized_name: string;
+  status: "pending" | "approved" | "rejected";
+  created_org_id?: string | null;
+  reviewed_by_user_id?: string | null;
+  reviewed_at?: string | null;
+  rejection_reason?: string | null;
+  duplicate_warning?: boolean;
+  created_at: string;
+}
+
+export async function submitWorkspaceRequest(proposedName: string, intendedUse?: string): Promise<WorkspaceRequestItem> {
+  const res = await authenticatedFetch(`${API_BASE}/workspaces/requests`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ proposed_name: proposedName, intended_use: intendedUse }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to submit workspace request" }));
+    throw new Error(err.detail || "Failed to submit workspace request");
+  }
+  return res.json();
+}
+
+export async function fetchMyWorkspaceRequests(): Promise<WorkspaceRequestItem[]> {
+  const res = await authenticatedFetch(`${API_BASE}/workspaces/requests/my`, { cache: "no-store" });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function fetchAdminWorkspaceRequests(): Promise<WorkspaceRequestItem[]> {
+  const res = await authenticatedFetch(`${API_BASE}/workspaces/requests/admin`, { cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to fetch workspace requests" }));
+    throw new Error(err.detail || "Failed to fetch workspace requests");
+  }
+  return res.json();
+}
+
+export async function approveWorkspaceRequest(requestId: string): Promise<WorkspaceRequestItem> {
+  const res = await authenticatedFetch(`${API_BASE}/workspaces/requests/admin/${requestId}/approve`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to approve workspace request" }));
+    throw new Error(err.detail || "Failed to approve workspace request");
+  }
+  return res.json();
+}
+
+export async function rejectWorkspaceRequest(requestId: string, rejectionReason?: string): Promise<WorkspaceRequestItem> {
+  const res = await authenticatedFetch(`${API_BASE}/workspaces/requests/admin/${requestId}/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rejection_reason: rejectionReason }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to reject workspace request" }));
+    throw new Error(err.detail || "Failed to reject workspace request");
+  }
+  return res.json();
+}
+
+
 

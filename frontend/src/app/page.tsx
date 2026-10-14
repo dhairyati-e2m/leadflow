@@ -6,6 +6,7 @@ import { IcpEditor } from "@/components/IcpEditor";
 import { ClientPortal } from "@/components/ClientPortal";
 import { SuperAdminPortal } from "@/components/SuperAdminPortal";
 import { WelcomeLanding } from "@/components/WelcomeLanding";
+import { OrgAccessRequestsCard } from "@/components/OrgAccessRequestsCard";
 import { useAuth } from "@/lib/auth-context";
 import { useNav } from "@/lib/nav-context";
 
@@ -223,8 +224,10 @@ interface ActiveRunInfo {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, activeMembership } = useAuth();
   const { activeTab, role, setLeadsCount } = useNav();
+  const isClient = role === "client_viewer" || activeMembership?.role === "client_viewer" || activeMembership?.role === "reviewer";
+  const canManageOrgAccess = activeMembership && (activeMembership.role === "owner" || activeMembership.role === "admin" || role === "super_admin");
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_DEMO_LEADS);
 
   useEffect(() => {
@@ -689,17 +692,17 @@ export default function DashboardPage() {
       </div>
 
       {/* 1. Client Viewer Role Portal (Strictly No Cost Cards, Read-Only Qualified Pipeline) */}
-      {(role === "client_viewer" || activeTab === "portal") && (
+      {(isClient || activeTab === "portal") && (
         <ClientPortal />
       )}
 
       {/* 2. Audiences & ICP Editor for Org Admin (Item 3) */}
-      {role !== "client_viewer" && activeTab === "icp" && (
+      {!isClient && activeTab === "icp" && (
         <IcpEditor />
       )}
 
       {/* 3. Main Tab 1: Leads Pipeline & Funnel (Org Admin & Super Admin) */}
-      {role !== "client_viewer" && activeTab === "leads" && (
+      {!isClient && activeTab === "leads" && (
         <div className="space-y-6">
           {/* Target Lead Qualification Standard (Full width matching Sourcing & Batch Pipeline card) */}
           <div className="glass-panel card-cosmic rounded-3xl p-6 border border-blush-200/80 dark:border-obsidian-700 shadow-sm w-full">
@@ -838,6 +841,11 @@ export default function DashboardPage() {
                 ></div>
               </div>
             </div>
+          )}
+
+          {/* Organization Access Requests (Pending Team & Client Requests) */}
+          {canManageOrgAccess && activeMembership && (
+            <OrgAccessRequestsCard orgId={activeMembership.org_id} orgName={activeMembership.org_name} />
           )}
 
           {/* Prospects Pipeline Table */}
@@ -1073,7 +1081,7 @@ export default function DashboardPage() {
       )}
 
       {/* 4. Main Tab 2: Providers & Free Quotas */}
-      {role !== "client_viewer" && activeTab === "integrations" && <IntegrationSettings />}
+      {!isClient && activeTab === "integrations" && <IntegrationSettings />}
 
       {/* 5. Main Tab 3: Super Admin Portal & Audit Trail */}
       {role === "super_admin" && (activeTab === "admin" || activeTab === "audit") && (

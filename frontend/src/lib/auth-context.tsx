@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import {
   UserProfile,
   UserMembership,
@@ -13,14 +13,21 @@ import {
   setAuthToken,
 } from "./api";
 
+export interface LoginResult {
+  profile: UserProfile;
+  role: string;
+  isSuperAdmin: boolean;
+}
+
 interface AuthContextType {
   user: UserProfile | null;
   activeMembership: UserMembership | null;
   isLoading: boolean;
-  login: (email: string, password: string, orgId?: string) => Promise<void>;
+  login: (email: string, password: string, orgId?: string) => Promise<LoginResult>;
   register: (email: string, password: string, fullName: string, orgName: string) => Promise<void>;
   logout: () => Promise<void>;
   switchOrganization: (orgId: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,50 +37,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeOrgId, setActiveOrgId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Restore session on initial browser mount
-  useEffect(() => {
-    async function restoreSession() {
-      const token = getAuthToken();
-      const storedOrg = localStorage.getItem("leadflow_active_org");
-      if (storedOrg) setActiveOrgId(storedOrg);
+  const restoreSession = useCallback(async (initialMount = false) => {
+    if (initialMount) setIsLoading(true);
+    const token = getAuthToken();
+    const storedOrg = typeof window !== "undefined" ? localStorage.getItem("leadflow_active_org") : null;
+    if (storedOrg) setActiveOrgId(storedOrg);
 
-      if (token) {
-        try {
-          const profile = await apiGetMe();
-          setUser(profile);
-          if (!storedOrg && profile.memberships.length > 0) {
-            setActiveOrgId(profile.memberships[0].org_id);
-          }
-        } catch {
-          // Access token might be expired; attempt refresh token
-          const refreshToken = localStorage.getItem("leadflow_refresh_token");
-          if (refreshToken) {
-            try {
-              const rotated = await apiRefreshToken(refreshToken, storedOrg || undefined);
-              setActiveOrgId(rotated.org_id);
-              const profile = await apiGetMe();
-              setUser(profile);
-            } catch {
-              setAuthToken(null);
-              setUser(null);
-            }
-          } else {
+    if (token) {
+      try {
+        const profile = await apiGetMe();
+        setUser(profile);
+        if (!storedOrg && profile.memberships.length > 0) {
+          setActiveOrgId(profile.memberships[0].org_id);
+        }
+      } catch {
+        // Access token might be expired or revoked; attempt refresh
+        const refreshToken = typeof window !== "undefined" ? localStorage.getItem("leadflow_refresh_token") : null;
+        if (refreshToken) {
+          try {
+            const rotated = await apiRefreshToken(refreshToken, storedOrg || undefined);
+            setActiveOrgId(rotated.org_id);
+            const profile = await apiGetMe();
+            setUser(profile);
+          } catch {
             setAuthToken(null);
             setUser(null);
           }
+        } else {
+          setAuthToken(null);
+          setUser(null);
         }
       }
-      setIsLoading(false);
+    } else {
+      setUser(null);
     }
-
-    restoreSession();
+    if (initialMount) setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string, orgId?: string) => {
+  // Restore session on initial browser mount + Cross-device sync on tab focus/visibility
+  useEffect(() => {
+    restoreSession(true);
+
+    const handleFocus = () => {
+      restoreSession(false);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        restoreSession(false);
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [restoreSession]);
+
+  const refreshProfile = async () => {
+    await restoreSession(false);
+  };
+
+  const login = async (email: string, password: string, orgId?: string): Promise<LoginResult> => {
     const res = await apiLogin({ email, password, org_id: orgId });
     setActiveOrgId(res.org_id);
     const profile = await apiGetMe();
     setUser(profile);
+
+    const isSuperAdmin = Boolean(profile.is_superuser);
+    const activeMem = profile.memberships.find((m) => m.org_id === res.org_id) || profile.memberships[0];
+    const role = res.role || activeMem?.role || "analyst";
+
+    return { profile, role, isSuperAdmin };
   };
 
   const register = async (email: string, password: string, fullName: string, orgName: string) => {
@@ -90,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const switchOrganization = async (orgId: string) => {
-    const refreshToken = localStorage.getItem("leadflow_refresh_token");
+    const refreshToken = typeof window !== "undefined" ? localStorage.getItem("leadflow_refresh_token") : null;
     if (!refreshToken) return;
     const rotated = await apiRefreshToken(refreshToken, orgId);
     setActiveOrgId(rotated.org_id);
@@ -113,6 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         switchOrganization,
+        refreshProfile,
       }}
     >
       {children}

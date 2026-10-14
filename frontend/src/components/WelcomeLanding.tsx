@@ -53,16 +53,15 @@ export function WelcomeLanding() {
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      await login(email, password);
-      // Auto route based on email or role
-      if (email.includes("client")) {
-        setRole("client_viewer");
-        setActiveTab("portal");
-        router.push("/portal");
-      } else if (email.includes("superadmin")) {
+      const { isSuperAdmin, role } = await login(email, password);
+      if (isSuperAdmin) {
         setRole("super_admin");
         setActiveTab("admin");
         router.push("/super-admin");
+      } else if (role === "client_viewer" || role === "reviewer") {
+        setRole("client_viewer");
+        setActiveTab("portal");
+        router.push("/portal");
       } else {
         setRole("org_admin");
         setActiveTab("leads");
@@ -323,6 +322,9 @@ export function WelcomeLanding() {
                 >
                   {isSubmitting ? "Creating Workspace..." : "Create Organization & Enter"}
                 </button>
+                <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 text-center mt-2 leading-relaxed">
+                  Need to join an existing organization instead? Sign in and use <strong>Request Access</strong> to submit a pending membership request.
+                </p>
               </form>
             )}
           </div>

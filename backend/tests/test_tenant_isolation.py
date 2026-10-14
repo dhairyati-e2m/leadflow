@@ -20,7 +20,7 @@ async def test_auth_registration_and_login_flow():
             "email": unique_email,
             "password": "Password123!",
             "full_name": "Test User",
-            "org_name": "Test Org Inc",
+            "org_name": f"Test Org Inc {uuid.uuid4().hex[:6]}",
         }
         res = await client.post("/v1/auth/register", json=reg_payload)
         assert res.status_code == 201
@@ -61,8 +61,8 @@ async def test_cross_tenant_isolation_repository_and_rls():
 
     async with session_factory() as session:
         # 1. Create Organization Alpha and Organization Beta
-        org_a = Organization(id=org_a_id, name="Tenant Alpha", slug=f"alpha-{org_a_id[:6]}", is_active=True)
-        org_b = Organization(id=org_b_id, name="Tenant Beta", slug=f"beta-{org_b_id[:6]}", is_active=True)
+        org_a = Organization(id=org_a_id, name=f"Tenant Alpha {org_a_id[:6]}", slug=f"alpha-{org_a_id[:6]}", is_active=True)
+        org_b = Organization(id=org_b_id, name=f"Tenant Beta {org_b_id[:6]}", slug=f"beta-{org_b_id[:6]}", is_active=True)
         session.add_all([org_a, org_b])
         await session.commit()
 
@@ -144,7 +144,7 @@ async def test_auth_token_refresh_and_me():
             "email": unique_email,
             "password": "Password123!",
             "full_name": "Refresh Tester",
-            "org_name": "Refresh Inc",
+            "org_name": f"Refresh Inc {uuid.uuid4().hex[:6]}",
         })
         assert reg.status_code == 201
         data = reg.json()
@@ -185,7 +185,7 @@ async def test_organization_lifecycle_and_switching():
             "email": f"multi_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Multi-Tenant Owner",
-            "org_name": "First Organization",
+            "org_name": f"First Organization {uuid.uuid4().hex[:6]}",
         })
         data = reg.json()
         token1 = data["access_token"]
@@ -201,7 +201,7 @@ async def test_organization_lifecycle_and_switching():
         assert any(o["id"] == org1_id for o in org_list)
 
         # 2. Create Second Organization
-        create_res = await client.post("/v1/orgs", json={"name": "Second Organization"}, headers=headers1)
+        create_res = await client.post("/v1/orgs", json={"name": f"Second Organization {uuid.uuid4().hex[:6]}"}, headers=headers1)
         assert create_res.status_code == 201
         org2_id = create_res.json()["id"]
 
@@ -236,7 +236,7 @@ async def test_rbac_authorization_enforcement():
             "email": owner_email,
             "password": "Password123!",
             "full_name": "Org Owner",
-            "org_name": "RBAC Org",
+            "org_name": f"RBAC Org {uuid.uuid4().hex[:6]}",
         })
         owner_token = reg_owner.json()["access_token"]
         owner_headers = {"Authorization": f"Bearer {owner_token}"}
@@ -247,7 +247,7 @@ async def test_rbac_authorization_enforcement():
             "email": analyst_email,
             "password": "Password123!",
             "full_name": "Team Analyst",
-            "org_name": "Analyst Solitary Inc",
+            "org_name": f"Analyst Solitary Inc {uuid.uuid4().hex[:6]}",
         })
 
         # Owner adds Analyst to RBAC Org with role 'analyst'

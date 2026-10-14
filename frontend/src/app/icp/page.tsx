@@ -7,7 +7,7 @@ import { IcpEditor } from "@/components/IcpEditor";
 import { WelcomeLanding } from "@/components/WelcomeLanding";
 
 export default function IcpPage() {
-  const { user, isLoading } = useAuth();
+  const { user, activeMembership, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -22,7 +22,7 @@ export default function IcpPage() {
     return <WelcomeLanding />;
   }
 
-  const isClientViewer = user.memberships.length > 0 && user.memberships[0].role === "client_viewer";
+  const isClientViewer = activeMembership?.role === "client_viewer" || activeMembership?.role === "reviewer";
   if (isClientViewer) {
     return (
       <div className="max-w-md mx-auto my-16 p-8 glass-panel card-cosmic rounded-3xl text-center space-y-4 border border-rose-300 dark:border-rose-900">

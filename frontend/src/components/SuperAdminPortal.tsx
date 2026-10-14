@@ -5,20 +5,41 @@ import { useAuth } from "@/lib/auth-context";
 import {
   AdminOrgItem,
   AuditLogItem,
+  OrgAdminUser,
+  WorkspaceRequestItem,
   fetchAdminOrgs,
   updateAdminOrg,
   fetchAuditLogs,
+  fetchOrgAdmins,
+  assignOrgAdmin,
+  removeOrgAdmin,
+  fetchAdminWorkspaceRequests,
+  approveWorkspaceRequest,
+  rejectWorkspaceRequest,
 } from "@/lib/api";
 
 export function SuperAdminPortal() {
   const { switchOrganization } = useAuth();
   const [orgs, setOrgs] = useState<AdminOrgItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
+  const [workspaceRequests, setWorkspaceRequests] = useState<WorkspaceRequestItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingRequests, setLoadingRequests] = useState<boolean>(false);
   const [updatingOrgId, setUpdatingOrgId] = useState<string | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<"orgs" | "audit">("orgs");
+  const [activeSubTab, setActiveSubTab] = useState<"orgs" | "requests" | "audit">("orgs");
+  const [actioningRequestId, setActioningRequestId] = useState<string | null>(null);
+  const [rejectReasonInput, setRejectReasonInput] = useState<Record<string, string>>({});
+  const [rejectingRequestId, setRejectingRequestId] = useState<string | null>(null);
+
+  // Admin Management State
+  const [admins, setAdmins] = useState<OrgAdminUser[]>([]);
+  const [loadingAdmins, setLoadingAdmins] = useState<boolean>(false);
+  const [assignEmail, setAssignEmail] = useState<string>("");
+  const [assignError, setAssignError] = useState<string | null>(null);
+  const [isAssigning, setIsAssigning] = useState<boolean>(false);
+  const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   const selectedOrg = orgs.find((o) => o.id === selectedOrgId) || null;
 
@@ -33,12 +54,14 @@ export function SuperAdminPortal() {
     async function loadData() {
       try {
         setLoading(true);
-        const [orgsData, logsData] = await Promise.all([
+        const [orgsData, logsData, reqsData] = await Promise.all([
           fetchAdminOrgs().catch(() => []),
           fetchAuditLogs(undefined, 50).catch(() => []),
+          fetchAdminWorkspaceRequests().catch(() => []),
         ]);
         setOrgs(orgsData);
         setAuditLogs(logsData);
+        setWorkspaceRequests(reqsData);
       } catch (err: unknown) {
         console.error("Super Admin data load error:", err);
       } finally {
@@ -48,6 +71,71 @@ export function SuperAdminPortal() {
 
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (selectedOrgId) {
+      setLoadingAdmins(true);
+      setAssignError(null);
+      setAssignEmail("");
+      fetchOrgAdmins(selectedOrgId)
+        .then(setAdmins)
+        .catch(() => setAdmins([]))
+        .finally(() => setLoadingAdmins(false));
+    } else {
+      setAdmins([]);
+      setAssignError(null);
+    }
+  }, [selectedOrgId]);
+
+  const handleAssignAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedOrgId || !assignEmail.trim()) return;
+    setAssignError(null);
+    setIsAssigning(true);
+    try {
+      const assigned = await assignOrgAdmin(selectedOrgId, assignEmail.trim());
+      setAdmins((prev) => {
+        const existing = prev.find((a) => a.user_id === assigned.user_id);
+        if (existing) {
+          return prev.map((a) => (a.user_id === assigned.user_id ? assigned : a));
+        }
+        return [...prev, assigned];
+      });
+      setAssignEmail("");
+      showNotification(`Assigned admin access to "${assigned.email}".`);
+      fetchAdminOrgs().then(setOrgs).catch(() => {});
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to assign administrator";
+      setAssignError(msg);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleRemoveAdmin = async (admin: OrgAdminUser) => {
+    if (!selectedOrgId) return;
+    if (admins.length <= 1) {
+      showNotification("Cannot remove the last administrator of an active organisation.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Revoke administrator privileges for "${admin.email}"? Their role will be demoted to Analyst without deleting their account.`
+    );
+    if (!confirmed) return;
+
+    setRemovingUserId(admin.user_id);
+    try {
+      await removeOrgAdmin(selectedOrgId, admin.user_id);
+      setAdmins((prev) => prev.filter((a) => a.user_id !== admin.user_id));
+      showNotification(`Administrator privileges revoked for "${admin.email}". Role set to Analyst.`);
+      fetchAdminOrgs().then(setOrgs).catch(() => {});
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to remove administrator";
+      showNotification(msg);
+    } finally {
+      setRemovingUserId(null);
+    }
+  };
 
   const handleToggleOrgStatus = async (org: AdminOrgItem) => {
     const nextStatus = !org.is_active;
@@ -95,6 +183,51 @@ export function SuperAdminPortal() {
       showNotification(msg);
     } finally {
       setUpdatingOrgId(null);
+    }
+  };
+
+  const handleApproveWorkspace = async (req: WorkspaceRequestItem) => {
+    setActioningRequestId(req.id);
+    try {
+      const updated = await approveWorkspaceRequest(req.id);
+      setWorkspaceRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      showNotification(`Workspace "${req.proposed_name}" approved! Organization and Owner access provisioned.`);
+      fetchAdminOrgs().then(setOrgs).catch(() => {});
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to approve workspace";
+      showNotification(msg);
+    } finally {
+      setActioningRequestId(null);
+    }
+  };
+
+  const handleRejectWorkspace = async (req: WorkspaceRequestItem) => {
+    const reason = rejectReasonInput[req.id]?.trim() || "Workspace creation request declined by Super Admin.";
+    setActioningRequestId(req.id);
+    try {
+      const updated = await rejectWorkspaceRequest(req.id, reason);
+      setWorkspaceRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      showNotification(`Workspace request for "${req.proposed_name}" rejected.`);
+      setRejectingRequestId(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to reject workspace";
+      showNotification(msg);
+    } finally {
+      setActioningRequestId(null);
+    }
+  };
+
+  const handleRefreshWorkspaceRequests = async () => {
+    try {
+      setLoadingRequests(true);
+      const data = await fetchAdminWorkspaceRequests();
+      setWorkspaceRequests(data);
+      showNotification("Workspace requests refreshed.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to refresh workspace requests";
+      showNotification(msg);
+    } finally {
+      setLoadingRequests(false);
     }
   };
 
@@ -150,6 +283,23 @@ export function SuperAdminPortal() {
               }`}
             >
               Organizations ({orgs.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab("requests")}
+              className={`px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
+                activeSubTab === "requests"
+                  ? "btn-obsidian"
+                  : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian"
+              }`}
+            >
+              <span>Workspace Requests</span>
+              {workspaceRequests.filter((r) => r.status === "pending").length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-lilac-500 animate-pulse"></span>
+              )}
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-cosmic-200 dark:bg-obsidian-700">
+                {workspaceRequests.filter((r) => r.status === "pending").length}
+              </span>
             </button>
             <button
               type="button"
@@ -346,7 +496,165 @@ export function SuperAdminPortal() {
         </div>
       )}
 
-      {/* VIEW B: Audit Trail Viewer */}
+      {/* VIEW B: Workspace Requests Table */}
+      {activeSubTab === "requests" && (
+        <div className="glass-panel rounded-3xl overflow-hidden border border-blush-200/80 dark:border-obsidian-700 shadow-sm dark:bg-obsidian-900/90">
+          <div className="p-5 sm:p-6 border-b border-cosmic-200 dark:border-obsidian-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
+                  Workspace Provisioning Requests
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700">
+                  {workspaceRequests.filter((r) => r.status === "pending").length} Pending
+                </span>
+              </div>
+              <p className="text-xs text-obsidian/60 dark:text-cosmic-400 mt-0.5">
+                Review and approve or reject user requests to provision new tenant organizations. Automatic canonical duplicate matching flags existing names.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleRefreshWorkspaceRequests}
+              disabled={loadingRequests}
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-cosmic-100/80 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-200 transition cursor-pointer"
+            >
+              {loadingRequests ? "Refreshing..." : "↻ Refresh Requests"}
+            </button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-cosmic-100/90 dark:bg-obsidian-800 text-obsidian/60 dark:text-cosmic-400 uppercase font-mono text-[10px] border-b border-cosmic-200 dark:border-obsidian-700">
+                <tr>
+                  <th className="py-3 px-5 font-semibold">Requester</th>
+                  <th className="py-3 px-4 font-semibold">Proposed Workspace Name</th>
+                  <th className="py-3 px-4 font-semibold">Duplicate Check</th>
+                  <th className="py-3 px-4 font-semibold">Submitted (UTC)</th>
+                  <th className="py-3 px-4 font-semibold">Status</th>
+                  <th className="py-3 px-5 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-cosmic-200 dark:divide-obsidian-800">
+                {loadingRequests ? (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-obsidian/50 dark:text-cosmic-400">
+                      Loading workspace requests...
+                    </td>
+                  </tr>
+                ) : workspaceRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-obsidian/50 dark:text-cosmic-400">
+                      No workspace creation requests submitted yet.
+                    </td>
+                  </tr>
+                ) : (
+                  workspaceRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-cosmic-100/60 dark:hover:bg-obsidian-800/60 transition">
+                      <td className="py-3.5 px-5">
+                        <div className="font-bold text-obsidian dark:text-cosmic-100">{req.user_full_name}</div>
+                        <div className="text-[11px] font-mono text-obsidian/60 dark:text-cosmic-400">{req.user_email}</div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-obsidian dark:text-cosmic-100">{req.proposed_name}</div>
+                        <div className="text-[10px] font-mono text-obsidian/50 dark:text-cosmic-400">Key: {req.normalized_name}</div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {req.duplicate_warning ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                            ⚠️ Existing Match
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                            ✓ Unique Name
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-[11px] text-obsidian/60 dark:text-cosmic-400">
+                        {new Date(req.created_at).toLocaleString()}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                            req.status === "approved"
+                              ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                              : req.status === "rejected"
+                              ? "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
+                              : "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                          }`}
+                        >
+                          {req.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-5 text-right">
+                        {req.status === "pending" ? (
+                          rejectingRequestId === req.id ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <input
+                                type="text"
+                                placeholder="Rejection reason..."
+                                value={rejectReasonInput[req.id] || ""}
+                                onChange={(e) =>
+                                  setRejectReasonInput((prev) => ({ ...prev, [req.id]: e.target.value }))
+                                }
+                                className="text-xs px-2 py-1 rounded-lg border border-cosmic-300 dark:border-obsidian-700 bg-white dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 w-44"
+                              />
+                              <button
+                                type="button"
+                                disabled={actioningRequestId === req.id}
+                                onClick={() => handleRejectWorkspace(req)}
+                                className="px-2 py-1 rounded-lg bg-rose-600 text-white font-bold text-xs hover:bg-rose-700 cursor-pointer"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRejectingRequestId(null)}
+                                className="px-2 py-1 rounded-lg border border-cosmic-300 dark:border-obsidian-700 text-xs font-semibold cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                disabled={actioningRequestId === req.id}
+                                onClick={() => handleApproveWorkspace(req)}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-sm cursor-pointer disabled:opacity-50"
+                              >
+                                {actioningRequestId === req.id ? "Approving..." : "Approve Workspace"}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={actioningRequestId === req.id}
+                                onClick={() => setRejectingRequestId(req.id)}
+                                className="px-2.5 py-1.5 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 font-semibold text-xs transition cursor-pointer"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )
+                        ) : req.status === "approved" ? (
+                          <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                            ✓ Organization Provisioned
+                          </div>
+                        ) : (
+                          <div className="text-[11px] text-rose-600 dark:text-rose-400 font-medium truncate max-w-xs" title={req.rejection_reason || undefined}>
+                            ✕ {req.rejection_reason || "Rejected"}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW C: Audit Trail Viewer */}
       {activeSubTab === "audit" && (
         <div className="glass-panel rounded-3xl overflow-hidden border border-blush-200/80 dark:border-obsidian-700 shadow-sm dark:bg-obsidian-900/90">
           <div className="p-5 sm:p-6 border-b border-cosmic-200 dark:border-obsidian-800 flex items-center justify-between">
@@ -417,7 +725,7 @@ export function SuperAdminPortal() {
           onClick={() => setSelectedOrgId(null)}
         >
           <div
-            className="glass-panel card-cosmic rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl border border-blush-200 dark:border-obsidian-700 relative text-left"
+            className="glass-panel card-cosmic rounded-3xl p-6 sm:p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-blush-200 dark:border-obsidian-700 relative text-left"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -484,6 +792,115 @@ export function SuperAdminPortal() {
                 </div>
                 <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400 mt-0.5">Scored Prospects</div>
               </div>
+            </div>
+
+            {/* Organisation Administrators Management Section (Feature 2) */}
+            <div className="card-nested p-5 rounded-2xl border border-cosmic-200 dark:border-obsidian-700 mb-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-cosmic-200/80 dark:border-obsidian-800">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-lilac-500 animate-pulse"></span>
+                    <h4 className="text-sm font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
+                      Organisation Administrators
+                    </h4>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 font-bold border border-lilac-200 dark:border-obsidian-700">
+                      {admins.length} Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-obsidian/60 dark:text-cosmic-400 mt-0.5">
+                    View, assign, and revoke admin permissions. Last-admin guard prevents leaving the organisation without an admin.
+                  </p>
+                </div>
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-obsidian-900 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-semibold flex items-center gap-1 self-start sm:self-auto">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Last-Admin Guard Active
+                </span>
+              </div>
+
+              {/* Admin List */}
+              {loadingAdmins ? (
+                <div className="py-6 text-center text-xs text-obsidian/50 dark:text-cosmic-400">
+                  <span className="inline-block animate-spin h-4 w-4 border-2 border-obsidian dark:border-white border-t-transparent rounded-full mr-2"></span>
+                  Loading administrators...
+                </div>
+              ) : admins.length === 0 ? (
+                <div className="py-4 px-3 text-center text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-900">
+                  No administrators assigned yet. Assign an administrator below.
+                </div>
+              ) : (
+                <div className="divide-y divide-cosmic-200/80 dark:divide-obsidian-800 border border-cosmic-200/80 dark:border-obsidian-800 rounded-xl overflow-hidden bg-white/40 dark:bg-obsidian-950/40">
+                  {admins.map((adm) => (
+                    <div key={adm.user_id} className="p-3 sm:px-4 flex items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-obsidian text-white dark:bg-cosmic-100 dark:text-obsidian flex items-center justify-center font-bold text-xs uppercase flex-shrink-0">
+                          {adm.full_name?.charAt(0) || adm.email.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-obsidian dark:text-cosmic-100 truncate">
+                            {adm.full_name || "LeadFlow User"}
+                          </div>
+                          <div className="text-[11px] font-mono text-obsidian/60 dark:text-cosmic-400 truncate">
+                            {adm.email}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase ${
+                          adm.role === "owner"
+                            ? "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                            : "bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700"
+                        }`}>
+                          {adm.role}
+                        </span>
+
+                        <button
+                          type="button"
+                          disabled={admins.length <= 1 || removingUserId === adm.user_id}
+                          onClick={() => handleRemoveAdmin(adm)}
+                          title={admins.length <= 1 ? "Cannot remove the only administrator of an active organisation" : "Revoke admin privileges"}
+                          className={`text-xs px-2.5 py-1 rounded-xl font-semibold transition cursor-pointer ${
+                            admins.length <= 1
+                              ? "opacity-40 cursor-not-allowed bg-cosmic-200 dark:bg-obsidian-800 text-obsidian/40 dark:text-cosmic-500 border border-cosmic-300 dark:border-obsidian-700"
+                              : "bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/80"
+                          }`}
+                        >
+                          {removingUserId === adm.user_id ? "Revoking..." : "Remove Admin"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Assign New Administrator Form */}
+              <form onSubmit={handleAssignAdmin} className="space-y-2 pt-1">
+                <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/70 dark:text-cosmic-300">
+                  Assign Organisation Administrator by Email
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    required
+                    placeholder="user@example.com (must be a registered account)"
+                    value={assignEmail}
+                    onChange={(e) => setAssignEmail(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl text-xs bg-white dark:bg-obsidian-900 border border-cosmic-300 dark:border-obsidian-700 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-1 focus:ring-lilac-500 font-mono"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isAssigning || !assignEmail.trim()}
+                    className="btn-obsidian text-xs px-4 py-2 rounded-xl font-semibold disabled:opacity-50 cursor-pointer flex-shrink-0"
+                  >
+                    {isAssigning ? "Assigning..." : "Assign Admin"}
+                  </button>
+                </div>
+                {assignError && (
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-xs text-rose-800 dark:text-rose-200 font-medium">
+                    {assignError}
+                  </div>
+                )}
+              </form>
             </div>
 
             {/* Operational Controls & Multi-Tenancy Specs */}

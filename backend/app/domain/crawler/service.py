@@ -128,6 +128,14 @@ class CrawlerService:
                 if ps_result.status in ("success", "mock"):
                     crawl_data.external_data["pagespeed"] = ps_result.data
 
+            # Optional Firecrawl JS scraping audit (Strictly within free tier quotas)
+            if settings.PROVIDER_FIRECRAWL_MODE in ("live", "mock"):
+                from backend.app.providers.firecrawl import FirecrawlProvider
+                fc_provider = FirecrawlProvider()
+                fc_result = await fc_provider.execute(target_url)
+                if fc_result.status in ("success", "mock"):
+                    crawl_data.external_data["firecrawl"] = fc_result.data
+
             status = "success" if (200 <= crawl_data.status_code < 400) else "partial"
             if crawl_data.status_code == 0:
                 status = "failed"

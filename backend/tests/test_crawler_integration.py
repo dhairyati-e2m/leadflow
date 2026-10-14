@@ -16,7 +16,7 @@ async def test_crawl_lead_mock_mode_lifecycle():
             "email": f"crawler_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Crawler Tester",
-            "org_name": "Audit Agency",
+            "org_name": f"Audit Agency {uuid.uuid4().hex[:6]}",
         })
         token = reg.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
@@ -69,7 +69,7 @@ async def test_crawl_lead_ssrf_blocking_live_mode():
             "email": f"ssrf_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "SSRF Security Tester",
-            "org_name": "Defense Corp",
+            "org_name": f"Defense Corp {uuid.uuid4().hex[:6]}",
         })
         token = reg.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
@@ -105,7 +105,7 @@ async def test_crawl_lead_disabled_provider_mode():
             "email": f"disabled_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Disabled Provider Tester",
-            "org_name": "Disabled Corp",
+            "org_name": f"Disabled Corp {uuid.uuid4().hex[:6]}",
         })
         token = reg.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}

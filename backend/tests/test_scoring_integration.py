@@ -16,7 +16,7 @@ async def test_lead_scoring_and_qualification_lifecycle():
             "email": f"scoring_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Scoring Lead",
-            "org_name": "Scoring Corp",
+            "org_name": f"Scoring Corp {uuid.uuid4().hex[:6]}",
         })
         assert reg.status_code == 201
         token = reg.json()["access_token"]
@@ -83,7 +83,7 @@ async def test_tenant_icp_configuration_update_and_rbac():
             "email": f"icp_owner_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "ICP Owner",
-            "org_name": "Custom ICP Agency",
+            "org_name": f"Custom ICP Agency {uuid.uuid4().hex[:6]}",
         })
         owner_token = reg_owner.json()["access_token"]
         owner_headers = {"Authorization": f"Bearer {owner_token}"}
@@ -120,7 +120,7 @@ async def test_tenant_icp_configuration_update_and_rbac():
             "email": analyst_email,
             "password": "Password123!",
             "full_name": "Analyst User",
-            "org_name": "Analyst Org",
+            "org_name": f"Analyst Org {uuid.uuid4().hex[:6]}",
         })
         # Add to custom ICP agency
         await client.post("/v1/orgs/members", json={
@@ -157,7 +157,7 @@ async def test_cross_tenant_scoring_isolation():
             "email": f"org_a_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Alpha Lead",
-            "org_name": "Org Alpha",
+            "org_name": f"Org Alpha {uuid.uuid4().hex[:6]}",
         })
         headers_a = {"Authorization": f"Bearer {reg_a.json()['access_token']}"}
 
@@ -166,7 +166,7 @@ async def test_cross_tenant_scoring_isolation():
             "email": f"org_b_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Beta Lead",
-            "org_name": "Org Beta",
+            "org_name": f"Org Beta {uuid.uuid4().hex[:6]}",
         })
         headers_b = {"Authorization": f"Bearer {reg_b.json()['access_token']}"}
 

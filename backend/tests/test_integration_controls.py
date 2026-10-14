@@ -16,7 +16,7 @@ async def test_integration_settings_rbac_and_master_switch():
             "email": owner_email,
             "password": "Password123!",
             "full_name": "Integration Owner",
-            "org_name": "Integration Test Org",
+            "org_name": f"Integration Test Org {uuid.uuid4().hex[:6]}",
         })
         assert reg_res.status_code == 201
         owner_token = reg_res.json()["access_token"]

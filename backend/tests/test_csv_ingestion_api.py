@@ -17,7 +17,7 @@ async def test_csv_upload_valid_file_and_pagination():
             "email": unique_email,
             "password": "Password123!",
             "full_name": "Ingestion Lead",
-            "org_name": "Data Ingestion Corp",
+            "org_name": f"Data Ingestion Corp {uuid.uuid4().hex[:6]}",
         })
         assert reg.status_code == 201
         token = reg.json()["access_token"]
@@ -63,7 +63,7 @@ async def test_csv_formula_injection_defense():
             "email": f"formula_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Security Tester",
-            "org_name": "Sanitization Corp",
+            "org_name": f"Sanitization Corp {uuid.uuid4().hex[:6]}",
         })
         token = reg.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
@@ -104,7 +104,7 @@ async def test_csv_deduplication_and_tenant_isolation():
             "email": f"t1_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Tenant One",
-            "org_name": "Alpha Leads",
+            "org_name": f"Alpha Leads {uuid.uuid4().hex[:6]}",
         })
         token1 = reg1.json()["access_token"]
         headers1 = {"Authorization": f"Bearer {token1}"}
@@ -114,7 +114,7 @@ async def test_csv_deduplication_and_tenant_isolation():
             "email": f"t2_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Tenant Two",
-            "org_name": "Beta Leads",
+            "org_name": f"Beta Leads {uuid.uuid4().hex[:6]}",
         })
         token2 = reg2.json()["access_token"]
         headers2 = {"Authorization": f"Bearer {token2}"}
@@ -172,7 +172,7 @@ async def test_leads_search_filter_and_lifecycle():
             "email": f"filter_{uuid.uuid4().hex[:8]}@example.com",
             "password": "Password123!",
             "full_name": "Filter Tester",
-            "org_name": "Filter Corp",
+            "org_name": f"Filter Corp {uuid.uuid4().hex[:6]}",
         })
         token = reg.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}

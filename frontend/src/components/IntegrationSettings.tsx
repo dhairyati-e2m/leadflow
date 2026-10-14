@@ -8,6 +8,7 @@ import {
   IntegrationSettingsResponse,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { TransferAdminModal } from "@/components/TransferAdminModal";
 
 interface DeterministicSignalItem {
   key: string;
@@ -31,6 +32,56 @@ const FALLBACK_PROVIDERS: ProviderControlItem[] = [
     status_label: "Active (Local native engine)",
   },
   {
+    key: "brave",
+    name: "Brave Search API",
+    category: "Search & Company Discovery",
+    enabled: false,
+    mode: "disabled",
+    free_quota_description: "2,000 queries / month free (1 req/sec). Safety limit: 1,600/mo.",
+    is_configured: false,
+    status_label: "Ready to configure with free API key",
+  },
+  {
+    key: "gemini",
+    name: "Google Gemini API (gemini-1.5-flash)",
+    category: "ICP Matching & Signal AI",
+    enabled: false,
+    mode: "disabled",
+    free_quota_description: "1,500 requests/day, 15 RPM free recurring. Deterministic fallback active.",
+    is_configured: false,
+    status_label: "Ready to configure with free API key",
+  },
+  {
+    key: "serpapi",
+    name: "SerpApi Google Search",
+    category: "Company Discovery",
+    enabled: false,
+    mode: "disabled",
+    free_quota_description: "100 searches / month free recurring. Safety limit: 80/mo.",
+    is_configured: false,
+    status_label: "Ready to configure with free API key",
+  },
+  {
+    key: "hunter",
+    name: "Hunter.io Domain Search & Verification",
+    category: "Email Discovery & Verification",
+    enabled: false,
+    mode: "disabled",
+    free_quota_description: "25 searches + 50 verifications/mo free. Gated to explicit contact reveal.",
+    is_configured: false,
+    status_label: "Quota-capped free tier",
+  },
+  {
+    key: "resend",
+    name: "Resend Transactional Email",
+    category: "Security & J5 Password Reset",
+    enabled: false,
+    mode: "disabled",
+    free_quota_description: "100 emails / day free recurring (Safety limit: 80/day). Strictly transactional.",
+    is_configured: false,
+    status_label: "Ready to configure with free API key",
+  },
+  {
     key: "google_pagespeed",
     name: "Google PageSpeed Insights",
     category: "Core Web Vitals & Performance",
@@ -41,36 +92,6 @@ const FALLBACK_PROVIDERS: ProviderControlItem[] = [
     status_label: "Ready to configure with free API key",
   },
   {
-    key: "hunter",
-    name: "Hunter.io Domain Search",
-    category: "Email Verification",
-    enabled: false,
-    mode: "disabled",
-    free_quota_description: "25 searches / month (Strict free safety budget)",
-    is_configured: false,
-    status_label: "Quota-capped free tier",
-  },
-  {
-    key: "apollo",
-    name: "Apollo.io API",
-    category: "Lead Enrichment",
-    enabled: false,
-    mode: "disabled",
-    free_quota_description: "API restricted to paid tiers ($49+/mo). Free web exports only.",
-    is_configured: false,
-    status_label: "Disabled by Policy (No free API)",
-  },
-  {
-    key: "snov",
-    name: "Snov.io API",
-    category: "Contact Discovery",
-    enabled: false,
-    mode: "disabled",
-    free_quota_description: "One-time 50 credit trial upon sign-up (No permanent free tier).",
-    is_configured: false,
-    status_label: "Disabled by Policy (Paid after trial)",
-  },
-  {
     key: "hubspot",
     name: "HubSpot CRM Synchronization",
     category: "CRM Integration",
@@ -79,16 +100,6 @@ const FALLBACK_PROVIDERS: ProviderControlItem[] = [
     free_quota_description: "Free Developer Test Account (100 req / 10s)",
     is_configured: false,
     status_label: "Awaiting developer authorization",
-  },
-  {
-    key: "openrouter",
-    name: "OpenRouter AI Personalization",
-    category: "Outreach Drafting",
-    enabled: false,
-    mode: "disabled",
-    free_quota_description: "Free models (20 req/min, 200/day). Deterministic fallback active.",
-    is_configured: false,
-    status_label: "Disabled (Deterministic rules active)",
   },
 ];
 
@@ -296,7 +307,8 @@ const DETERMINISTIC_SIGNALS: DeterministicSignalItem[] = [
 ];
 
 export function IntegrationSettings() {
-  const { user } = useAuth();
+  const { user, activeMembership } = useAuth();
+  const [showTransferModal, setShowTransferModal] = useState<boolean>(false);
   const [masterEnabled, setMasterEnabled] = useState<boolean>(true);
   const [providers, setProviders] = useState<ProviderControlItem[]>(FALLBACK_PROVIDERS);
   const [loading, setLoading] = useState<boolean>(true);
@@ -384,9 +396,9 @@ export function IntegrationSettings() {
       return;
     }
 
-    if (providerKey === "apollo" || providerKey === "snov") {
+    if (providerKey === "apollo" || providerKey === "snov" || providerKey === "dataforseo") {
       showNotification(
-        `Cannot enable ${providerKey === "apollo" ? "Apollo.io" : "Snov.io"}: blocked by policy because it lacks a permanent free API tier.`
+        `Cannot enable ${providerKey}: blocked by policy because it lacks a permanent free API tier.`
       );
       return;
     }
@@ -533,7 +545,7 @@ export function IntegrationSettings() {
         {/* Provider Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {providers.map((p) => {
-            const isPolicyBlocked = p.key === "apollo" || p.key === "snov";
+            const isPolicyBlocked = p.key === "apollo" || p.key === "snov" || p.key === "dataforseo";
             const isNative = p.key === "safe_crawler";
             const isSaving = savingKey === p.key;
             const currentWeight = weights[p.key] ?? 1.0;
@@ -798,6 +810,45 @@ export function IntegrationSettings() {
           </div>
         </div>
       </div>
+
+      {/* Organisation Ownership & Administration Transfer Card (Feature 3) */}
+      {(activeMembership?.role === "owner" || activeMembership?.role === "admin") && (
+        <div className="glass-panel border border-blush-200/80 dark:border-obsidian-700 rounded-3xl p-6 text-xs text-obsidian/80 dark:text-cosmic-300 space-y-4 shadow-sm dark:bg-obsidian-900/90">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                <span className="text-obsidian dark:text-cosmic-100 font-bold text-sm tracking-tight">
+                  Organisation Administration & Succession
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 uppercase">
+                  Current Role: {activeMembership.role}
+                </span>
+              </div>
+              <p className="text-xs text-obsidian/60 dark:text-cosmic-400 mt-1 max-w-2xl leading-relaxed">
+                Transfer primary administrative control of <strong>{activeMembership.org_name}</strong> to another enrolled colleague. Role handovers are atomic and take effect immediately across all sessions.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowTransferModal(true)}
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+            >
+              <span>👑</span>
+              <span>Transfer Administration</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showTransferModal && activeMembership && (
+        <TransferAdminModal
+          isOpen={showTransferModal}
+          onClose={() => setShowTransferModal(false)}
+          orgId={activeMembership.org_id}
+          orgName={activeMembership.org_name}
+        />
+      )}
     </div>
   );
 }
