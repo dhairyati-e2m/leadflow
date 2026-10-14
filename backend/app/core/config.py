@@ -62,5 +62,33 @@ class Settings(BaseSettings):
     LLM_API_KEY: Optional[str] = None
     LLM_MODEL: str = "llama3:8b"
 
+    # OpenRouter Free AI Summaries & Outreach (Free Models with :free suffix only)
+    PROVIDER_OPENROUTER_MODE: Literal["mock", "live", "disabled"] = "disabled"
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
+    OPENROUTER_DAILY_LIMIT: int = 150  # Safety buffer below official 200/day
+    OPENROUTER_RATE_LIMIT_PER_MINUTE: int = 20
+
+    # SerpApi Search-Based Company Discovery (100 searches/month Free Tier)
+    PROVIDER_SERPAPI_MODE: Literal["mock", "live", "disabled"] = "disabled"
+    SERPAPI_API_KEY: Optional[str] = None
+    SERPAPI_MONTHLY_LIMIT: int = 80  # Safety buffer below official 100/mo
+
+    # Hunter.io Domain Email Search & Verification (25 searches/month Free Tier)
+    PROVIDER_HUNTER_MODE: Literal["mock", "live", "disabled"] = "disabled"
+    HUNTER_API_KEY: Optional[str] = None
+    HUNTER_MONTHLY_LIMIT: int = 20  # Safety buffer below official 25/mo
+
+    # Resend Transactional Email & Security Alerts (100 emails/day Free Tier)
+    PROVIDER_RESEND_MODE: Literal["mock", "live", "disabled"] = "disabled"
+    RESEND_API_KEY: Optional[str] = None
+    RESEND_FROM_EMAIL: str = "onboarding@resend.dev"
+    RESEND_DAILY_LIMIT: int = 80  # Safety buffer below official 100/day
+
+    # DataForSEO (Trial only - Permanently disabled by policy to prevent paid usage)
+    PROVIDER_DATAFORSEO_MODE: Literal["disabled"] = "disabled"
+    DATAFORSEO_LOGIN: Optional[str] = None
+    DATAFORSEO_PASSWORD: Optional[str] = None
+
 
 settings = Settings()
