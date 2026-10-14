@@ -101,7 +101,6 @@ export function IntegrationSettings() {
           setProviders(data.providers);
         }
       } catch (err: unknown) {
-        // Fall back to fallback providers when unauthenticated or offline
         if (isMounted) {
           console.info("Using default provider configuration:", err);
         }
@@ -137,8 +136,8 @@ export function IntegrationSettings() {
       setProviders(res.providers);
       setMessage({
         text: nextState
-          ? "External integrations master switch enabled."
-          : "External integrations master switch disabled. All external API requests paused.",
+          ? "Master Switch enabled: safe external queries allowed within free limits."
+          : "Master Switch disabled: all external API traffic paused. Local analyzers active.",
         type: "success",
       });
     } catch (err: unknown) {
@@ -158,7 +157,6 @@ export function IntegrationSettings() {
       return;
     }
 
-    // Safeguard for policy-blocked providers
     if (providerKey === "apollo" || providerKey === "snov") {
       setMessage({
         text: `Cannot enable ${providerKey === "apollo" ? "Apollo.io" : "Snov.io"}: blocked by policy because it lacks a permanent free API tier.`,
@@ -201,39 +199,40 @@ export function IntegrationSettings() {
   return (
     <div className="space-y-6">
       {/* Header & Policy Explanation Banner */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-slate-900">Data Providers & Integrations Control Center</h2>
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                100% Free Tier Policy
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-lilac-500 animate-pulse"></span>
+              <h2 className="text-xl font-bold text-obsidian tracking-tight">Provider Controls & Quota Guard</h2>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-blush-100 text-blush-600 border border-blush-200">
+                Zero-Cost Policy
               </span>
             </div>
-            <p className="text-slate-600 text-xs sm:text-sm mt-1">
-              Control which external services LeadFlow communicates with. Every provider is strictly governed by zero-cost limits.
+            <p className="text-obsidian/70 text-xs sm:text-sm mt-1.5 max-w-2xl leading-relaxed">
+              Granular control over external data integrations. Every provider is bounded by hard-coded zero-cost safety limits and local fallbacks.
             </p>
           </div>
 
-          {/* Master Switch Card */}
-          <div className="flex items-center space-x-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+          {/* Futuristic Master Switch Pill */}
+          <div className="flex items-center space-x-4 bg-cosmic-100/90 border border-cosmic-300 rounded-2xl px-5 py-3 shadow-sm">
             <div>
-              <div className="text-xs font-bold text-slate-800">Master Integration Switch</div>
-              <div className="text-[11px] text-slate-500">
-                {masterEnabled ? "External requests allowed" : "All external APIs paused"}
+              <div className="text-xs font-bold text-obsidian tracking-tight">Master External Switch</div>
+              <div className="text-[10px] font-mono text-obsidian/60 mt-0.5">
+                {masterEnabled ? "Live connections enabled" : "All external APIs paused"}
               </div>
             </div>
             <button
               type="button"
               disabled={savingKey === "master"}
               onClick={handleToggleMaster}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
-                masterEnabled ? "bg-emerald-600" : "bg-slate-300"
+              className={`relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-lilac-400 focus:ring-offset-2 ${
+                masterEnabled ? "bg-obsidian" : "bg-cosmic-300"
               }`}
             >
               <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  masterEnabled ? "translate-x-5" : "translate-x-0"
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-cosmic-50 shadow-md ring-0 transition duration-200 ease-in-out ${
+                  masterEnabled ? "translate-x-6 bg-lilac-300" : "translate-x-0"
                 }`}
               />
             </button>
@@ -241,21 +240,21 @@ export function IntegrationSettings() {
         </div>
 
         {/* Free Plan Guarantee Callout */}
-        <div className="mt-4 p-3 bg-blue-50/70 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-start gap-2.5">
-          <span className="text-base leading-none">🛡️</span>
-          <div>
-            <span className="font-bold">Zero-Cost Guarantee:</span> LeadFlow is engineered to never incur unexpected cloud bills. Providers without genuine, permanent free tiers (such as Apollo.io and Snov.io) are blocked by policy. When services reach their daily free quota, they automatically pause and switch to local analysis.
+        <div className="mt-5 p-3.5 bg-lilac-50/70 border border-lilac-200/80 rounded-2xl text-xs text-obsidian/90 flex items-start gap-3">
+          <span className="text-base leading-none mt-0.5 text-lilac-600">✦</span>
+          <div className="leading-relaxed">
+            <span className="font-bold text-obsidian">Zero-Cost Policy:</span> LeadFlow will never incur cloud billing surprises. Providers lacking permanent free tiers (Apollo.io, Snov.io) are locked by policy. When free daily limits are reached, the platform switches seamlessly to local native execution.
           </div>
         </div>
 
         {message && (
           <div
-            className={`mt-4 p-3 rounded-lg text-xs font-medium border ${
+            className={`mt-4 p-3.5 rounded-2xl text-xs font-medium border ${
               message.type === "success"
-                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                ? "bg-blush-50 text-obsidian border-blush-300"
                 : message.type === "error"
-                ? "bg-rose-50 text-rose-800 border-rose-200"
-                : "bg-blue-50 text-blue-800 border-blue-200"
+                ? "bg-rose-50 text-rose-900 border-rose-200"
+                : "bg-cosmic-100 text-obsidian border-cosmic-300"
             }`}
           >
             {message.text}
@@ -273,75 +272,77 @@ export function IntegrationSettings() {
           return (
             <div
               key={p.key}
-              className={`rounded-xl border p-5 flex flex-col justify-between transition ${
+              className={`rounded-3xl border p-5 sm:p-6 flex flex-col justify-between glass-card glass-card-hover ${
                 isPolicyBlocked
-                  ? "bg-slate-50/70 border-slate-200 opacity-80"
+                  ? "opacity-75 bg-cosmic-100/60 border-cosmic-300"
                   : p.enabled && masterEnabled
-                  ? "bg-white border-blue-200 shadow-sm ring-1 ring-blue-100"
-                  : "bg-white border-slate-200"
+                  ? "border-lilac-300/80 ring-1 ring-lilac-200 shadow-futuristic"
+                  : "border-blush-100/80"
               }`}
             >
               <div>
-                {/* Provider Category & Status */}
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                {/* Category & Status Pill */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 font-bold">
                     {p.category}
                   </span>
                   <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border ${
+                    className={`text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider border ${
                       isPolicyBlocked
-                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        ? "bg-cosmic-200 text-obsidian/60 border-cosmic-300"
                         : p.enabled && masterEnabled
-                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                        : "bg-slate-100 text-slate-600 border-slate-200"
+                        ? "bg-lilac-100 text-lilac-700 border-lilac-300"
+                        : "bg-cosmic-100 text-obsidian/50 border-cosmic-200"
                     }`}
                   >
-                    {isPolicyBlocked ? "Blocked by Policy" : p.enabled && masterEnabled ? "Active" : "Disabled"}
+                    {isPolicyBlocked ? "Policy Locked" : p.enabled && masterEnabled ? "Active" : "Disabled"}
                   </span>
                 </div>
 
                 {/* Provider Title */}
-                <h3 className="font-bold text-sm text-slate-900 mb-1">{p.name}</h3>
+                <h3 className="font-bold text-sm text-obsidian mb-1.5 tracking-tight">{p.name}</h3>
 
-                {/* Free Quota Allowance */}
-                <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-lg text-xs space-y-1 mb-3">
-                  <div className="text-[10px] font-bold uppercase text-slate-500">Free Tier Allowance:</div>
-                  <div className="text-slate-700 font-medium">{p.free_quota_description}</div>
+                {/* Free Quota Allowance Badge */}
+                <div className="p-3 bg-cosmic-100/80 border border-cosmic-200/90 rounded-2xl text-xs space-y-1 mb-3.5">
+                  <div className="text-[9px] font-mono uppercase tracking-wider text-obsidian/50 font-bold">
+                    Free Allowance:
+                  </div>
+                  <div className="text-obsidian/90 font-medium leading-snug">{p.free_quota_description}</div>
                 </div>
 
-                <p className="text-xs text-slate-500 mb-4">{p.status_label}</p>
+                <p className="text-[11px] text-obsidian/60 mb-5 leading-normal">{p.status_label}</p>
               </div>
 
-              {/* Provider Actions & Toggle */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-700">
+              {/* Action Button & Toggle */}
+              <div className="pt-3.5 border-t border-cosmic-200 flex items-center justify-between">
+                <span className="text-xs font-semibold text-obsidian/80">
                   {isNative ? "Built-in Engine" : isPolicyBlocked ? "Paid API Blocked" : "Enable Integration"}
                 </span>
 
                 {isNative ? (
-                  <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Always On
+                  <span className="text-xs font-bold text-obsidian flex items-center gap-1.5 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-lilac-500"></span> Always Active
                   </span>
                 ) : isPolicyBlocked ? (
-                  <span className="text-xs font-bold text-rose-600 flex items-center gap-1" title="Protected against paid charges">
-                    🔒 Protected
+                  <span className="text-xs font-mono font-bold text-obsidian/50 flex items-center gap-1">
+                    🔒 Zero-Cost Protected
                   </span>
                 ) : (
                   <button
                     type="button"
                     disabled={isSaving || !masterEnabled}
                     onClick={() => handleToggleProvider(p.key, p.enabled)}
-                    className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                       !masterEnabled
-                        ? "bg-slate-200 cursor-not-allowed opacity-60"
+                        ? "bg-cosmic-300 cursor-not-allowed opacity-50"
                         : p.enabled
-                        ? "bg-blue-600"
-                        : "bg-slate-300"
+                        ? "bg-obsidian"
+                        : "bg-cosmic-300"
                     }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        p.enabled && masterEnabled ? "translate-x-4" : "translate-x-0"
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-cosmic-50 shadow-sm ring-0 transition duration-200 ease-in-out ${
+                        p.enabled && masterEnabled ? "translate-x-5 bg-lilac-300" : "translate-x-0"
                       }`}
                     />
                   </button>
@@ -352,14 +353,34 @@ export function IntegrationSettings() {
         })}
       </div>
 
-      {/* Quota Safeguards Details */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 text-xs text-slate-600 space-y-2">
-        <h4 className="font-bold text-slate-800 text-sm">How LeadFlow Protects Your Budget</h4>
-        <ul className="list-disc pl-5 space-y-1">
-          <li><strong>Proactive Token Bucket:</strong> Each request deducts tokens from a local Redis token bucket. Requests are stopped before exceeding provider rate limits.</li>
-          <li><strong>Automatic Local Fallback:</strong> If an external provider hits its daily free limit or returns an error (such as HTTP 429), LeadFlow immediately falls back to local website crawling without interrupting your work.</li>
-          <li><strong>Hard Spending Cap:</strong> The system does not store or accept billing credentials. It is physically impossible for background processes to incur charges.</li>
-        </ul>
+      {/* Quota Safeguards Technical Card */}
+      <div className="glass-panel border border-blush-200/80 rounded-3xl p-6 text-xs text-obsidian/80 space-y-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-obsidian font-bold text-sm tracking-tight">Active Budget Protection Architecture</span>
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-cosmic-200 text-obsidian/70 uppercase">
+            SaaS Guard
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+          <div className="p-3.5 rounded-2xl bg-cosmic-100/70 border border-cosmic-200/80 space-y-1">
+            <div className="font-bold text-obsidian">1. Redis Token Bucket</div>
+            <p className="text-[11px] text-obsidian/70 leading-relaxed">
+              Every query deducts tokens from a Redis token bucket. Queries pause automatically before exceeding vendor limits.
+            </p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-cosmic-100/70 border border-cosmic-200/80 space-y-1">
+            <div className="font-bold text-obsidian">2. Seamless Native Fallback</div>
+            <p className="text-[11px] text-obsidian/70 leading-relaxed">
+              If an external service is unavailable or reaches daily limits, LeadFlow scores with native crawler heuristics.
+            </p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-cosmic-100/70 border border-cosmic-200/80 space-y-1">
+            <div className="font-bold text-obsidian">3. Hard Spending Ceiling</div>
+            <p className="text-[11px] text-obsidian/70 leading-relaxed">
+              No payment card information is stored. Automatic background batch jobs can never trigger unapproved charges.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

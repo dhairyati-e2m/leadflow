@@ -6,7 +6,7 @@ import { IntegrationSettings } from "@/components/IntegrationSettings";
 interface SignalExplanation {
   signal_key: string;
   name: string;
-  category: string;
+  category: "website" | "marketing";
   available: boolean;
   normalized_score: number;
   weight: number;
@@ -29,6 +29,24 @@ interface ScoreRecord {
   };
 }
 
+interface ContactInfo {
+  name: string;
+  title: string;
+  email: string;
+  phone?: string;
+  linkedin_url?: string;
+  revealed: boolean;
+}
+
+interface LeadDraft {
+  subject: string;
+  body: string;
+  tone: "consultative" | "direct" | "short";
+  model: string;
+  cost_usd: number;
+  approved: boolean;
+}
+
 interface LeadItem {
   id: string;
   company_name: string;
@@ -36,9 +54,12 @@ interface LeadItem {
   industry?: string;
   location?: string;
   employee_count?: string;
-  pipeline_state: string;
-  score_band?: string;
+  pipeline_state: "sourced" | "review" | "qualified" | "approved" | "drafted" | "synced" | "rejected";
+  score_band?: "qualified" | "review" | "disqualified";
   latest_score?: number;
+  contact?: ContactInfo;
+  draft?: LeadDraft;
+  hubspot_synced?: boolean;
   latest_enrichment?: {
     status: string;
     provider: string;
@@ -50,34 +71,35 @@ interface LeadItem {
       detected_tech?: string[];
       ctas_found?: string[];
       error?: string;
+      pagespeed_score?: number;
     };
   };
   latest_score_record?: ScoreRecord;
 }
 
 const DEMO_SIGNALS_EXPLANATION: SignalExplanation[] = [
-  { signal_key: "legacy_platform", name: "Modern Website Platform", category: "website", available: true, normalized_score: 80.0, weight: 1.0, weighted_contribution: 80.0, summary: "Modern Jamstack architecture detected (Next.js/Vercel)." },
-  { signal_key: "slow_site", name: "Page Load Speed", category: "website", available: true, normalized_score: 90.0, weight: 1.2, weighted_contribution: 108.0, summary: "Fast server response time: 820ms (well under the 2.5s threshold)." },
-  { signal_key: "old_design", name: "Responsive Modern Layout", category: "website", available: true, normalized_score: 85.0, weight: 0.8, weighted_contribution: 68.0, summary: "Modern semantic HTML5 layout with mobile viewport configured." },
-  { signal_key: "weak_ctas", name: "Call-to-Action (CTA) Buttons", category: "website", available: true, normalized_score: 95.0, weight: 1.2, weighted_contribution: 114.0, summary: "3 prominent conversion buttons detected above the fold." },
-  { signal_key: "not_mobile_friendly", name: "Mobile Responsiveness", category: "website", available: true, normalized_score: 100.0, weight: 1.5, weighted_contribution: 150.0, summary: "Mobile viewport meta tags properly configured for all screens." },
-  { signal_key: "no_ssl", name: "Website Security (SSL / HTTPS)", category: "website", available: true, normalized_score: 100.0, weight: 1.5, weighted_contribution: 150.0, summary: "Valid TLS security certificate active with automatic HTTPS redirect." },
-  { signal_key: "thin_content", name: "Website Content Depth", category: "website", available: true, normalized_score: 80.0, weight: 1.0, weighted_contribution: 80.0, summary: "Substantial informational content: 1,420 words on homepage." },
-  { signal_key: "no_analytics", name: "Analytics & Tracking", category: "website", available: true, normalized_score: 90.0, weight: 0.8, weighted_contribution: 72.0, summary: "Google Analytics 4 and Tag Manager detected." },
-  { signal_key: "accessibility", name: "Accessibility & Usability", category: "website", available: true, normalized_score: 75.0, weight: 0.8, weighted_contribution: 60.0, summary: "High usability: 92% of images include descriptive alt tags." },
-  { signal_key: "no_live_chat", name: "Customer Chat & Messaging", category: "website", available: true, normalized_score: 85.0, weight: 0.7, weighted_contribution: 59.5, summary: "Live customer chat widget detected." },
-  { signal_key: "poor_seo", name: "Search Engine (SEO) Basics", category: "marketing", available: true, normalized_score: 85.0, weight: 1.2, weighted_contribution: 102.0, summary: "Optimized search title and meta description present." },
-  { signal_key: "poor_aeo_geo", name: "Structured Business Data", category: "marketing", available: true, normalized_score: 70.0, weight: 1.0, weighted_contribution: 70.0, summary: "Organization schema data detected for search engines." },
-  { signal_key: "low_domain_trust", name: "Domain Trust & History", category: "marketing", available: true, normalized_score: 80.0, weight: 0.8, weighted_contribution: 64.0, summary: "Established top-level web address without spam flags." },
-  { signal_key: "stale_blog", name: "Recent Blog & Resources", category: "marketing", available: true, normalized_score: 80.0, weight: 0.9, weighted_contribution: 72.0, summary: "Active publication schedule: 4 articles published in last 30 days." },
-  { signal_key: "no_press", name: "Press & News Room", category: "marketing", available: true, normalized_score: 65.0, weight: 0.6, weighted_contribution: 39.0, summary: "Dedicated media and company news section found." },
-  { signal_key: "no_case_studies", name: "Customer Proof & Case Studies", category: "marketing", available: true, normalized_score: 90.0, weight: 1.2, weighted_contribution: 108.0, summary: "Customer success stories and client logos displayed." },
-  { signal_key: "no_video", name: "Product Video / Demos", category: "marketing", available: true, normalized_score: 70.0, weight: 0.6, weighted_contribution: 42.0, summary: "Product overview video embedded on landing page." },
-  { signal_key: "weak_social", name: "Active Social Profiles", category: "marketing", available: true, normalized_score: 85.0, weight: 0.8, weighted_contribution: 68.0, summary: "Verified links to company LinkedIn and GitHub profiles." },
-  { signal_key: "weak_email_capture", name: "Newsletter & Email Capture", category: "marketing", available: true, normalized_score: 80.0, weight: 1.0, weighted_contribution: 80.0, summary: "Newsletter lead capture form present in page footer." },
-  { signal_key: "ppc_spend", name: "Digital Ad Retargeting", category: "marketing", available: true, normalized_score: 85.0, weight: 0.9, weighted_contribution: 76.5, summary: "Advertising remarketing tags detected." },
+  { signal_key: "legacy_platform", name: "Modern Website Platform", category: "website", available: true, normalized_score: 80.0, weight: 1.5, weighted_contribution: 120.0, summary: "Modern Jamstack architecture detected (Next.js/Vercel)." },
+  { signal_key: "slow_site", name: "Fast Page Load Speed", category: "website", available: true, normalized_score: 90.0, weight: 1.3, weighted_contribution: 117.0, summary: "Mobile speed audit: 820ms response time, 92/100 Core Web Vitals." },
+  { signal_key: "old_design", name: "Responsive Modern Layout", category: "website", available: true, normalized_score: 85.0, weight: 1.0, weighted_contribution: 85.0, summary: "Modern HTML5 semantic layout with responsive viewport tag." },
+  { signal_key: "weak_ctas", name: "Call-to-Action (CTA) Prominence", category: "website", available: true, normalized_score: 95.0, weight: 1.0, weighted_contribution: 95.0, summary: "3 prominent conversion CTAs discovered above the fold." },
+  { signal_key: "not_mobile_friendly", name: "Mobile Responsiveness", category: "website", available: true, normalized_score: 100.0, weight: 0.8, weighted_contribution: 80.0, summary: "Mobile viewport meta tags verified across multiple screen breakpoints." },
+  { signal_key: "no_ssl", name: "Website Security (SSL / HTTPS)", category: "website", available: true, normalized_score: 100.0, weight: 1.2, weighted_contribution: 120.0, summary: "Valid TLS security certificate active with automatic HTTPS redirect." },
+  { signal_key: "thin_content", name: "Homepage Content Depth", category: "website", available: true, normalized_score: 80.0, weight: 0.7, weighted_contribution: 56.0, summary: "Substantial informational content: 1,420 words on homepage." },
+  { signal_key: "no_analytics", name: "Analytics & Tracking Setup", category: "website", available: true, normalized_score: 90.0, weight: 0.6, weighted_contribution: 54.0, summary: "Google Analytics 4 and Tag Manager active." },
+  { signal_key: "accessibility", name: "Accessibility & Usability", category: "website", available: true, normalized_score: 75.0, weight: 0.6, weighted_contribution: 45.0, summary: "92% of images contain descriptive alt attributes; WCAG standard." },
+  { signal_key: "no_live_chat", name: "Customer Chat & Conversion Widget", category: "website", available: true, normalized_score: 85.0, weight: 0.5, weighted_contribution: 42.5, summary: "Live chat widget detected." },
+  { signal_key: "poor_seo", name: "Search Engine (SEO) Fundamentals", category: "marketing", available: true, normalized_score: 85.0, weight: 1.4, weighted_contribution: 119.0, summary: "Optimized title and meta description present." },
+  { signal_key: "poor_aeo_geo", name: "Structured Data (Schema / JSON-LD)", category: "marketing", available: true, normalized_score: 70.0, weight: 1.0, weighted_contribution: 70.0, summary: "Organization schema data detected for search engines." },
+  { signal_key: "low_domain_trust", name: "Domain Trust & History", category: "marketing", available: true, normalized_score: 80.0, weight: 0.6, weighted_contribution: 48.0, summary: "Established top-level web address without spam flags." },
+  { signal_key: "stale_blog", name: "Recent Blog & Resources", category: "marketing", available: true, normalized_score: 80.0, weight: 1.1, weighted_contribution: 88.0, summary: "Active publication schedule: 4 articles published in last 30 days." },
+  { signal_key: "no_press", name: "Press & News Room", category: "marketing", available: true, normalized_score: 65.0, weight: 0.7, weighted_contribution: 45.5, summary: "Dedicated media and company news section found." },
+  { signal_key: "no_case_studies", name: "Customer Proof & Case Studies", category: "marketing", available: true, normalized_score: 90.0, weight: 0.8, weighted_contribution: 72.0, summary: "Customer success stories and client logos displayed." },
+  { signal_key: "no_video", name: "Product Video / Demos", category: "marketing", available: true, normalized_score: 70.0, weight: 0.5, weighted_contribution: 35.0, summary: "Product overview video embedded on landing page." },
+  { signal_key: "weak_social", name: "Active Social Profiles", category: "marketing", available: true, normalized_score: 85.0, weight: 0.9, weighted_contribution: 76.5, summary: "Verified links to company LinkedIn and GitHub profiles." },
+  { signal_key: "weak_email_capture", name: "Newsletter & Email Capture", category: "marketing", available: true, normalized_score: 80.0, weight: 0.6, weighted_contribution: 48.0, summary: "Newsletter lead capture form present in page footer." },
+  { signal_key: "ppc_spend", name: "Digital Ad Retargeting", category: "marketing", available: true, normalized_score: 85.0, weight: 1.2, weighted_contribution: 102.0, summary: "Advertising remarketing tags detected." },
   { signal_key: "hiring", name: "Active Company Hiring", category: "marketing", available: true, normalized_score: 90.0, weight: 1.1, weighted_contribution: 99.0, summary: "Careers page links to multiple open roles." },
-  { signal_key: "low_review_rating", name: "Third-Party Review Ratings", category: "marketing", available: true, normalized_score: 80.0, weight: 1.0, weighted_contribution: 80.0, summary: "Independent customer review ratings verified." },
+  { signal_key: "low_review_rating", name: "Third-Party Review Ratings", category: "marketing", available: true, normalized_score: 80.0, weight: 0.8, weighted_contribution: 64.0, summary: "Independent customer review ratings verified." },
 ];
 
 const INITIAL_DEMO_LEADS: LeadItem[] = [
@@ -88,7 +110,30 @@ const INITIAL_DEMO_LEADS: LeadItem[] = [
     industry: "Logistics & Supply Chain",
     location: "Chicago, IL",
     employee_count: "100-250",
-    pipeline_state: "new",
+    pipeline_state: "review",
+    score_band: "review",
+    latest_score: 68.0,
+    contact: {
+      name: "Marcus Vance",
+      title: "VP of Digital Operations",
+      email: "m.vance@apexlogisticstech.com",
+      phone: "+1 (312) 555-0198",
+      linkedin_url: "https://linkedin.com/in/marcus-vance-logistics",
+      revealed: false,
+    },
+    latest_enrichment: {
+      status: "success",
+      provider: "safe_crawler",
+      evidence: {
+        title: "Apex Global Logistics — Global Freight & Fleet",
+        meta_description: "End-to-end multi-modal transportation logistics.",
+        load_time_ms: 1820.0,
+        ssl_valid: true,
+        detected_tech: ["WordPress 6.2", "jQuery 3.6"],
+        ctas_found: ["Request Quote", "Contact Team"],
+        pagespeed_score: 62,
+      },
+    },
   },
   {
     id: "lead-02",
@@ -100,6 +145,22 @@ const INITIAL_DEMO_LEADS: LeadItem[] = [
     pipeline_state: "qualified",
     score_band: "qualified",
     latest_score: 88.5,
+    contact: {
+      name: "Sarah Jenkins",
+      title: "Chief Technology Officer",
+      email: "sarah.jenkins@nexuracloud.io",
+      phone: "+1 (512) 555-0144",
+      linkedin_url: "https://linkedin.com/in/sarah-jenkins-cloud",
+      revealed: true,
+    },
+    draft: {
+      subject: "Quick thought on Nexura's multi-region failover & web performance",
+      body: "Hi Sarah,\n\nNoticed Nexura's recent expansion into multi-region Kubernetes clusters—congrats on the growth.\n\nWhile auditing your tech stack, I saw you're running Next.js with strong Core Web Vitals (92/100), but your CTA conversion paths could capture significantly more enterprise demo volume. We recently helped a comparable cloud platform double their demo conversions.\n\nOpen to a brief 10-minute exchange this Thursday?\n\nBest,\nLeadFlow Strategy Team",
+      tone: "consultative",
+      model: "openrouter/anthropic/claude-3.5-sonnet",
+      cost_usd: 0.018,
+      approved: false,
+    },
     latest_enrichment: {
       status: "success",
       provider: "safe_crawler",
@@ -110,6 +171,7 @@ const INITIAL_DEMO_LEADS: LeadItem[] = [
         ssl_valid: true,
         detected_tech: ["Next.js", "Vercel", "Google Analytics 4"],
         ctas_found: ["Book Demo", "Start 14-Day Free Trial", "Contact Sales"],
+        pagespeed_score: 92,
       },
     },
     latest_score_record: {
@@ -134,7 +196,13 @@ const INITIAL_DEMO_LEADS: LeadItem[] = [
     industry: "Industrial Equipment",
     location: "Cleveland, OH",
     employee_count: "25-50",
-    pipeline_state: "new",
+    pipeline_state: "sourced",
+    contact: {
+      name: "Arthur Pendelton",
+      title: "Managing Director",
+      email: "arthur@legacywholesale1984.com",
+      revealed: false,
+    },
   },
 ];
 
@@ -152,20 +220,35 @@ export default function DashboardPage() {
   const [mainTab, setMainTab] = useState<"leads" | "integrations">("leads");
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_DEMO_LEADS);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedState, setSelectedState] = useState<string>("all");
+  const [selectedFunnelState, setSelectedFunnelState] = useState<string>("all");
   const [selectedLead, setSelectedLead] = useState<LeadItem | null>(null);
   const [activeModalTab, setActiveModalTab] = useState<"scoring" | "crawl">("scoring");
+  const [activeDraftLead, setActiveDraftLead] = useState<LeadItem | null>(null);
+  const [draftTone, setDraftTone] = useState<"consultative" | "direct" | "short">("consultative");
+  const [draftSubject, setDraftSubject] = useState("");
+  const [draftBody, setDraftBody] = useState("");
+  const [revealModalLead, setRevealModalLead] = useState<LeadItem | null>(null);
   const [crawlingId, setCrawlingId] = useState<string | null>(null);
   const [scoringId, setScoringId] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [icpThreshold, setIcpThreshold] = useState<number>(65.0);
   const [activeRun, setActiveRun] = useState<ActiveRunInfo | null>(null);
   const [isBatchRunning, setIsBatchRunning] = useState<boolean>(false);
-  const [usageLedger, setUsageLedger] = useState({
-    pages_crawled: 14,
-    leads_scored: 18,
-    period: "2026-10",
-  });
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Funnel Stage Counts (Handbook Section 5.3)
+  const funnelCounts = {
+    review: leads.filter((l) => l.pipeline_state === "review").length,
+    qualified: leads.filter((l) => l.pipeline_state === "qualified").length,
+    approved: leads.filter((l) => l.pipeline_state === "approved").length,
+    drafted: leads.filter((l) => l.pipeline_state === "drafted").length,
+    synced: leads.filter((l) => l.pipeline_state === "synced").length,
+  };
 
   const handleDownloadSampleCSV = () => {
     const csvContent =
@@ -182,13 +265,14 @@ export default function DashboardPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    showToast("Sample CSV downloaded");
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setUploadStatus("Uploading & safely checking CSV spreadsheet...");
+    setUploadStatus("Uploading & validating CSV spreadsheet...");
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -220,15 +304,22 @@ export default function DashboardPage() {
               industry: cols[2] || "Unspecified",
               location: cols[3] || "Unspecified",
               employee_count: cols[4] || "Unspecified",
-              pipeline_state: "new",
+              pipeline_state: "sourced",
+              contact: {
+                name: "Primary Contact",
+                title: "Business Leader",
+                email: `contact@${domain}`,
+                revealed: false,
+              },
             });
           }
         }
 
         setLeads((prev) => [...newLeads, ...prev]);
-        setUploadStatus(`Success! Imported ${newLeads.length} leads safely. (${duplicateCount} duplicate websites skipped).`);
+        setUploadStatus(`Imported ${newLeads.length} leads safely. (${duplicateCount} duplicate websites skipped).`);
+        showToast(`Imported ${newLeads.length} leads safely`);
       } catch {
-        setUploadStatus("Error reading CSV file. Please verify file format.");
+        setUploadStatus("Error parsing uploaded CSV file.");
       }
     };
     reader.readAsText(file);
@@ -253,13 +344,15 @@ export default function DashboardPage() {
                 ssl_valid: true,
                 detected_tech: ["WordPress 6.4", "Yoast SEO", "Google Tag Manager"],
                 ctas_found: ["Request Demo", "Get Started", "Contact Us"],
+                pagespeed_score: 78,
               },
             },
           };
         })
       );
       setCrawlingId(null);
-    }, 1000);
+      showToast("Website audit completed");
+    }, 900);
   };
 
   const handleScoreLead = (leadId: string) => {
@@ -296,7 +389,100 @@ export default function DashboardPage() {
         })
       );
       setScoringId(null);
-    }, 1200);
+      showToast("Lead scored across 22 signals");
+    }, 1000);
+  };
+
+  // Handbook 3.1 FDD Rule: Human Approve / Reject
+  const handleApproveLead = (leadId: string) => {
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, pipeline_state: "approved" } : l))
+    );
+    showToast("Lead approved for outreach drafting");
+  };
+
+  const handleRejectLead = (leadId: string) => {
+    setLeads((prev) =>
+      prev.map((l) => (l.id === leadId ? { ...l, pipeline_state: "rejected" } : l))
+    );
+    showToast("Lead rejected from active pipeline");
+  };
+
+  // Handbook 5.4: Credit-gated Reveal
+  const handleConfirmReveal = (leadId: string) => {
+    setLeads((prev) =>
+      prev.map((l) => {
+        if (l.id !== leadId || !l.contact) return l;
+        return {
+          ...l,
+          contact: {
+            ...l.contact,
+            revealed: true,
+          },
+        };
+      })
+    );
+    setRevealModalLead(null);
+    showToast("Contact revealed (1 Apollo credit consumed)");
+  };
+
+  // Handbook 3.2: Open Draft Studio
+  const handleOpenDraftStudio = (lead: LeadItem) => {
+    setActiveDraftLead(lead);
+    const company = lead.company_name;
+    const name = lead.contact?.name.split(" ")[0] || "there";
+
+    let subject = `Growth inquiry: ${company} digital infrastructure`;
+    let body = `Hi ${name},\n\nI was reviewing ${company}'s digital presence and noted your strong platform fundamentals.\n\nHowever, our technical analysis spotted opportunities to accelerate page load times and improve conversion CTAs. We've helped similar teams unlock 25-40% more inbound pipeline.\n\nWould you be open to a 10-minute briefing next week?\n\nBest regards,\nLeadFlow Strategy Team`;
+
+    if (draftTone === "direct") {
+      subject = `Quick question regarding ${company}'s website performance`;
+      body = `Hi ${name},\n\nWe analyzed ${company}'s web footprint and identified high-impact conversion gaps above the fold.\n\nAre you available for a brief 5-minute call this Thursday at 2pm?\n\nThanks,\nLeadFlow Strategy Team`;
+    } else if (draftTone === "short") {
+      subject = `Idea for ${company}`;
+      body = `Hi ${name},\n\nNoticed ${company}'s recent growth. We found 3 quick technical optimizations on your homepage that could boost demo conversions.\n\nWorth a quick chat?\n\nBest,\nLeadFlow Strategy Team`;
+    }
+
+    setDraftSubject(lead.draft?.subject || subject);
+    setDraftBody(lead.draft?.body || body);
+  };
+
+  const handleSaveAndApproveDraft = () => {
+    if (!activeDraftLead) return;
+    setLeads((prev) =>
+      prev.map((l) => {
+        if (l.id !== activeDraftLead.id) return l;
+        return {
+          ...l,
+          pipeline_state: "drafted",
+          draft: {
+            subject: draftSubject,
+            body: draftBody,
+            tone: draftTone,
+            model: "openrouter/anthropic/claude-3.5-sonnet",
+            cost_usd: 0.015,
+            approved: true,
+          },
+        };
+      })
+    );
+    setActiveDraftLead(null);
+    showToast("Draft approved and ready for HubSpot CRM sync");
+  };
+
+  // Handbook 6.1: Sync to HubSpot CRM
+  const handleSyncToHubSpot = (leadId: string) => {
+    setLeads((prev) =>
+      prev.map((l) => {
+        if (l.id !== leadId) return l;
+        return {
+          ...l,
+          pipeline_state: "synced",
+          hubspot_synced: true,
+        };
+      })
+    );
+    showToast("Contact and draft synced to HubSpot CRM");
   };
 
   const handleStartBatchRun = () => {
@@ -321,17 +507,13 @@ export default function DashboardPage() {
       if (currentIdx >= leadsToProcess.length) {
         clearInterval(interval);
         setIsBatchRunning(false);
-        setActiveRun((prev) => (prev ? { ...prev, status: "completed", current_company: "Batch evaluation completed" } : null));
-        setUsageLedger((prev) => ({
-          ...prev,
-          pages_crawled: prev.pages_crawled + leadsToProcess.length,
-          leads_scored: prev.leads_scored + leadsToProcess.length,
-        }));
+        setActiveRun((prev) => (prev ? { ...prev, status: "completed", current_company: "Batch run finished" } : null));
+        showToast("Batch evaluation completed");
         return;
       }
 
       const targetLead = leadsToProcess[currentIdx];
-      const finalScore = 76.5 + ((currentIdx * 7) % 18);
+      const finalScore = 78.0 + ((currentIdx * 6) % 16);
       const band: "qualified" | "review" | "disqualified" = finalScore >= icpThreshold ? "qualified" : "review";
 
       setLeads((prev) =>
@@ -348,10 +530,11 @@ export default function DashboardPage() {
               evidence: {
                 title: `${l.company_name} — Platform Overview`,
                 meta_description: `Automated scan for ${l.company_name}.`,
-                load_time_ms: 880 + (currentIdx * 80),
+                load_time_ms: 920 + (currentIdx * 50),
                 ssl_valid: true,
-                detected_tech: ["Next.js", "React", "Google Tag Manager"],
+                detected_tech: ["Next.js", "React", "Google Analytics 4"],
                 ctas_found: ["Book Demo", "Start Trial"],
+                pagespeed_score: 85,
               },
             },
             latest_score_record: {
@@ -379,187 +562,218 @@ export default function DashboardPage() {
           ...prev,
           processed_items: currentIdx,
           successful_items: currentIdx,
-          current_company: currentIdx < leadsToProcess.length ? leadsToProcess[currentIdx]?.company_name : "Finalizing results...",
+          current_company: currentIdx < leadsToProcess.length ? leadsToProcess[currentIdx]?.company_name : "Finalizing batch...",
         };
       });
-    }, 1000);
+    }, 800);
   };
 
   const handleCancelBatchRun = () => {
     setIsBatchRunning(false);
     setActiveRun((prev) => (prev ? { ...prev, status: "cancelled", current_company: "Cancelled by user" } : null));
+    showToast("Batch run stopped");
   };
 
   const filteredLeads = leads.filter((l) => {
     const matchesSearch =
       l.company_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       l.domain.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesState = selectedState === "all" || l.pipeline_state === selectedState;
+    const matchesState = selectedFunnelState === "all" || l.pipeline_state === selectedFunnelState;
     return matchesSearch && matchesState;
   });
 
   return (
-    <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-7">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 glass-panel border border-obsidian/20 text-obsidian px-4 py-2.5 rounded-2xl shadow-obsidian flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2">
+          <span className="w-2 h-2 rounded-full bg-lilac-500"></span>
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Futuristic Hero & Funnel Overview */}
+      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Prospect Qualification & Review Center</h1>
-            <p className="text-slate-600 text-sm mt-1">
-              Automated 22-point website and marketing audit, transparent lead scoring, and team review workflow.
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-cosmic-200 text-obsidian/70 border border-cosmic-300">
+                Handbook 5.3 Funnel
+              </span>
+              <span className="text-xs text-obsidian/50 font-mono">Apollo → Enrich → 22 Signals → HubSpot</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-obsidian tracking-tight">
+              Qualification & CRM Outreach Hub
+            </h1>
+            <p className="text-obsidian/70 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
+              Autonomous multi-signal audit across 22 parameters, credit-safe contact reveals, and bespoke AI outreach generation before CRM sync.
             </p>
           </div>
-          <div className="flex items-center space-x-3">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span>
-              22 Evaluation Checks Active
-            </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-              Target Profile Engine
-            </span>
+
+          {/* Interactive Live Funnel Metrics Strip */}
+          <div className="grid grid-cols-5 gap-2 bg-cosmic-100/90 p-2 rounded-2xl border border-cosmic-300">
+            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 border border-cosmic-200">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50">Review</div>
+              <div className="text-sm sm:text-base font-extrabold text-obsidian">{funnelCounts.review}</div>
+            </div>
+            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 border border-cosmic-200">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50">Qualified</div>
+              <div className="text-sm sm:text-base font-extrabold text-obsidian">{funnelCounts.qualified}</div>
+            </div>
+            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 border border-cosmic-200">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50">Approved</div>
+              <div className="text-sm sm:text-base font-extrabold text-obsidian">{funnelCounts.approved}</div>
+            </div>
+            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 border border-cosmic-200">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50">Drafted</div>
+              <div className="text-sm sm:text-base font-extrabold text-obsidian">{funnelCounts.drafted}</div>
+            </div>
+            <div className="px-3 py-2 text-center rounded-xl bg-lilac-100/80 border border-lilac-200">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-lilac-700 font-bold">In CRM</div>
+              <div className="text-sm sm:text-base font-extrabold text-lilac-800">{funnelCounts.synced}</div>
+            </div>
           </div>
+        </div>
+
+        {/* Tab Switcher Pills */}
+        <div className="flex border-t border-cosmic-200/80 mt-6 pt-4 space-x-3 text-xs font-semibold">
+          <button
+            onClick={() => setMainTab("leads")}
+            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 ${
+              mainTab === "leads"
+                ? "btn-obsidian shadow-obsidian"
+                : "bg-cosmic-100/80 text-obsidian/70 hover:bg-cosmic-200"
+            }`}
+          >
+            <span>Lead Pipeline & Qualification</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
+              mainTab === "leads" ? "bg-lilac-300 text-obsidian" : "bg-cosmic-200 text-obsidian/70"
+            }`}>
+              {leads.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setMainTab("integrations")}
+            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 ${
+              mainTab === "integrations"
+                ? "btn-obsidian shadow-obsidian"
+                : "bg-cosmic-100/80 text-obsidian/70 hover:bg-cosmic-200"
+            }`}
+          >
+            <span>Live Providers & Zero-Cost Guard</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-blush-100 text-blush-600 border border-blush-200">
+              Rule A Guard
+            </span>
+          </button>
         </div>
       </div>
 
-      {/* Main Tab Switcher */}
-      <div className="flex border-b border-slate-200 space-x-8 text-sm font-bold">
-        <button
-          onClick={() => setMainTab("leads")}
-          className={`pb-3 border-b-2 transition flex items-center gap-2 ${
-            mainTab === "leads"
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          <span>Prospects & Lead Qualification</span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-semibold">
-            {leads.length}
-          </span>
-        </button>
-        <button
-          onClick={() => setMainTab("integrations")}
-          className={`pb-3 border-b-2 transition flex items-center gap-2 ${
-            mainTab === "integrations"
-              ? "border-blue-600 text-blue-600"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
-        >
-          <span>Data Providers & Free Quotas</span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
-            100% Free Tier
-          </span>
-        </button>
-      </div>
-
-      {/* View 1: Leads & Qualification */}
+      {/* Main Tab 1: Leads Pipeline & Funnel */}
       {mainTab === "leads" && (
         <div className="space-y-6">
-          {/* Configuration & Usage Row */}
+          {/* Controls & Metrics Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Qualification Threshold Slider */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            {/* Qualification Standard Slider */}
+            <div className="glass-panel rounded-3xl p-5 border border-blush-200/80 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider block">
-                    Target Customer Qualification Standard
+                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 block">
+                    Target Lead Qualification Standard
                   </span>
-                  <span className="text-xs text-slate-500 mt-0.5 block">
-                    Minimum score required to qualify leads (checks 10 website performance factors and 12 marketing signals).
+                  <span className="text-xs text-obsidian/70 mt-0.5 block leading-relaxed">
+                    Threshold separating Review from Qualified (10 Website + 12 Marketing checks).
                   </span>
                 </div>
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-3 bg-cosmic-100/90 px-3 py-2 rounded-2xl border border-cosmic-300">
                   <div className="flex items-center space-x-2">
-                    <label htmlFor="threshold-range" className="text-xs text-slate-600 font-medium">
-                      Minimum Score:
-                    </label>
+                    <label htmlFor="threshold-slider" className="text-[11px] text-obsidian/70 font-medium">Cutoff:</label>
                     <input
-                      id="threshold-range"
+                      id="threshold-slider"
                       type="range"
                       min="50"
                       max="90"
                       value={icpThreshold}
                       onChange={(e) => setIcpThreshold(Number(e.target.value))}
-                      className="w-24 accent-blue-600"
+                      className="w-20 accent-obsidian cursor-pointer"
                     />
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg bg-cosmic-50 text-obsidian border border-cosmic-300">
                       {icpThreshold}/100
                     </span>
                   </div>
-                  <span className="text-xs text-emerald-700 font-semibold flex items-center">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 mr-1"></span>
-                    +10 Best-Fit Bonus
+                  <span className="text-[10px] font-mono text-lilac-700 font-bold px-2 py-0.5 rounded-lg bg-lilac-50 border border-lilac-200">
+                    +10 Bonus
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Monthly Plan Usage Strip */}
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+            {/* Monthly Budget & Usage Strip */}
+            <div className="glass-panel rounded-3xl p-5 border border-blush-200/80 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                    Monthly Plan Usage & Queue
+                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-lilac-500"></span>
+                    SaaS Allotment & Safety Ledger
                   </span>
-                  <span className="text-xs text-slate-500 mt-0.5 block">
-                    Billing Cycle: {usageLedger.period} | Guaranteed $0.00 Cost
+                  <span className="text-xs text-obsidian/70 mt-0.5 block">
+                    Zero-Cost Guarantee: Hard spend cap enforced ($0.00 billable)
                   </span>
                 </div>
-                <div className="flex items-center space-x-3 text-xs">
-                  <div className="px-2.5 py-1 rounded bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 text-[10px] uppercase font-bold block">Websites Scanned</span>
-                    <span className="font-bold text-slate-900">{usageLedger.pages_crawled} <span className="text-slate-400 font-normal">/ 10,000</span></span>
+                <div className="flex items-center space-x-2.5 text-xs">
+                  <div className="px-3 py-1.5 rounded-2xl bg-cosmic-100/90 border border-cosmic-300">
+                    <span className="text-obsidian/50 text-[9px] uppercase font-mono font-bold block">Scanned Sites</span>
+                    <span className="font-bold text-obsidian font-mono">14 <span className="text-obsidian/40 font-normal">/ 10,000</span></span>
                   </div>
-                  <div className="px-2.5 py-1 rounded bg-slate-50 border border-slate-200">
-                    <span className="text-slate-500 text-[10px] uppercase font-bold block">Prospects Evaluated</span>
-                    <span className="font-bold text-slate-900">{usageLedger.leads_scored} <span className="text-slate-400 font-normal">/ 5,000</span></span>
+                  <div className="px-3 py-1.5 rounded-2xl bg-cosmic-100/90 border border-cosmic-300">
+                    <span className="text-obsidian/50 text-[9px] uppercase font-mono font-bold block">Evaluated</span>
+                    <span className="font-bold text-obsidian font-mono">18 <span className="text-obsidian/40 font-normal">/ 5,000</span></span>
                   </div>
-                  <span className="px-2 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">
-                    Processing Engine Active
+                  <span className="px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold bg-lilac-100 text-lilac-700 border border-lilac-200 uppercase">
+                    Worker Idle
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* CSV Import & Batch Trigger */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          {/* Sourcing & Action Header */}
+          <div className="glass-panel rounded-3xl p-6 border border-blush-200/80 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Import Prospects & Batch Scoring</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Upload clean spreadsheets safely. Automatically normalizes website links and prevents duplicates.
+                <h2 className="text-base font-bold text-obsidian tracking-tight">Sourcing & Batch Pipeline</h2>
+                <p className="text-xs text-obsidian/70 mt-0.5">
+                  Import Apollo contacts or spreadsheet leads safely. Automatic formula guard and deduplication.
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-3">
+
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   onClick={handleDownloadSampleCSV}
-                  className="text-xs font-semibold px-3 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition"
+                  className="text-xs font-semibold px-3 py-2 rounded-xl border border-cosmic-300 bg-cosmic-100/80 text-obsidian hover:bg-cosmic-200 transition"
                 >
                   Download Sample CSV
                 </button>
-                <label className="cursor-pointer text-xs font-semibold px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition shadow-sm">
-                  Upload CSV File
+                <label className="cursor-pointer text-xs font-semibold px-4 py-2 rounded-xl bg-cosmic-200 hover:bg-cosmic-300 border border-cosmic-300 text-obsidian transition shadow-sm">
+                  Upload CSV
                   <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
                 </label>
                 <button
                   disabled={isBatchRunning}
                   onClick={handleStartBatchRun}
-                  className={`text-xs font-semibold px-4 py-2 rounded-lg text-white transition flex items-center gap-1.5 shadow-sm ${
-                    isBatchRunning
-                      ? "bg-slate-400 cursor-not-allowed"
-                      : "bg-indigo-600 hover:bg-indigo-700"
+                  className={`text-xs font-semibold px-4 py-2 rounded-xl text-cosmic-50 transition flex items-center gap-2 shadow-obsidian ${
+                    isBatchRunning ? "bg-obsidian/60 cursor-not-allowed" : "btn-obsidian"
                   }`}
                 >
                   {isBatchRunning ? (
                     <>
-                      <span className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full mr-1"></span>
-                      Evaluating Prospects...
+                      <span className="animate-spin h-3 w-3 border-2 border-cosmic-50 border-t-transparent rounded-full"></span>
+                      Evaluating Batch...
                     </>
                   ) : (
                     <>
-                      <span>⚡</span>
-                      Score All Unscored Prospects
+                      <span className="text-lilac-300">⚡</span>
+                      Run 22-Signal Batch Evaluation
                     </>
                   )}
                 </button>
@@ -567,75 +781,48 @@ export default function DashboardPage() {
             </div>
 
             {uploadStatus && (
-              <div
-                className={`p-3 rounded-lg text-xs font-medium border ${
-                  uploadStatus.startsWith("Success")
-                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                    : uploadStatus.startsWith("Error")
-                    ? "bg-rose-50 text-rose-800 border-rose-200"
-                    : "bg-blue-50 text-blue-800 border-blue-200"
-                }`}
-              >
+              <div className="mt-4 p-3 rounded-2xl text-xs font-medium bg-lilac-50 border border-lilac-200 text-obsidian">
                 {uploadStatus}
               </div>
             )}
           </div>
 
-          {/* Active Batch Run Monitor Card */}
+          {/* Active Batch Run Monitor */}
           {activeRun && (
-            <div className="bg-white rounded-xl shadow-sm border border-indigo-200 p-5 bg-gradient-to-r from-indigo-50/40 via-white to-blue-50/30">
+            <div className="glass-panel rounded-3xl p-5 border border-lilac-300/80 shadow-futuristic bg-gradient-to-r from-lilac-50/50 via-cosmic-100/40 to-blush-50/50">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
                 <div className="flex items-center space-x-3">
-                  <span
-                    className={`w-3 h-3 rounded-full ${
-                      activeRun.status === "running"
-                        ? "bg-indigo-600 animate-pulse"
-                        : activeRun.status === "completed"
-                        ? "bg-emerald-500"
-                        : activeRun.status === "cancelled"
-                        ? "bg-amber-500"
-                        : "bg-rose-500"
-                    }`}
-                  ></span>
+                  <span className={`w-3 h-3 rounded-full ${activeRun.status === "running" ? "bg-lilac-500 animate-pulse" : "bg-obsidian"}`}></span>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <h3 className="text-sm font-bold text-slate-900">
-                        Batch Processing Job: <code className="text-xs font-mono text-indigo-700">{activeRun.run_id}</code>
+                      <h3 className="text-sm font-bold text-obsidian">
+                        Active Job: <code className="font-mono text-xs text-lilac-700">{activeRun.run_id}</code>
                       </h3>
-                      <span
-                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                          activeRun.status === "running"
-                            ? "bg-indigo-100 text-indigo-800 border border-indigo-200"
-                            : activeRun.status === "completed"
-                            ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                            : "bg-amber-100 text-amber-800 border border-amber-200"
-                        }`}
-                      >
+                      <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded-full bg-cosmic-200 border border-cosmic-300 font-bold text-obsidian/70">
                         {activeRun.status}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 mt-0.5">
-                      Current Prospect: <span className="font-semibold text-slate-800">{activeRun.current_company || "Starting batch..."}</span>
+                    <p className="text-xs text-obsidian/70 mt-0.5">
+                      Target: <span className="font-semibold text-obsidian">{activeRun.current_company || "Processing..."}</span>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  <span className="text-xs font-bold text-slate-700">
-                    {activeRun.processed_items} / {activeRun.total_items} prospects evaluated
+                  <span className="text-xs font-mono font-bold text-obsidian">
+                    {activeRun.processed_items} / {activeRun.total_items} evaluated
                   </span>
-                  {activeRun.status === "running" && (
+                  {activeRun.status === "running" ? (
                     <button
                       onClick={handleCancelBatchRun}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-300 text-rose-700 hover:bg-rose-50 transition"
+                      className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-rose-300 text-rose-700 hover:bg-rose-50 transition"
                     >
-                      Cancel Job
+                      Halt Run
                     </button>
-                  )}
-                  {activeRun.status !== "running" && (
+                  ) : (
                     <button
                       onClick={() => setActiveRun(null)}
-                      className="text-xs font-medium px-2.5 py-1 rounded text-slate-500 hover:text-slate-700"
+                      className="text-xs font-medium px-2.5 py-1 rounded-xl text-obsidian/50 hover:text-obsidian"
                     >
                       Dismiss
                     </button>
@@ -644,177 +831,237 @@ export default function DashboardPage() {
               </div>
 
               {/* Progress bar */}
-              <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+              <div className="w-full bg-cosmic-200 rounded-full h-1.5 overflow-hidden">
                 <div
-                  className={`h-2 transition-all duration-500 rounded-full ${
-                    activeRun.status === "completed"
-                      ? "bg-emerald-500"
-                      : activeRun.status === "cancelled"
-                      ? "bg-amber-500"
-                      : "bg-indigo-600"
-                  }`}
+                  className="h-1.5 bg-obsidian transition-all duration-300 rounded-full"
                   style={{
-                    width: `${Math.min(
-                      100,
-                      Math.round((activeRun.processed_items / Math.max(activeRun.total_items, 1)) * 100)
-                    )}%`,
+                    width: `${Math.min(100, Math.round((activeRun.processed_items / Math.max(activeRun.total_items, 1)) * 100))}%`,
                   }}
                 ></div>
               </div>
             </div>
           )}
 
-          {/* Prospects Queue & Scoring Table */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            {/* Table Controls */}
-            <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Prospects Pipeline Table */}
+          <div className="glass-panel rounded-3xl overflow-hidden border border-blush-200/80 shadow-futuristic">
+            {/* Filter Bar */}
+            <div className="p-4 border-b border-cosmic-200/90 bg-cosmic-100/70 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="flex items-center space-x-3 flex-1 max-w-md">
                 <input
                   type="text"
-                  placeholder="Search by company name or domain..."
+                  placeholder="Filter company, domain, or industry..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs px-3.5 py-2 border border-cosmic-300 rounded-xl bg-cosmic-50 focus:outline-none focus:ring-2 focus:ring-lilac-400 placeholder:text-obsidian/40"
                 />
               </div>
 
-              <div className="flex items-center space-x-2">
-                <span className="text-xs text-slate-500 font-medium">Filter Status:</span>
-                {["all", "new", "review", "qualified", "rejected"].map((st) => (
+              {/* Funnel Stage Filter Buttons */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-obsidian/50 font-mono uppercase mr-1">Stage:</span>
+                {["all", "review", "qualified", "approved", "drafted", "synced", "rejected"].map((st) => (
                   <button
                     key={st}
-                    onClick={() => setSelectedState(st)}
-                    className={`text-xs px-2.5 py-1 rounded-md font-semibold capitalize transition ${
-                      selectedState === st
-                        ? "bg-blue-600 text-white"
-                        : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-100"
+                    onClick={() => setSelectedFunnelState(st)}
+                    className={`text-xs px-2.5 py-1 rounded-xl font-medium capitalize transition ${
+                      selectedFunnelState === st
+                        ? "btn-obsidian"
+                        : "bg-cosmic-50 text-obsidian/70 border border-cosmic-200 hover:bg-cosmic-100"
                     }`}
                   >
-                    {st}
+                    {st === "synced" ? "In HubSpot" : st}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Table Content */}
+            {/* Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 text-slate-700 font-semibold uppercase tracking-wider border-b border-slate-200">
+                <thead className="bg-cosmic-200/50 text-obsidian/60 font-mono text-[10px] uppercase tracking-wider border-b border-cosmic-200">
                   <tr>
-                    <th className="py-3 px-4">Company & Website</th>
-                    <th className="py-3 px-4">Industry / Location</th>
-                    <th className="py-3 px-4">Quality Score</th>
-                    <th className="py-3 px-4">Review Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-5">Company & Contact</th>
+                    <th className="py-3 px-4">Market & Location</th>
+                    <th className="py-3 px-4">22-Signal Score</th>
+                    <th className="py-3 px-4">Funnel State</th>
+                    <th className="py-3 px-5 text-right">Pipeline Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-cosmic-200/70">
                   {filteredLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-500">
-                        No prospects found matching your filter criteria.
+                      <td colSpan={5} className="py-10 text-center text-obsidian/50">
+                        No prospects found matching your search criteria.
                       </td>
                     </tr>
                   ) : (
                     filteredLeads.map((lead) => {
                       const isCrawling = crawlingId === lead.id;
                       const isScoring = scoringId === lead.id;
-                      const hasEnrichment = !!lead.latest_enrichment;
                       const hasScore = lead.latest_score !== undefined;
+                      const isApproved = lead.pipeline_state === "approved";
+                      const isDrafted = lead.pipeline_state === "drafted";
+                      const isSynced = lead.pipeline_state === "synced";
 
                       return (
-                        <tr key={lead.id} className="hover:bg-slate-50/75 transition">
-                          <td className="py-3 px-4">
-                            <div className="font-bold text-slate-900">{lead.company_name}</div>
-                            <a
-                              href={`https://${lead.domain}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline flex items-center gap-1 mt-0.5"
-                            >
-                              {lead.domain}
-                              <span className="text-[10px]">↗</span>
-                            </a>
+                        <tr key={lead.id} className="hover:bg-cosmic-100/50 transition">
+                          {/* Company & Contact Column */}
+                          <td className="py-3.5 px-5">
+                            <div className="font-bold text-obsidian text-sm">{lead.company_name}</div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <a
+                                href={`https://${lead.domain}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-obsidian/60 hover:text-obsidian flex items-center gap-1 font-mono text-[11px]"
+                              >
+                                {lead.domain} <span className="text-[9px]">↗</span>
+                              </a>
+                            </div>
+
+                            {/* Contact Badge */}
+                            {lead.contact && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <span className="text-[11px] font-medium text-obsidian/80">
+                                  {lead.contact.name} ({lead.contact.title})
+                                </span>
+                                {lead.contact.revealed ? (
+                                  <span className="text-[10px] font-mono text-lilac-700 bg-lilac-100 px-2 py-0.5 rounded-full border border-lilac-200">
+                                    {lead.contact.email}
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => setRevealModalLead(lead)}
+                                    className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-cosmic-300 bg-cosmic-100 hover:bg-cosmic-200 text-obsidian/70 transition"
+                                    title="Human credit gate"
+                                  >
+                                    Reveal Contact (1 Cr)
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="text-slate-800 font-medium">{lead.industry || "—"}</div>
-                            <div className="text-slate-500 text-[11px]">{lead.location || "—"}</div>
+
+                          {/* Industry & Location */}
+                          <td className="py-3.5 px-4">
+                            <div className="text-obsidian font-medium">{lead.industry || "—"}</div>
+                            <div className="text-obsidian/50 text-[11px]">{lead.location || "—"}</div>
                           </td>
-                          <td className="py-3 px-4">
+
+                          {/* 22-Signal Score */}
+                          <td className="py-3.5 px-4">
                             {hasScore ? (
                               <div className="flex items-center space-x-2">
                                 <span
-                                  className={`text-sm font-extrabold ${
-                                    lead.latest_score! >= icpThreshold
-                                      ? "text-emerald-700"
-                                      : lead.latest_score! >= 40
-                                      ? "text-amber-700"
-                                      : "text-rose-700"
+                                  className={`text-sm font-mono font-extrabold ${
+                                    lead.latest_score! >= icpThreshold ? "text-obsidian" : "text-obsidian/60"
                                   }`}
                                 >
                                   {lead.latest_score}/100
                                 </span>
                                 <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                  className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider border ${
                                     lead.score_band === "qualified"
-                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                      ? "bg-lilac-100 text-lilac-700 border-lilac-300"
                                       : lead.score_band === "review"
-                                      ? "bg-amber-100 text-amber-800 border border-amber-200"
-                                      : "bg-rose-100 text-rose-800 border border-rose-200"
+                                      ? "bg-blush-100 text-blush-600 border-blush-200"
+                                      : "bg-cosmic-200 text-obsidian/60 border-cosmic-300"
                                   }`}
                                 >
                                   {lead.score_band}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-slate-400 italic">Not evaluated</span>
+                              <span className="text-obsidian/40 italic font-mono text-[11px]">Pending audit</span>
                             )}
                           </td>
-                          <td className="py-3 px-4">
+
+                          {/* Funnel State Pill */}
+                          <td className="py-3.5 px-4">
                             <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full font-bold uppercase text-[10px] ${
-                                lead.pipeline_state === "new"
-                                  ? "bg-slate-100 text-slate-700 border border-slate-200"
-                                  : lead.pipeline_state === "review"
-                                  ? "bg-blue-100 text-blue-800 border border-blue-200"
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-mono font-bold uppercase text-[9px] tracking-wider border ${
+                                lead.pipeline_state === "synced"
+                                  ? "bg-lilac-200 text-lilac-800 border-lilac-400"
+                                  : lead.pipeline_state === "drafted"
+                                  ? "bg-lilac-100 text-lilac-700 border-lilac-300"
+                                  : lead.pipeline_state === "approved"
+                                  ? "bg-cosmic-100 text-obsidian border-cosmic-300"
                                   : lead.pipeline_state === "qualified"
-                                  ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                  : "bg-rose-100 text-rose-800 border border-rose-200"
+                                  ? "bg-blush-100 text-blush-600 border-blush-200"
+                                  : lead.pipeline_state === "review"
+                                  ? "bg-cosmic-200 text-obsidian/70 border-cosmic-300"
+                                  : "bg-cosmic-100 text-obsidian/50 border-cosmic-200"
                               }`}
                             >
-                              {lead.pipeline_state}
+                              {lead.pipeline_state === "synced" ? "In HubSpot" : lead.pipeline_state}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-right space-x-2">
-                            {(hasEnrichment || hasScore) && (
-                              <button
-                                onClick={() => {
-                                  setSelectedLead(lead);
-                                  setActiveModalTab(hasScore ? "scoring" : "crawl");
-                                }}
-                                className="px-2.5 py-1 text-xs font-semibold rounded border border-slate-300 text-slate-700 hover:bg-slate-100 transition"
-                              >
-                                View Audit
-                              </button>
-                            )}
+
+                          {/* Handbook 3.1 & 5.3 Actions */}
+                          <td className="py-3.5 px-5 text-right space-x-1.5">
+                            {/* Detailed Audit Breakdown */}
                             <button
-                              disabled={isCrawling}
-                              onClick={() => handleTriggerCrawl(lead.id)}
-                              className={`px-3 py-1 text-xs font-semibold rounded text-white transition ${
-                                isCrawling ? "bg-slate-400 cursor-not-allowed" : "bg-slate-700 hover:bg-slate-800"
-                              }`}
+                              onClick={() => {
+                                setSelectedLead(lead);
+                                setActiveModalTab(hasScore ? "scoring" : "crawl");
+                              }}
+                              className="px-2.5 py-1 text-xs font-semibold rounded-xl border border-cosmic-300 text-obsidian/80 hover:bg-cosmic-200 transition"
                             >
-                              {isCrawling ? "Scanning..." : "Scan Site"}
+                              Audit
                             </button>
+
+                            {/* Scoring / Re-scoring */}
                             <button
                               disabled={isScoring}
                               onClick={() => handleScoreLead(lead.id)}
-                              className={`px-3 py-1 text-xs font-semibold rounded text-white transition ${
-                                isScoring ? "bg-slate-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-                              }`}
+                              className="px-2.5 py-1 text-xs font-semibold rounded-xl border border-cosmic-300 text-obsidian/80 hover:bg-cosmic-200 transition"
                             >
-                              {isScoring ? "Evaluating..." : hasScore ? "Re-evaluate" : "Evaluate Lead"}
+                              {isScoring ? "Scoring..." : hasScore ? "Re-score" : "Score"}
                             </button>
+
+                            {/* Human Approval Gate (Handbook FDD Rule 2) */}
+                            {lead.pipeline_state === "qualified" && (
+                              <>
+                                <button
+                                  onClick={() => handleApproveLead(lead.id)}
+                                  className="btn-obsidian px-3 py-1 text-xs font-semibold rounded-xl"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleRejectLead(lead.id)}
+                                  className="px-2.5 py-1 text-xs font-semibold rounded-xl border border-cosmic-300 text-obsidian/50 hover:bg-rose-50 hover:text-rose-700 transition"
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            )}
+
+                            {/* AI Outreach Draft Studio */}
+                            {(isApproved || isDrafted) && (
+                              <button
+                                onClick={() => handleOpenDraftStudio(lead)}
+                                className="btn-obsidian px-3 py-1 text-xs font-semibold rounded-xl flex-inline items-center gap-1 shadow-sm"
+                              >
+                                {isDrafted ? "Edit Draft" : "Generate Draft"}
+                              </button>
+                            )}
+
+                            {/* HubSpot CRM Sync (Only after draft approved) */}
+                            {isDrafted && !isSynced && (
+                              <button
+                                onClick={() => handleSyncToHubSpot(lead.id)}
+                                className="px-3 py-1 text-xs font-bold rounded-xl bg-lilac-200 hover:bg-lilac-300 text-lilac-800 border border-lilac-300 transition"
+                              >
+                                Sync CRM
+                              </button>
+                            )}
+
+                            {isSynced && (
+                              <span className="text-[11px] font-mono text-lilac-700 font-bold px-2 py-0.5 rounded-lg bg-lilac-100 border border-lilac-200">
+                                Synced ✓
+                              </span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -824,178 +1071,297 @@ export default function DashboardPage() {
               </table>
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Quick link to Provider Settings */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">External Integrations & Safety Policies</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Local safe scanner is active. High-cost external services are blocked to protect your budget.
-              </p>
+      {/* Main Tab 2: Providers & Free Quotas */}
+      {mainTab === "integrations" && <IntegrationSettings />}
+
+      {/* Credit-Gated Contact Reveal Modal (Handbook 5.4) */}
+      {revealModalLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/50 backdrop-blur-sm p-4">
+          <div className="glass-panel border border-blush-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-futuristic">
+            <div className="flex items-center justify-between border-b border-cosmic-200 pb-3">
+              <h3 className="text-base font-bold text-obsidian tracking-tight">Confirm Contact Reveal</h3>
+              <button
+                onClick={() => setRevealModalLead(null)}
+                className="text-obsidian/40 hover:text-obsidian font-bold text-lg"
+              >
+                &times;
+              </button>
             </div>
-            <button
-              onClick={() => setMainTab("integrations")}
-              className="text-xs font-semibold px-4 py-2 rounded-lg bg-slate-100 text-slate-800 hover:bg-slate-200 transition"
-            >
-              Configure Data Providers & Limits →
-            </button>
+            <div className="text-xs text-obsidian/80 space-y-2 leading-relaxed">
+              <p>
+                Revealing verified contact information for <span className="font-bold text-obsidian">{revealModalLead.contact?.name}</span> ({revealModalLead.contact?.title}) at <span className="font-bold text-obsidian">{revealModalLead.company_name}</span>.
+              </p>
+              <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300 space-y-1">
+                <div className="text-[10px] font-mono uppercase text-obsidian/50 font-bold">Credit Gate Policy:</div>
+                <div className="text-obsidian font-semibold">Consumes 1 Apollo Reveal Credit</div>
+                <div className="text-obsidian/60 text-[11px]">Human authorization required. No silent credit deduction.</div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end space-x-3 pt-3 border-t border-cosmic-200">
+              <button
+                onClick={() => setRevealModalLead(null)}
+                className="px-4 py-2 text-xs font-semibold rounded-xl border border-cosmic-300 text-obsidian/70 hover:bg-cosmic-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleConfirmReveal(revealModalLead.id)}
+                className="btn-obsidian px-4 py-2 text-xs font-semibold rounded-xl shadow-obsidian"
+              >
+                Confirm Reveal
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* View 2: Data Providers & Quotas */}
-      {mainTab === "integrations" && <IntegrationSettings />}
-
-      {/* Score & Crawl Evidence Drawer / Modal */}
-      {selectedLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-3xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b pb-3 border-slate-200">
+      {/* AI Outreach Draft Studio Modal (Handbook 3.2) */}
+      {activeDraftLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/50 backdrop-blur-sm p-4">
+          <div className="glass-panel border border-blush-200 rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-futuristic max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-cosmic-200 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">{selectedLead.company_name}</h3>
-                <p className="text-xs text-slate-500">Website: {selectedLead.domain} | 22-Point Comprehensive Quality Audit</p>
+                <h3 className="text-base font-bold text-obsidian tracking-tight">
+                  Draft Studio: {activeDraftLead.company_name}
+                </h3>
+                <p className="text-[11px] text-obsidian/60">
+                  Recipient: {activeDraftLead.contact?.name} ({activeDraftLead.contact?.title}) | OpenRouter AI
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveDraftLead(null)}
+                className="text-obsidian/40 hover:text-obsidian font-bold text-lg"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Tone Selector & Model Indicator */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-cosmic-100 p-3 rounded-2xl border border-cosmic-200 text-xs">
+              <div className="flex items-center space-x-1.5">
+                <span className="text-[10px] font-mono uppercase text-obsidian/50 font-bold mr-1">Angle / Tone:</span>
+                {(["consultative", "direct", "short"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setDraftTone(t);
+                      handleOpenDraftStudio(activeDraftLead);
+                    }}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold capitalize transition ${
+                      draftTone === t ? "btn-obsidian" : "bg-cosmic-50 text-obsidian/70 hover:bg-cosmic-200"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 text-[10px] font-mono text-obsidian/60">
+                <span>Model: claude-3.5-sonnet</span>
+                <span className="text-lilac-700 font-bold">~$0.02 / draft</span>
+              </div>
+            </div>
+
+            {/* Subject Input */}
+            <div className="space-y-1 text-xs">
+              <label htmlFor="draft-subject" className="font-mono uppercase text-[10px] font-bold text-obsidian/60">Subject Line</label>
+              <input
+                id="draft-subject"
+                type="text"
+                value={draftSubject}
+                onChange={(e) => setDraftSubject(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl border border-cosmic-300 bg-cosmic-50 focus:outline-none focus:ring-2 focus:ring-lilac-400 font-medium text-obsidian"
+              />
+            </div>
+
+            {/* Body Input */}
+            <div className="space-y-1 text-xs">
+              <label htmlFor="draft-body" className="font-mono uppercase text-[10px] font-bold text-obsidian/60">Email Copy (Editable)</label>
+              <textarea
+                id="draft-body"
+                rows={7}
+                value={draftBody}
+                onChange={(e) => setDraftBody(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-cosmic-300 bg-cosmic-50 focus:outline-none focus:ring-2 focus:ring-lilac-400 font-sans text-xs text-obsidian leading-relaxed"
+              ></textarea>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-3 border-t border-cosmic-200">
+              <div className="text-[11px] text-obsidian/50">
+                FDD Rule: Lead cannot sync to CRM until draft is approved.
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setActiveDraftLead(null)}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl border border-cosmic-300 text-obsidian/70 hover:bg-cosmic-100"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveAndApproveDraft}
+                  className="btn-obsidian px-4 py-2 text-xs font-semibold rounded-xl shadow-obsidian"
+                >
+                  Approve Draft
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 22-Signal Score & Evidence Modal */}
+      {selectedLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/50 backdrop-blur-sm p-4">
+          <div className="glass-panel border border-blush-200 rounded-3xl max-w-3xl w-full p-6 space-y-5 shadow-futuristic max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-cosmic-200 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-obsidian tracking-tight">{selectedLead.company_name}</h3>
+                <p className="text-xs text-obsidian/60 font-mono">
+                  {selectedLead.domain} | 22-Signal Qualification Audit
+                </p>
               </div>
               <button
                 onClick={() => setSelectedLead(null)}
-                className="text-slate-400 hover:text-slate-600 text-xl font-bold leading-none"
+                className="text-obsidian/40 hover:text-obsidian font-bold text-lg"
               >
                 &times;
               </button>
             </div>
 
             {/* Modal Tabs */}
-            <div className="flex border-b border-slate-200 space-x-6 text-xs font-semibold">
+            <div className="flex border-b border-cosmic-200 space-x-6 text-xs font-semibold">
               <button
                 onClick={() => setActiveModalTab("scoring")}
                 className={`pb-2 border-b-2 transition ${
                   activeModalTab === "scoring"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
+                    ? "border-obsidian text-obsidian font-bold"
+                    : "border-transparent text-obsidian/50 hover:text-obsidian"
                 }`}
               >
-                Quality Score Breakdown (22 Factors)
+                22-Signal Audit Breakdown
               </button>
               <button
                 onClick={() => setActiveModalTab("crawl")}
                 className={`pb-2 border-b-2 transition ${
                   activeModalTab === "crawl"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
+                    ? "border-obsidian text-obsidian font-bold"
+                    : "border-transparent text-obsidian/50 hover:text-obsidian"
                 }`}
               >
-                Website Verification & Scan Evidence
+                Website Verification & Tech Stack
               </button>
             </div>
 
             {activeModalTab === "scoring" ? (
               selectedLead.latest_score_record ? (
                 <div className="space-y-4 text-xs">
-                  {/* Score KPI Bar */}
+                  {/* Metric Gauges */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-200">
-                      <span className="text-slate-500 block text-[10px] uppercase font-bold">Overall Score</span>
-                      <span className="text-xl font-black text-blue-700">
+                    <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
+                      <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Overall Score</span>
+                      <span className="text-xl font-black text-obsidian font-mono">
                         {selectedLead.latest_score_record.final_score}/100
                       </span>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <span className="text-slate-500 block text-[10px] uppercase font-bold">Qualification Band</span>
-                      <span className="font-bold text-emerald-700 uppercase">
+                    <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
+                      <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Funnel Band</span>
+                      <span className="font-bold text-lilac-700 uppercase font-mono">
                         {selectedLead.latest_score_record.qualification_band}
                       </span>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <span className="text-slate-500 block text-[10px] uppercase font-bold">Website Factors (1-10)</span>
-                      <span className="font-bold text-slate-800">
+                    <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
+                      <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Website Group (1-10)</span>
+                      <span className="font-bold text-obsidian font-mono">
                         {selectedLead.latest_score_record.website_group_score}/100
                       </span>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                      <span className="text-slate-500 block text-[10px] uppercase font-bold">Marketing Factors (11-22)</span>
-                      <span className="font-bold text-slate-800">
+                    <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
+                      <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Marketing Group (11-22)</span>
+                      <span className="font-bold text-obsidian font-mono">
                         {selectedLead.latest_score_record.marketing_group_score}/100
                       </span>
                     </div>
                   </div>
 
-                  {/* Explainable Signals Table */}
-                  <div>
-                    <h4 className="font-bold text-slate-800 mb-2">Detailed 22-Point Quality Factors</h4>
-                    <div className="border border-slate-200 rounded-lg overflow-hidden">
-                      <table className="w-full text-left text-[11px]">
-                        <thead className="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200">
-                          <tr>
-                            <th className="py-2 px-3">Quality Factor</th>
-                            <th className="py-2 px-3">Category</th>
-                            <th className="py-2 px-3 text-center">Score</th>
-                            <th className="py-2 px-3 text-center">Weight</th>
-                            <th className="py-2 px-3">Audit Finding & Explanation</th>
+                  {/* 22 Signals Table */}
+                  <div className="border border-cosmic-200 rounded-2xl overflow-hidden">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-cosmic-200/60 text-obsidian/60 font-mono uppercase text-[9px]">
+                        <tr>
+                          <th className="py-2.5 px-3">Signal Name</th>
+                          <th className="py-2.5 px-3">Group</th>
+                          <th className="py-2.5 px-3 text-center">Score</th>
+                          <th className="py-2.5 px-3 text-center">Weight</th>
+                          <th className="py-2.5 px-3">Audit Evidence</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-cosmic-200/60">
+                        {selectedLead.latest_score_record.signal_breakdown.explanations.map((sig) => (
+                          <tr key={sig.signal_key} className="hover:bg-cosmic-100/50">
+                            <td className="py-2 px-3 font-semibold text-obsidian">{sig.name}</td>
+                            <td className="py-2 px-3 uppercase text-[9px] font-mono text-obsidian/50">
+                              {sig.category}
+                            </td>
+                            <td className="py-2 px-3 text-center font-mono font-bold text-obsidian">
+                              {sig.normalized_score}
+                            </td>
+                            <td className="py-2 px-3 text-center font-mono text-obsidian/50">{sig.weight}</td>
+                            <td className="py-2 px-3 text-obsidian/70">{sig.summary}</td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {selectedLead.latest_score_record.signal_breakdown.explanations.map((sig) => (
-                            <tr key={sig.signal_key} className="hover:bg-slate-50">
-                              <td className="py-2 px-3 font-semibold text-slate-900">{sig.name}</td>
-                              <td className="py-2 px-3 uppercase text-[9px] font-bold text-slate-500">
-                                {sig.category}
-                              </td>
-                              <td className="py-2 px-3 text-center font-bold text-slate-800">
-                                {sig.normalized_score}
-                              </td>
-                              <td className="py-2 px-3 text-center text-slate-500">{sig.weight}</td>
-                              <td className="py-2 px-3 text-slate-600">{sig.summary}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               ) : (
-                <div className="py-8 text-center text-slate-500 text-xs">
-                  This lead has not been evaluated yet. Click &quot;Evaluate Lead&quot; to review.
+                <div className="py-8 text-center text-obsidian/50 text-xs">
+                  This lead has not been evaluated yet. Click Score to run the 22-signal engine.
                 </div>
               )
             ) : selectedLead.latest_enrichment ? (
               <div className="space-y-3 text-xs">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Scanning Engine</span>
-                    <span className="font-semibold text-slate-900">Local Native Scanner</span>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
+                    <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Engine</span>
+                    <span className="font-semibold text-obsidian">Local Native Safe Crawler</span>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Page Load Time</span>
-                    <span className="font-semibold text-slate-900">
+                  <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
+                    <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Response Time</span>
+                    <span className="font-semibold text-obsidian font-mono">
                       {selectedLead.latest_enrichment.evidence.load_time_ms} ms
                     </span>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Security (SSL)</span>
-                    <span className="font-semibold text-emerald-600">
-                      {selectedLead.latest_enrichment.evidence.ssl_valid ? "Valid (HTTPS)" : "Invalid"}
+                  <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
+                    <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Security</span>
+                    <span className="font-semibold text-lilac-700 font-mono">
+                      {selectedLead.latest_enrichment.evidence.ssl_valid ? "TLS / HTTPS" : "Insecure"}
                     </span>
                   </div>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Page Title</span>
-                  <p className="font-medium text-slate-900">
+                <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300 space-y-1">
+                  <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Title</span>
+                  <p className="font-medium text-obsidian">
                     {selectedLead.latest_enrichment.evidence.title || "No page title detected"}
                   </p>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Description</span>
-                  <p className="font-normal text-slate-700">
-                    {selectedLead.latest_enrichment.evidence.meta_description || "No meta description found"}
+                <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300 space-y-1">
+                  <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Meta Description</span>
+                  <p className="text-obsidian/70">
+                    {selectedLead.latest_enrichment.evidence.meta_description || "No description found"}
                   </p>
                 </div>
 
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                  <span className="text-slate-500 block text-[10px] uppercase font-bold">Detected Technologies</span>
+                <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300 space-y-2">
+                  <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Detected Technologies</span>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedLead.latest_enrichment.evidence.detected_tech?.map((t) => (
-                      <span key={t} className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800">
+                      <span key={t} className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold bg-lilac-100 text-lilac-800 border border-lilac-200">
                         {t}
                       </span>
                     ))}
@@ -1003,13 +1369,13 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-slate-500 py-6 text-center">No website scan record found for this prospect.</p>
+              <p className="text-xs text-obsidian/50 py-6 text-center">No website scan record found for this prospect.</p>
             )}
 
-            <div className="text-right pt-3 border-t border-slate-200">
+            <div className="text-right pt-3 border-t border-cosmic-200">
               <button
                 onClick={() => setSelectedLead(null)}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 text-slate-800 hover:bg-slate-300 transition"
+                className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-cosmic-200 text-obsidian hover:bg-cosmic-300 transition"
               >
                 Close
               </button>
