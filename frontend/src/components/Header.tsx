@@ -1,16 +1,44 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useNav } from "@/lib/nav-context";
 
 export function Header() {
   const { user, activeMembership, switchOrganization, logout } = useAuth();
-  const { activeTab, setActiveTab, role, setRole, leadsCount, theme, toggleTheme } = useNav();
+  const { activeTab, setActiveTab, setRole, leadsCount, theme, toggleTheme } = useNav();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const pathname = usePathname();
+
+  // Sync role and activeTab according to route
+  useEffect(() => {
+    if (pathname === "/portal") {
+      setRole("client_viewer");
+      setActiveTab("portal");
+    } else if (pathname === "/super-admin") {
+      setRole("super_admin");
+      setActiveTab("admin");
+    } else if (pathname === "/icp") {
+      setRole("org_admin");
+      setActiveTab("icp");
+    } else if (pathname === "/") {
+      setRole("org_admin");
+      if (activeTab === "portal" || activeTab === "admin" || activeTab === "audit") {
+        setActiveTab("leads");
+      }
+    }
+  }, [pathname, setRole, setActiveTab, activeTab]);
 
   const displayName = user?.full_name || "Operator";
+
+  const currentRoleName =
+    pathname === "/portal"
+      ? "Client Viewer"
+      : pathname === "/super-admin"
+      ? "Super Admin"
+      : "Org Admin";
 
   return (
     <header className="sticky top-0 z-50 glass-panel border-b border-blush-200/70 dark:border-obsidian-800 shadow-sm transition-all">
@@ -29,56 +57,47 @@ export function Header() {
             </div>
           </Link>
 
-          {/* Operator Status Pill */}
+          {/* Current Role Indicator Pill */}
           <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-cosmic-300/80 dark:border-obsidian-700">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lilac-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-lilac-600 dark:bg-lilac-400"></span>
             </span>
             <span className="text-[11px] font-medium text-obsidian/70 dark:text-cosmic-300 tracking-wide">
-              Role: <span className="font-bold text-obsidian dark:text-cosmic-100 font-mono capitalize">{role.replace("_", " ")}</span>
+              Role: <span className="font-bold text-obsidian dark:text-cosmic-100 font-mono">{currentRoleName}</span>
             </span>
           </div>
         </div>
 
-        {/* Center: Role-Separated Navigation (Item 1 & 2) */}
+        {/* Center: Contextual Navigation based on Direct URL */}
         <div className="flex items-center space-x-1 sm:space-x-1.5 bg-cosmic-100/90 dark:bg-obsidian-800/90 p-1 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
-          {role === "client_viewer" ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setActiveTab("portal")}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-                  activeTab === "portal"
-                    ? "btn-obsidian"
-                    : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
-                }`}
-              >
-                <span>Qualified Leads</span>
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                  Verified
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("integrations")}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-                  activeTab === "integrations"
-                    ? "btn-obsidian"
-                    : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
-                }`}
-              >
-                <span>ICP & Engine Brief</span>
-              </button>
-            </>
+          {pathname === "/portal" ? (
+            <Link
+              href="/portal"
+              className="px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold btn-obsidian flex items-center gap-1.5"
+            >
+              <span>Verified Leads</span>
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                Client Portal
+              </span>
+            </Link>
+          ) : pathname === "/super-admin" ? (
+            <Link
+              href="/super-admin"
+              className="px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold btn-obsidian flex items-center gap-1.5"
+            >
+              <span>Multi-Tenant Oversight</span>
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950">
+                Super Admin
+              </span>
+            </Link>
           ) : (
             <>
-              <button
-                type="button"
+              <Link
+                href="/"
                 onClick={() => setActiveTab("leads")}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-                  activeTab === "leads"
+                  pathname === "/" && activeTab === "leads"
                     ? "btn-obsidian"
                     : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
                 }`}
@@ -86,20 +105,20 @@ export function Header() {
                 <span>Lead Pipeline</span>
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                    activeTab === "leads"
+                    pathname === "/" && activeTab === "leads"
                       ? "bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950"
                       : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
                   }`}
                 >
                   {leadsCount}
                 </span>
-              </button>
+              </Link>
 
-              <button
-                type="button"
+              <Link
+                href="/icp"
                 onClick={() => setActiveTab("icp")}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-                  activeTab === "icp"
+                  pathname === "/icp" || (pathname === "/" && activeTab === "icp")
                     ? "btn-obsidian"
                     : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
                 }`}
@@ -107,20 +126,20 @@ export function Header() {
                 <span>Audiences (ICP)</span>
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                    activeTab === "icp"
+                    pathname === "/icp" || (pathname === "/" && activeTab === "icp")
                       ? "bg-emerald-300 text-obsidian dark:bg-emerald-400 dark:text-obsidian-950"
                       : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
                   }`}
                 >
                   Builder
                 </span>
-              </button>
+              </Link>
 
-              <button
-                type="button"
+              <Link
+                href="/"
                 onClick={() => setActiveTab("integrations")}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-                  activeTab === "integrations"
+                  pathname === "/" && activeTab === "integrations"
                     ? "btn-obsidian"
                     : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
                 }`}
@@ -128,88 +147,26 @@ export function Header() {
                 <span>Signal Engines</span>
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                    activeTab === "integrations"
+                    pathname === "/" && activeTab === "integrations"
                       ? "bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950"
                       : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
                   }`}
                 >
                   22 Signals
                 </span>
-              </button>
-
-              {role === "super_admin" && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("admin")}
-                  className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-                    activeTab === "admin"
-                      ? "btn-obsidian"
-                      : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
-                  }`}
-                >
-                  <span>Super Admin</span>
-                  <span
-                    className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                      activeTab === "admin"
-                        ? "bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950"
-                        : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
-                    }`}
-                  >
-                    Oversight
-                  </span>
-                </button>
-              )}
+              </Link>
             </>
           )}
         </div>
 
-        {/* Right: Role Switcher & Theme Toggle */}
+        {/* Right: Theme Toggle & User Profile (Role toggle pill completely removed) */}
         <div className="flex items-center space-x-2.5">
-          {/* Interactive Role Switcher Pill (Item 1 & 2) */}
-          <div className="hidden lg:flex items-center space-x-1 bg-cosmic-100/90 dark:bg-obsidian-800 p-1 rounded-2xl border border-cosmic-300 dark:border-obsidian-700 text-[10px] font-mono font-bold">
-            <button
-              type="button"
-              onClick={() => setRole("org_admin")}
-              className={`px-2.5 py-1 rounded-xl transition ${
-                role === "org_admin"
-                  ? "btn-obsidian shadow-sm"
-                  : "text-obsidian/60 dark:text-cosmic-400 hover:text-obsidian"
-              }`}
-              title="Org Admin: Full pipeline, Audiences, Engines & Exports"
-            >
-              Org Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("client_viewer")}
-              className={`px-2.5 py-1 rounded-xl transition ${
-                role === "client_viewer"
-                  ? "btn-obsidian shadow-sm"
-                  : "text-obsidian/60 dark:text-cosmic-400 hover:text-obsidian"
-              }`}
-              title="Client Viewer: Read-only portal, strictly zero cost cards"
-            >
-              Client Viewer
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole("super_admin")}
-              className={`px-2.5 py-1 rounded-xl transition ${
-                role === "super_admin"
-                  ? "btn-obsidian shadow-sm"
-                  : "text-obsidian/60 dark:text-cosmic-400 hover:text-obsidian"
-              }`}
-              title="Super Admin: Multi-tenant oversight, quotas & audit logs"
-            >
-              Super Admin
-            </button>
-          </div>
-          {/* Light / Dark Mode Toggle Button (Item 8) */}
+          {/* Light / Dark Mode Toggle Button */}
           <button
             type="button"
             onClick={toggleTheme}
             aria-label="Toggle Theme"
-            className="w-8 h-8 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-cosmic-100/80 dark:bg-obsidian-800 flex items-center justify-center text-obsidian dark:text-cosmic-100 hover:bg-cosmic-200 dark:hover:bg-obsidian-700 transition"
+            className="w-8 h-8 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-cosmic-100/80 dark:bg-obsidian-800 flex items-center justify-center text-obsidian dark:text-cosmic-100 hover:bg-cosmic-200 dark:hover:bg-obsidian-700 transition cursor-pointer"
             title={theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
           >
             {theme === "light" ? (
@@ -223,7 +180,7 @@ export function Header() {
             )}
           </button>
 
-          {/* User Profile on Extreme Right (Item 7) */}
+          {/* User Profile on Extreme Right */}
           {user ? (
             <div className="relative">
               <button
@@ -245,7 +202,7 @@ export function Header() {
                 <span className="text-[9px] text-obsidian/40 dark:text-cosmic-400">▼</span>
               </button>
 
-              {/* Profile Dropdown: Displays info, org switcher, and Logout (Item 7) */}
+              {/* Profile Dropdown: Displays info, org switcher, and Logout */}
               {showProfileMenu && (
                 <div className="absolute right-0 mt-2 w-60 glass-panel dark:bg-obsidian-900 rounded-2xl shadow-xl py-2 z-50 text-xs border border-blush-200 dark:border-obsidian-700 animate-in fade-in slide-in-from-top-2">
                   <div className="px-3.5 py-2 border-b border-cosmic-200 dark:border-obsidian-700">
@@ -281,7 +238,7 @@ export function Header() {
                     </div>
                   )}
 
-                  {/* Distinct Logout Button (Item 7) */}
+                  {/* Distinct Logout Button */}
                   <div className="pt-1 px-1">
                     <button
                       type="button"
