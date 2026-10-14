@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth-context";
 import {
   AdminOrgItem,
   AuditLogItem,
@@ -10,12 +11,16 @@ import {
 } from "@/lib/api";
 
 export function SuperAdminPortal() {
+  const { switchOrganization } = useAuth();
   const [orgs, setOrgs] = useState<AdminOrgItem[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [updatingOrgId, setUpdatingOrgId] = useState<string | null>(null);
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [activeSubTab, setActiveSubTab] = useState<"orgs" | "audit">("orgs");
+
+  const selectedOrg = orgs.find((o) => o.id === selectedOrgId) || null;
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -237,8 +242,15 @@ export function SuperAdminPortal() {
 
                     return (
                       <tr key={org.id} className="hover:bg-cosmic-100/60 dark:hover:bg-obsidian-800/60 transition">
-                        <td className="py-3.5 px-5">
-                          <div className="font-bold text-obsidian dark:text-cosmic-100">{org.name}</div>
+                        <td
+                          className="py-3.5 px-5 cursor-pointer group"
+                          onClick={() => setSelectedOrgId(org.id)}
+                          title="Click to view full organization details"
+                        >
+                          <div className="font-bold text-obsidian dark:text-cosmic-100 group-hover:text-lilac-600 dark:group-hover:text-lilac-400 transition flex items-center gap-1.5">
+                            <span>{org.name}</span>
+                            <span className="text-[10px] text-lilac-500 opacity-0 group-hover:opacity-100 transition">🔍 View</span>
+                          </div>
                           <div className="text-[11px] font-mono text-obsidian/50 dark:text-cosmic-400">slug: {org.slug}</div>
                         </td>
 
@@ -259,7 +271,7 @@ export function SuperAdminPortal() {
                             type="button"
                             disabled={isUpdating}
                             onClick={() => handleToggleOperator(org)}
-                            className={`text-xs font-semibold px-3 py-1 rounded-xl transition border ${
+                            className={`text-xs font-semibold px-3 py-1 rounded-xl transition border cursor-pointer ${
                               org.operator_enabled
                                 ? "bg-emerald-50 dark:bg-obsidian-800 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-obsidian-700"
                                 : "bg-amber-50 dark:bg-obsidian-800 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-obsidian-700"
@@ -275,7 +287,7 @@ export function SuperAdminPortal() {
                               type="button"
                               disabled={isUpdating}
                               onClick={() => handleAdjustQuota(org, -25)}
-                              className="w-5 h-5 rounded-md bg-cosmic-200 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-300 dark:hover:bg-obsidian-700 flex items-center justify-center font-bold text-xs border border-cosmic-300 dark:border-obsidian-700"
+                              className="w-5 h-5 rounded-md bg-cosmic-200 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-300 dark:hover:bg-obsidian-700 flex items-center justify-center font-bold text-xs border border-cosmic-300 dark:border-obsidian-700 cursor-pointer"
                             >
                               -
                             </button>
@@ -286,7 +298,7 @@ export function SuperAdminPortal() {
                               type="button"
                               disabled={isUpdating}
                               onClick={() => handleAdjustQuota(org, 25)}
-                              className="w-5 h-5 rounded-md bg-cosmic-200 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-300 dark:hover:bg-obsidian-700 flex items-center justify-center font-bold text-xs border border-cosmic-300 dark:border-obsidian-700"
+                              className="w-5 h-5 rounded-md bg-cosmic-200 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-300 dark:hover:bg-obsidian-700 flex items-center justify-center font-bold text-xs border border-cosmic-300 dark:border-obsidian-700 cursor-pointer"
                             >
                               +
                             </button>
@@ -302,18 +314,27 @@ export function SuperAdminPortal() {
                         </td>
 
                         <td className="py-3.5 px-5 text-right">
-                          <button
-                            type="button"
-                            disabled={isUpdating}
-                            onClick={() => handleToggleOrgStatus(org)}
-                            className={`text-xs font-semibold px-3 py-1 rounded-xl transition ${
-                              org.is_active
-                                ? "bg-rose-50 dark:bg-obsidian-800 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-100"
-                                : "bg-emerald-50 dark:bg-obsidian-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100"
-                            }`}
-                          >
-                            {org.is_active ? "Suspend Org" : "Reactivate Org"}
-                          </button>
+                          <div className="flex items-center justify-end space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedOrgId(org.id)}
+                              className="text-xs font-semibold px-2.5 py-1 rounded-xl transition bg-cosmic-200/80 hover:bg-cosmic-300 text-obsidian dark:bg-obsidian-800 dark:hover:bg-obsidian-700 dark:text-cosmic-200 border border-cosmic-300 dark:border-obsidian-700 cursor-pointer"
+                            >
+                              View Details
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleToggleOrgStatus(org)}
+                              className={`text-xs font-semibold px-3 py-1 rounded-xl transition cursor-pointer ${
+                                org.is_active
+                                  ? "bg-rose-50 dark:bg-obsidian-800 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-100"
+                                  : "bg-emerald-50 dark:bg-obsidian-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100"
+                              }`}
+                            >
+                              {org.is_active ? "Suspend Org" : "Reactivate Org"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -385,6 +406,193 @@ export function SuperAdminPortal() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW C: Organization Details Modal Card */}
+      {selectedOrg && (
+        <div
+          className="fixed inset-0 z-50 bg-obsidian-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedOrgId(null)}
+        >
+          <div
+            className="glass-panel card-cosmic rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl border border-blush-200 dark:border-obsidian-700 relative text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-cosmic-200 dark:border-obsidian-800">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-xl font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
+                    {selectedOrg.name}
+                  </h3>
+                  <span
+                    className={`text-[10px] font-mono font-bold uppercase px-2.5 py-0.5 rounded-full border ${
+                      selectedOrg.is_active
+                        ? "bg-emerald-50 dark:bg-obsidian-900 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                        : "bg-rose-50 dark:bg-obsidian-900 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                    }`}
+                  >
+                    {selectedOrg.is_active ? "Active" : "Suspended"}
+                  </span>
+                </div>
+                <div className="text-xs text-obsidian/60 dark:text-cosmic-400 mt-1 flex flex-wrap items-center gap-2">
+                  <span>Slug: <strong className="font-mono text-obsidian dark:text-cosmic-200">{selectedOrg.slug}</strong></span>
+                  <span>•</span>
+                  <span className="font-mono text-[11px] text-obsidian/50 dark:text-cosmic-400 truncate max-w-xs">ID: {selectedOrg.id}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedOrgId(null)}
+                className="w-8 h-8 rounded-full bg-cosmic-200 hover:bg-cosmic-300 dark:bg-obsidian-800 dark:hover:bg-obsidian-700 text-obsidian dark:text-cosmic-200 flex items-center justify-center font-bold text-lg transition cursor-pointer"
+                title="Close"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* 3 Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 my-5">
+              <div className="card-nested p-4 rounded-2xl border border-cosmic-200 dark:border-obsidian-700">
+                <div className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400">
+                  Monthly Quota
+                </div>
+                <div className="text-2xl font-extrabold text-obsidian dark:text-cosmic-100 mt-1">
+                  {selectedOrg.monthly_lead_quota}
+                </div>
+                <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400 mt-0.5">Leads / month</div>
+              </div>
+
+              <div className="card-nested p-4 rounded-2xl border border-cosmic-200 dark:border-obsidian-700">
+                <div className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400">
+                  Enrolled Users
+                </div>
+                <div className="text-2xl font-extrabold text-obsidian dark:text-cosmic-100 mt-1">
+                  {selectedOrg.user_count}
+                </div>
+                <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400 mt-0.5">RBAC Members</div>
+              </div>
+
+              <div className="card-nested p-4 rounded-2xl border border-cosmic-200 dark:border-obsidian-700">
+                <div className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400">
+                  Discovered Leads
+                </div>
+                <div className="text-2xl font-extrabold text-obsidian dark:text-cosmic-100 mt-1">
+                  {selectedOrg.lead_count}
+                </div>
+                <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400 mt-0.5">Scored Prospects</div>
+              </div>
+            </div>
+
+            {/* Operational Controls & Multi-Tenancy Specs */}
+            <div className="space-y-3.5 text-xs">
+              <div className="card-nested p-4 rounded-2xl border border-cosmic-200 dark:border-obsidian-700 space-y-3">
+                <div className="text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/70 dark:text-cosmic-300">
+                  Tenant Configuration & Live Controls
+                </div>
+
+                <div className="flex items-center justify-between py-1.5 border-b border-cosmic-200/60 dark:border-obsidian-700">
+                  <div>
+                    <div className="font-bold text-obsidian dark:text-cosmic-100">Operator Lead Pipeline</div>
+                    <div className="text-[11px] text-obsidian/60 dark:text-cosmic-400">Allow autonomous background discovery runs</div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={updatingOrgId === selectedOrg.id}
+                    onClick={() => handleToggleOperator(selectedOrg)}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition border cursor-pointer ${
+                      selectedOrg.operator_enabled
+                        ? "bg-emerald-50 dark:bg-obsidian-800 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-obsidian-700"
+                        : "bg-amber-50 dark:bg-obsidian-800 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-obsidian-700"
+                    }`}
+                  >
+                    {selectedOrg.operator_enabled ? "Pipeline Enabled ✓" : "Pipeline Disabled ✕"}
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between py-1.5 border-b border-cosmic-200/60 dark:border-obsidian-700">
+                  <div>
+                    <div className="font-bold text-obsidian dark:text-cosmic-100">Organization Quota Tuning</div>
+                    <div className="text-[11px] text-obsidian/60 dark:text-cosmic-400">Adjust monthly cap for zero-cost discovery</div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      disabled={updatingOrgId === selectedOrg.id}
+                      onClick={() => handleAdjustQuota(selectedOrg, -50)}
+                      className="px-2.5 py-1 rounded-xl bg-cosmic-200 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 font-bold border border-cosmic-300 dark:border-obsidian-700 hover:bg-cosmic-300 cursor-pointer"
+                    >
+                      -50
+                    </button>
+                    <span className="font-mono font-bold text-obsidian dark:text-cosmic-100 px-1">
+                      {selectedOrg.monthly_lead_quota}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={updatingOrgId === selectedOrg.id}
+                      onClick={() => handleAdjustQuota(selectedOrg, 50)}
+                      className="px-2.5 py-1 rounded-xl bg-cosmic-200 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 font-bold border border-cosmic-300 dark:border-obsidian-700 hover:bg-cosmic-300 cursor-pointer"
+                    >
+                      +50
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between py-1.5">
+                  <div>
+                    <div className="font-bold text-obsidian dark:text-cosmic-100">Tenant Account Lifecycle</div>
+                    <div className="text-[11px] text-obsidian/60 dark:text-cosmic-400">Suspension immediately terminates JWT sessions & API access</div>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={updatingOrgId === selectedOrg.id}
+                    onClick={() => handleToggleOrgStatus(selectedOrg)}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-xl transition cursor-pointer ${
+                      selectedOrg.is_active
+                        ? "bg-rose-50 dark:bg-obsidian-800 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-100"
+                        : "bg-emerald-50 dark:bg-obsidian-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100"
+                    }`}
+                  >
+                    {selectedOrg.is_active ? "Suspend Organization" : "Reactivate Organization"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Security & Multi-tenancy Architecture info */}
+              <div className="p-3.5 rounded-2xl bg-lilac-50/60 dark:bg-obsidian-800/80 border border-lilac-200/60 dark:border-obsidian-700 text-[11px] text-obsidian/70 dark:text-cosmic-300 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>PostgreSQL Row-Level Security: <strong>FORCE ROW LEVEL SECURITY</strong> on <code>org_id</code></span>
+                </div>
+                <span className="font-mono text-[10px] text-obsidian/50 dark:text-cosmic-400">Isolated Tenant Boundary</span>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="mt-6 pt-4 border-t border-cosmic-200 dark:border-obsidian-800 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => {
+                  switchOrganization(selectedOrg.id);
+                  showNotification(`Switched active context to "${selectedOrg.name}".`);
+                  setSelectedOrgId(null);
+                }}
+                className="text-xs font-semibold px-4 py-2 rounded-xl bg-lilac-600 hover:bg-lilac-700 text-white transition flex items-center gap-2 cursor-pointer shadow-sm"
+              >
+                <span>Switch to this Org Context</span>
+                <span>→</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrgId(null)}
+                className="px-4 py-2 rounded-xl btn-obsidian text-xs font-semibold cursor-pointer"
+              >
+                Close Details
+              </button>
+            </div>
           </div>
         </div>
       )}

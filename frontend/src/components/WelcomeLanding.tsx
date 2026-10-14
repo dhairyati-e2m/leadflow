@@ -336,12 +336,9 @@ export function WelcomeLanding() {
             <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none"></div>
 
             <div className="flex items-center justify-between pb-3 border-b border-cosmic-200 dark:border-obsidian-800">
-              <span className="text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 flex items-center gap-2">
+              <span className="text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/70 dark:text-cosmic-400 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-lilac-500"></span>
-                LeadFlow Engine Architecture
-              </span>
-              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800">
-                100% Free / Local
+                FEATURES
               </span>
             </div>
 
@@ -358,7 +355,6 @@ export function WelcomeLanding() {
                     <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400">Next.js Jamstack, Viewports, Semantic HTML5</div>
                   </div>
                 </div>
-                <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">920ms</span>
               </div>
 
               {/* Node 2: Technical & Growth Enrichment */}
@@ -372,7 +368,6 @@ export function WelcomeLanding() {
                     <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400">PageSpeed Core Web Vitals, TLS / SSL & DNS</div>
                   </div>
                 </div>
-                <span className="text-[10px] font-mono font-bold text-lilac-700 dark:text-lilac-300">TLS HTTPS ✓</span>
               </div>
 
               {/* Node 3: 22-Signal Scoring Engine */}
@@ -386,9 +381,6 @@ export function WelcomeLanding() {
                     <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400">10 Website Architecture + 12 Marketing Signals</div>
                   </div>
                 </div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                  84.5 Qualified
-                </span>
               </div>
 
               {/* Node 4: AI Outreach Draft Studio */}
@@ -402,7 +394,6 @@ export function WelcomeLanding() {
                     <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400">Bespoke technical pain-point email generation</div>
                   </div>
                 </div>
-                <span className="text-[10px] font-mono font-bold text-obsidian/60 dark:text-cosmic-400">Ready</span>
               </div>
 
               {/* Node 5: HubSpot CRM Sync */}
@@ -416,13 +407,7 @@ export function WelcomeLanding() {
                     <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400">Credit-safe contact reveal & sales handoff</div>
                   </div>
                 </div>
-                <span className="text-[10px] font-mono font-bold text-lilac-700 dark:text-lilac-300">In CRM ✓</span>
               </div>
-            </div>
-
-            <div className="pt-3 border-t border-cosmic-200 dark:border-obsidian-800 text-[11px] text-obsidian/60 dark:text-cosmic-400 flex items-center justify-between">
-              <span>Platform Security: PostgreSQL RLS Enforced</span>
-              <span className="font-mono font-semibold">1,000–1,500 Users Verified</span>
             </div>
           </div>
         </div>
