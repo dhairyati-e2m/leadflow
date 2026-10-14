@@ -753,7 +753,7 @@ export default function DashboardPage() {
                 >
                   Download Sample CSV
                 </button>
-                <label className="cursor-pointer text-xs font-semibold px-4 py-2 rounded-xl bg-cosmic-200 dark:bg-obsidian-700 hover:bg-cosmic-300 dark:hover:bg-obsidian-600 border border-cosmic-300 dark:border-obsidian-600 text-obsidian dark:text-cosmic-100 transition shadow-sm">
+                <label className="cursor-pointer text-xs font-semibold px-4 py-2 rounded-xl bg-cosmic-200 dark:bg-obsidian-800 hover:bg-cosmic-300 dark:hover:bg-obsidian-700 border border-cosmic-300 dark:border-obsidian-700 text-obsidian dark:text-cosmic-100 transition shadow-sm">
                   Upload CSV
                   <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
                 </label>
@@ -780,7 +780,7 @@ export default function DashboardPage() {
             </div>
 
             {uploadStatus && (
-              <div className="mt-4 p-3 rounded-2xl text-xs font-medium bg-lilac-50 dark:bg-lilac-950/40 border border-lilac-200 dark:border-lilac-800 text-obsidian dark:text-cosmic-200">
+              <div className="mt-4 p-3 rounded-2xl text-xs font-medium bg-lilac-50 dark:bg-obsidian-900 border border-lilac-200 dark:border-obsidian-700 text-obsidian dark:text-cosmic-200">
                 {uploadStatus}
               </div>
             )}
@@ -788,7 +788,7 @@ export default function DashboardPage() {
 
           {/* Active Batch Run Monitor */}
           {activeRun && (
-            <div className="glass-panel rounded-3xl p-5 border border-lilac-300/80 dark:border-lilac-800 shadow-futuristic bg-gradient-to-r from-lilac-50/50 via-cosmic-100/40 to-blush-50/50 dark:from-lilac-950/30 dark:via-obsidian-900/50 dark:to-blush-950/30">
+            <div className="glass-panel rounded-3xl p-5 border border-lilac-300/80 dark:border-obsidian-700 shadow-futuristic bg-gradient-to-r from-lilac-50/50 via-cosmic-100/40 to-blush-50/50 dark:from-obsidian-900 dark:via-obsidian-850 dark:to-obsidian-900">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
                 <div className="flex items-center space-x-3">
                   <span className={`w-3 h-3 rounded-full ${activeRun.status === "running" ? "bg-lilac-500 animate-pulse" : "bg-obsidian dark:bg-cosmic-100"}`}></span>
@@ -1050,14 +1050,14 @@ export default function DashboardPage() {
                             {isDrafted && !isSynced && (
                               <button
                                 onClick={() => handleSyncToHubSpot(lead.id)}
-                                className="px-3 py-1 text-xs font-bold rounded-xl bg-lilac-200 hover:bg-lilac-300 dark:bg-lilac-900/60 dark:hover:bg-lilac-800/80 text-lilac-800 dark:text-lilac-200 border border-lilac-300 dark:border-lilac-700 transition"
+                                className="px-3 py-1 text-xs font-bold rounded-xl bg-lilac-200 hover:bg-lilac-300 dark:bg-obsidian-800 dark:hover:bg-obsidian-700 text-lilac-800 dark:text-cosmic-100 border border-lilac-300 dark:border-obsidian-700 transition"
                               >
                                 Sync CRM
                               </button>
                             )}
 
                             {isSynced && (
-                              <span className="text-[11px] font-mono text-lilac-700 dark:text-lilac-300 font-bold px-2 py-0.5 rounded-lg bg-lilac-100 dark:bg-lilac-950/60 border border-lilac-200 dark:border-lilac-800">
+                              <span className="text-[11px] font-mono text-lilac-700 dark:text-lilac-300 font-bold px-2 py-0.5 rounded-lg bg-lilac-100 dark:bg-obsidian-900 border border-lilac-200 dark:border-obsidian-700">
                                 Synced ✓
                               </span>
                             )}
@@ -1360,7 +1360,7 @@ export default function DashboardPage() {
                   <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Detected Technologies</span>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedLead.latest_enrichment.evidence.detected_tech?.map((t) => (
-                      <span key={t} className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold bg-lilac-100 dark:bg-lilac-950/60 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-lilac-800">
+                      <span key={t} className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700">
                         {t}
                       </span>
                     ))}

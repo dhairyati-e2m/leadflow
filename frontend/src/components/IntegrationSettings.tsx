@@ -431,16 +431,17 @@ export function IntegrationSettings() {
 
   return (
     <div className="space-y-8">
-      {/* Notification Toast Alert (Always Light Red as per Item 2) */}
+      {/* Floating Notification Toast Popup (Top-Right, Light Red) */}
       {notification && (
-        <div className="p-3.5 rounded-2xl text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-900/80 text-rose-950 dark:text-rose-200 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-1">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-            <span>{notification}</span>
+        <div className="fixed top-6 right-6 z-50 max-w-sm sm:max-w-md p-4 rounded-2xl text-xs font-semibold bg-rose-50/95 dark:bg-rose-950/95 border border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-100 shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-200 backdrop-blur-md">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse flex-shrink-0"></span>
+            <span className="leading-snug">{notification}</span>
           </div>
           <button
             onClick={() => setNotification(null)}
-            className="text-rose-700 dark:text-rose-300 hover:text-rose-950 dark:hover:text-white font-bold ml-4"
+            className="text-rose-700 dark:text-rose-300 hover:text-rose-950 dark:hover:text-white font-bold text-base px-1 transition-colors"
+            title="Dismiss notification"
           >
             &times;
           </button>
@@ -531,7 +532,7 @@ export function IntegrationSettings() {
             return (
               <div
                 key={p.key}
-                className={`rounded-3xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200 border-2 border-lilac-300/90 dark:border-lilac-700 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:bg-lilac-50/75 dark:hover:bg-lilac-950/30 hover:border-lilac-400 dark:hover:border-lilac-600 ${
+                className={`rounded-3xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200 border-2 border-lilac-300/90 dark:border-obsidian-700 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:bg-lilac-50/75 dark:hover:bg-obsidian-800 hover:border-lilac-400 dark:hover:border-obsidian-600 ${
                   isPolicyBlocked ? "opacity-90" : ""
                 }`}
               >
@@ -576,7 +577,7 @@ export function IntegrationSettings() {
                       <button
                         type="button"
                         onClick={() => handleAdjustWeight(p.key, p.name, -0.1)}
-                        className="w-5 h-5 rounded-md bg-cosmic-200 dark:bg-obsidian-700 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-300 dark:hover:bg-obsidian-600 flex items-center justify-center font-bold text-xs"
+                        className="w-5 h-5 rounded-md bg-cosmic-200 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-300 dark:hover:bg-obsidian-700 flex items-center justify-center font-bold text-xs border border-cosmic-300 dark:border-obsidian-700"
                         title="Decrease weight"
                       >
                         -
@@ -587,7 +588,7 @@ export function IntegrationSettings() {
                       <button
                         type="button"
                         onClick={() => handleAdjustWeight(p.key, p.name, 0.1)}
-                        className="w-5 h-5 rounded-md bg-cosmic-200 dark:bg-obsidian-700 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-300 dark:hover:bg-obsidian-600 flex items-center justify-center font-bold text-xs"
+                        className="w-5 h-5 rounded-md bg-cosmic-200 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-300 dark:hover:bg-obsidian-700 flex items-center justify-center font-bold text-xs border border-cosmic-300 dark:border-obsidian-700"
                         title="Increase weight"
                       >
                         +
@@ -700,7 +701,7 @@ export function IntegrationSettings() {
             return (
               <div
                 key={sig.key}
-                className="rounded-3xl p-5 flex flex-col justify-between transition-all duration-200 border-2 border-lilac-200/90 dark:border-obsidian-700 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:border-lilac-400 dark:hover:border-lilac-600"
+                className="rounded-3xl p-5 flex flex-col justify-between transition-all duration-200 border-2 border-lilac-200/90 dark:border-obsidian-700 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:bg-lilac-50/75 dark:hover:bg-obsidian-800 hover:border-lilac-400 dark:hover:border-obsidian-600"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2.5">

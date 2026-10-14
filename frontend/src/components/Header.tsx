@@ -13,7 +13,7 @@ export function Header() {
   const displayName = user?.full_name || "Operator";
 
   return (
-    <header className="sticky top-0 z-50 glass-panel border-b border-blush-200/70 shadow-sm transition-all">
+    <header className="sticky top-0 z-50 glass-panel border-b border-blush-200/70 dark:border-obsidian-800 shadow-sm transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Brand Logo & Status */}
         <div className="flex items-center space-x-3 sm:space-x-4">
@@ -23,7 +23,7 @@ export function Header() {
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-base text-obsidian dark:text-cosmic-100 tracking-tight">LeadFlow</span>
-              <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider bg-lilac-100 dark:bg-lilac-950/60 text-lilac-800 dark:text-lilac-300 rounded-full border border-lilac-200/80 dark:border-lilac-800">
+              <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 rounded-full border border-lilac-200/80 dark:border-obsidian-700">
                 Live 22-Signal
               </span>
             </div>
