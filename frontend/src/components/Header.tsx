@@ -7,7 +7,7 @@ import { useNav } from "@/lib/nav-context";
 
 export function Header() {
   const { user, activeMembership, switchOrganization, logout } = useAuth();
-  const { activeTab, setActiveTab, leadsCount, theme, toggleTheme } = useNav();
+  const { activeTab, setActiveTab, role, setRole, leadsCount, theme, toggleTheme } = useNav();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const displayName = user?.full_name || "Operator";
@@ -36,58 +36,174 @@ export function Header() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-lilac-600 dark:bg-lilac-400"></span>
             </span>
             <span className="text-[11px] font-medium text-obsidian/70 dark:text-cosmic-300 tracking-wide">
-              Operator Pipeline: <span className="font-bold text-obsidian dark:text-cosmic-100">Active</span>
+              Role: <span className="font-bold text-obsidian dark:text-cosmic-100 font-mono capitalize">{role.replace("_", " ")}</span>
             </span>
           </div>
         </div>
 
-        {/* Center: Main View Toggle moved to Navbar (Item 7 & 4: Renamed to Signal Engines) */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2 bg-cosmic-100/90 dark:bg-obsidian-800/90 p-1 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
-          <button
-            type="button"
-            onClick={() => setActiveTab("leads")}
-            className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-              activeTab === "leads"
-                ? "btn-obsidian"
-                : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
-            }`}
-          >
-            <span>Lead Pipeline</span>
-            <span
-              className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                activeTab === "leads"
-                  ? "bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950"
-                  : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
-              }`}
-            >
-              {leadsCount}
-            </span>
-          </button>
+        {/* Center: Role-Separated Navigation (Item 1 & 2) */}
+        <div className="flex items-center space-x-1 sm:space-x-1.5 bg-cosmic-100/90 dark:bg-obsidian-800/90 p-1 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
+          {role === "client_viewer" ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab("portal")}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+                  activeTab === "portal"
+                    ? "btn-obsidian"
+                    : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
+                }`}
+              >
+                <span>Qualified Leads</span>
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                  Verified
+                </span>
+              </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("integrations")}
-            className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
-              activeTab === "integrations"
-                ? "btn-obsidian"
-                : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
-            }`}
-          >
-            <span>Signal Engines</span>
-            <span
-              className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                activeTab === "integrations"
-                  ? "bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950"
-                  : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
-              }`}
-            >
-              22 Signals & Rules
-            </span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("integrations")}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+                  activeTab === "integrations"
+                    ? "btn-obsidian"
+                    : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
+                }`}
+              >
+                <span>ICP & Engine Brief</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab("leads")}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+                  activeTab === "leads"
+                    ? "btn-obsidian"
+                    : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
+                }`}
+              >
+                <span>Lead Pipeline</span>
+                <span
+                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
+                    activeTab === "leads"
+                      ? "bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950"
+                      : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
+                  }`}
+                >
+                  {leadsCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("icp")}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+                  activeTab === "icp"
+                    ? "btn-obsidian"
+                    : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
+                }`}
+              >
+                <span>Audiences (ICP)</span>
+                <span
+                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
+                    activeTab === "icp"
+                      ? "bg-emerald-300 text-obsidian dark:bg-emerald-400 dark:text-obsidian-950"
+                      : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
+                  }`}
+                >
+                  Builder
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("integrations")}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+                  activeTab === "integrations"
+                    ? "btn-obsidian"
+                    : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
+                }`}
+              >
+                <span>Signal Engines</span>
+                <span
+                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
+                    activeTab === "integrations"
+                      ? "bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950"
+                      : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
+                  }`}
+                >
+                  22 Signals
+                </span>
+              </button>
+
+              {role === "super_admin" && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("admin")}
+                  className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+                    activeTab === "admin"
+                      ? "btn-obsidian"
+                      : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
+                  }`}
+                >
+                  <span>Super Admin</span>
+                  <span
+                    className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
+                      activeTab === "admin"
+                        ? "bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950"
+                        : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
+                    }`}
+                  >
+                    Oversight
+                  </span>
+                </button>
+              )}
+            </>
+          )}
         </div>
 
-        {/* Right: Theme Toggle & Extreme Right User Profile (Item 7 & 8) */}
-        <div className="flex items-center space-x-3">
+        {/* Right: Role Switcher & Theme Toggle */}
+        <div className="flex items-center space-x-2.5">
+          {/* Interactive Role Switcher Pill (Item 1 & 2) */}
+          <div className="hidden lg:flex items-center space-x-1 bg-cosmic-100/90 dark:bg-obsidian-800 p-1 rounded-2xl border border-cosmic-300 dark:border-obsidian-700 text-[10px] font-mono font-bold">
+            <button
+              type="button"
+              onClick={() => setRole("org_admin")}
+              className={`px-2.5 py-1 rounded-xl transition ${
+                role === "org_admin"
+                  ? "btn-obsidian shadow-sm"
+                  : "text-obsidian/60 dark:text-cosmic-400 hover:text-obsidian"
+              }`}
+              title="Org Admin: Full pipeline, Audiences, Engines & Exports"
+            >
+              Org Admin
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole("client_viewer")}
+              className={`px-2.5 py-1 rounded-xl transition ${
+                role === "client_viewer"
+                  ? "btn-obsidian shadow-sm"
+                  : "text-obsidian/60 dark:text-cosmic-400 hover:text-obsidian"
+              }`}
+              title="Client Viewer: Read-only portal, strictly zero cost cards"
+            >
+              Client Viewer
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole("super_admin")}
+              className={`px-2.5 py-1 rounded-xl transition ${
+                role === "super_admin"
+                  ? "btn-obsidian shadow-sm"
+                  : "text-obsidian/60 dark:text-cosmic-400 hover:text-obsidian"
+              }`}
+              title="Super Admin: Multi-tenant oversight, quotas & audit logs"
+            >
+              Super Admin
+            </button>
+          </div>
           {/* Light / Dark Mode Toggle Button (Item 8) */}
           <button
             type="button"

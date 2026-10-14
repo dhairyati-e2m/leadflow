@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { IntegrationSettings } from "@/components/IntegrationSettings";
+import { IcpEditor } from "@/components/IcpEditor";
+import { ClientPortal } from "@/components/ClientPortal";
+import { SuperAdminPortal } from "@/components/SuperAdminPortal";
 import { useNav } from "@/lib/nav-context";
 
 interface SignalExplanation {
@@ -218,7 +221,7 @@ interface ActiveRunInfo {
 }
 
 export default function DashboardPage() {
-  const { activeTab, setLeadsCount } = useNav();
+  const { activeTab, role, setLeadsCount } = useNav();
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_DEMO_LEADS);
 
   useEffect(() => {
@@ -663,13 +666,33 @@ export default function DashboardPage() {
           </div>
 
           <div className="text-[11px] font-mono text-obsidian/50 dark:text-cosmic-400">
-            Pipeline Mode: <span className="text-obsidian dark:text-cosmic-200 font-semibold">{activeTab === "leads" ? "Lead Qualification" : "Signal Engines & Rules"}</span>
+            Pipeline Mode: <span className="text-obsidian dark:text-cosmic-200 font-semibold">{
+              role === "client_viewer" || activeTab === "portal"
+                ? "Client Verified Portal"
+                : activeTab === "icp"
+                ? "Audiences & ICP Builder"
+                : activeTab === "admin" || activeTab === "audit"
+                ? "Super Admin Multi-Tenant Oversight"
+                : activeTab === "leads"
+                ? "Lead Qualification"
+                : "Signal Engines & Rules"
+            }</span>
           </div>
         </div>
       </div>
 
-      {/* Main Tab 1: Leads Pipeline & Funnel */}
-      {activeTab === "leads" && (
+      {/* 1. Client Viewer Role Portal (Strictly No Cost Cards, Read-Only Qualified Pipeline) */}
+      {(role === "client_viewer" || activeTab === "portal") && (
+        <ClientPortal />
+      )}
+
+      {/* 2. Audiences & ICP Editor for Org Admin (Item 3) */}
+      {role !== "client_viewer" && activeTab === "icp" && (
+        <IcpEditor />
+      )}
+
+      {/* 3. Main Tab 1: Leads Pipeline & Funnel (Org Admin & Super Admin) */}
+      {role !== "client_viewer" && activeTab === "leads" && (
         <div className="space-y-6">
           {/* Controls & Metrics Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1073,8 +1096,13 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Main Tab 2: Providers & Free Quotas */}
-      {activeTab === "integrations" && <IntegrationSettings />}
+      {/* 4. Main Tab 2: Providers & Free Quotas */}
+      {role !== "client_viewer" && activeTab === "integrations" && <IntegrationSettings />}
+
+      {/* 5. Main Tab 3: Super Admin Portal & Audit Trail */}
+      {role === "super_admin" && (activeTab === "admin" || activeTab === "audit") && (
+        <SuperAdminPortal />
+      )}
 
       {/* Credit-Gated Contact Reveal Modal (Handbook 5.4) */}
       {revealModalLead && (

@@ -2,12 +2,15 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-type NavTab = "leads" | "integrations";
+export type UserRole = "org_admin" | "super_admin" | "client_viewer";
+export type NavTab = "leads" | "icp" | "integrations" | "portal" | "admin" | "audit";
 type ThemeMode = "light" | "dark";
 
 interface NavContextType {
   activeTab: NavTab;
   setActiveTab: (tab: NavTab) => void;
+  role: UserRole;
+  setRole: (role: UserRole) => void;
   leadsCount: number;
   setLeadsCount: (count: number) => void;
   theme: ThemeMode;
@@ -19,6 +22,7 @@ const NavContext = createContext<NavContextType | undefined>(undefined);
 
 export function NavProvider({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState<NavTab>("leads");
+  const [role, setRoleState] = useState<UserRole>("org_admin");
   const [leadsCount, setLeadsCount] = useState<number>(3);
   const [theme, setTheme] = useState<ThemeMode>("light");
 
@@ -32,7 +36,25 @@ export function NavProvider({ children }: { children: React.ReactNode }) {
         document.documentElement.classList.remove("dark");
       }
     }
+
+    const savedRole = localStorage.getItem("leadflow_role") as UserRole | null;
+    if (savedRole && ["org_admin", "super_admin", "client_viewer"].includes(savedRole)) {
+      setRoleState(savedRole);
+      if (savedRole === "client_viewer") {
+        setActiveTab("portal");
+      }
+    }
   }, []);
+
+  const setRole = (newRole: UserRole) => {
+    setRoleState(newRole);
+    localStorage.setItem("leadflow_role", newRole);
+    if (newRole === "client_viewer" && (activeTab === "leads" || activeTab === "integrations" || activeTab === "admin")) {
+      setActiveTab("portal");
+    } else if (newRole === "org_admin" && (activeTab === "admin" || activeTab === "audit" || activeTab === "portal")) {
+      setActiveTab("leads");
+    }
+  };
 
   const toggleTheme = () => {
     const nextTheme: ThemeMode = theme === "light" ? "dark" : "light";
@@ -50,6 +72,8 @@ export function NavProvider({ children }: { children: React.ReactNode }) {
       value={{
         activeTab,
         setActiveTab,
+        role,
+        setRole,
         leadsCount,
         setLeadsCount,
         theme,

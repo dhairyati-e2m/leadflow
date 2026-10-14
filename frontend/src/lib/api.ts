@@ -289,3 +289,183 @@ export async function updateIntegrationSettings(payload: {
   }
   return res.json();
 }
+
+// -----------------------------------------------------------------------------
+// ICP Audiences & Filter Catalog API (Section 8)
+// -----------------------------------------------------------------------------
+
+export interface AudienceFilters {
+  verticals: string[];
+  vertical_match: "or" | "and";
+  locations: string[];
+  location_match: "or" | "and";
+  headcount_ranges: string[];
+  exclude_locations: string[];
+  exclude_verticals: string[];
+  exclude_domains: string[];
+  exclude_existing_crm: boolean;
+  negative_keywords: string[];
+}
+
+export interface AudienceItem {
+  id: string;
+  org_id: string;
+  name: string;
+  description?: string | null;
+  filters: AudienceFilters;
+  is_default: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface FilterCatalogResponse {
+  verticals: string[];
+  locations: string[];
+  headcount_ranges: string[];
+  match_operators: string[];
+}
+
+export interface AIProposeResponse {
+  filters: AudienceFilters;
+  rationale: string;
+  estimated_pool_depth: string;
+  suggested_name: string;
+}
+
+export async function fetchFilterCatalog(): Promise<FilterCatalogResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/audiences/filter-catalog`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error("Failed to fetch filter catalog");
+  }
+  return res.json();
+}
+
+export async function fetchAudiences(): Promise<AudienceItem[]> {
+  const res = await authenticatedFetch(`${API_BASE}/audiences`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error("Failed to fetch ICP audiences");
+  }
+  return res.json();
+}
+
+export async function createAudience(data: {
+  name: string;
+  description?: string;
+  filters: AudienceFilters;
+  is_default?: boolean;
+}): Promise<AudienceItem> {
+  const res = await authenticatedFetch(`${API_BASE}/audiences`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to create audience" }));
+    throw new Error(err.detail || "Failed to create audience");
+  }
+  return res.json();
+}
+
+export async function updateAudience(
+  audienceId: string,
+  data: {
+    name?: string;
+    description?: string;
+    filters?: AudienceFilters;
+    is_default?: boolean;
+  }
+): Promise<AudienceItem> {
+  const res = await authenticatedFetch(`${API_BASE}/audiences/${audienceId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to update audience" }));
+    throw new Error(err.detail || "Failed to update audience");
+  }
+  return res.json();
+}
+
+export async function aiProposeIcp(briefText: string): Promise<AIProposeResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/audiences/ai-propose`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ brief_text: briefText }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to propose ICP filters" }));
+    throw new Error(err.detail || "Failed to propose ICP filters");
+  }
+  return res.json();
+}
+
+// -----------------------------------------------------------------------------
+// Super Admin & Platform Audit Trail API (Section 4 & 17)
+// -----------------------------------------------------------------------------
+
+export interface AdminOrgItem {
+  id: string;
+  name: string;
+  slug: string;
+  is_active: boolean;
+  operator_enabled: boolean;
+  monthly_lead_quota: number;
+  user_count: number;
+  lead_count: number;
+  created_at?: string;
+}
+
+export interface AuditLogItem {
+  id: string;
+  org_id: string;
+  user_id?: string | null;
+  action: string;
+  entity_type: string;
+  entity_id?: string | null;
+  details: Record<string, any>;
+  ip_address?: string | null;
+  created_at: string;
+}
+
+export async function fetchAdminOrgs(): Promise<AdminOrgItem[]> {
+  const res = await authenticatedFetch(`${API_BASE}/admin/orgs`, { cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to fetch admin orgs" }));
+    throw new Error(err.detail || "Failed to fetch admin organizations");
+  }
+  return res.json();
+}
+
+export async function updateAdminOrg(
+  orgId: string,
+  data: {
+    name?: string;
+    is_active?: boolean;
+    operator_enabled?: boolean;
+    monthly_lead_quota?: number;
+  }
+): Promise<AdminOrgItem> {
+  const res = await authenticatedFetch(`${API_BASE}/admin/orgs/${orgId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to update organization" }));
+    throw new Error(err.detail || "Failed to update organization");
+  }
+  return res.json();
+}
+
+export async function fetchAuditLogs(orgId?: string, limit: number = 50): Promise<AuditLogItem[]> {
+  const url = orgId
+    ? `${API_BASE}/admin/audit-logs?org_id=${encodeURIComponent(orgId)}&limit=${limit}`
+    : `${API_BASE}/admin/audit-logs?limit=${limit}`;
+  const res = await authenticatedFetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error("Failed to fetch audit logs");
+  }
+  return res.json();
+}
+
