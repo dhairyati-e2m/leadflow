@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -37,7 +38,7 @@ const config: Config = {
           300: "#E5CCE7",
           400: "#D6B5D9",
           500: "#C49BC8",
-          600: "#AA7FA trace",
+          600: "#AA7FB2",
         },
         // Soft Lilac: ethereal futuristic glow and accent
         lilac: {
