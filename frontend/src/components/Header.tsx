@@ -68,28 +68,31 @@ export function Header() {
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-base text-white dark:text-obsidian tracking-tight">LeadFlow</span>
-              <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider bg-lilac-950/80 text-lilac-300 dark:bg-lilac-100 dark:text-lilac-800 dark:border-lilac-300 rounded-full border border-lilac-800/60">
-                Live 22-Signal
-              </span>
+              {user && (
+                <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider bg-lilac-950/80 text-lilac-300 dark:bg-lilac-100 dark:text-lilac-800 dark:border-lilac-300 rounded-full border border-lilac-800/60">
+                  Live 22-Signal
+                </span>
+              )}
             </div>
           </Link>
 
-          {/* Current Role Indicator Pill */}
-          <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-obsidian-700 dark:border-cosmic-300">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lilac-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-lilac-500"></span>
-            </span>
-            <span className="text-[11px] font-medium text-cosmic-300 dark:text-obsidian/60 tracking-wide">
-              Role: <span className="font-bold text-white dark:text-obsidian font-mono">{currentRoleName}</span>
-            </span>
-          </div>
+          {/* Current Role Indicator Pill: Only visible when logged in */}
+          {user && (
+            <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-obsidian-700 dark:border-cosmic-300">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lilac-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-lilac-500"></span>
+              </span>
+              <span className="text-[11px] font-medium text-cosmic-300 dark:text-obsidian/60 tracking-wide">
+                Role: <span className="font-bold text-white dark:text-obsidian font-mono">{currentRoleName}</span>
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Center: Contextual Navigation based on Direct URL */}
+        {/* Center: Contextual Navigation based on Direct URL - Only visible when logged in */}
         <div>
-          {pathname === "/portal" || pathname === "/super-admin" ? (
-            /* User requirement: remove verified leads button for client and multi-tenant oversight button for super admin */
+          {!user || pathname === "/portal" || pathname === "/super-admin" ? (
             null
           ) : (
             <div className="flex items-center space-x-1 bg-obsidian-900/90 dark:bg-cosmic-200/90 p-1 rounded-2xl border border-obsidian-700 dark:border-cosmic-300 text-xs">
@@ -98,15 +101,15 @@ export function Header() {
                 onClick={() => setActiveTab("leads")}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
                   pathname === "/" && activeTab === "leads"
-                    ? "bg-lilac-600 text-white font-bold shadow-md shadow-lilac-900/40 border border-lilac-500"
-                    : "text-cosmic-300/80 hover:text-white dark:text-obsidian/75 dark:hover:text-obsidian hover:bg-obsidian-800/60 dark:hover:bg-cosmic-300/60"
+                    ? "border-2 border-lilac-500 text-white dark:text-obsidian bg-obsidian-800/90 dark:bg-cosmic-100 shadow-sm"
+                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-obsidian/75 dark:hover:text-obsidian hover:bg-obsidian-800/60 dark:hover:bg-cosmic-300/60"
                 }`}
               >
                 <span>Lead Pipeline</span>
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                     pathname === "/" && activeTab === "leads"
-                      ? "bg-white/25 text-white border border-white/30"
+                      ? "bg-lilac-500/20 text-lilac-300 dark:text-lilac-700 border border-lilac-500/40"
                       : "bg-obsidian-800 text-cosmic-300 dark:bg-cosmic-100 dark:text-obsidian-700 border border-obsidian-700 dark:border-cosmic-300"
                   }`}
                 >
@@ -119,8 +122,8 @@ export function Header() {
                 onClick={() => setActiveTab("icp")}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
                   pathname === "/icp" || (pathname === "/" && activeTab === "icp")
-                    ? "bg-lilac-600 text-white font-bold shadow-md shadow-lilac-900/40 border border-lilac-500"
-                    : "text-cosmic-300/80 hover:text-white dark:text-obsidian/75 dark:hover:text-obsidian hover:bg-obsidian-800/60 dark:hover:bg-cosmic-300/60"
+                    ? "border-2 border-lilac-500 text-white dark:text-obsidian bg-obsidian-800/90 dark:bg-cosmic-100 shadow-sm"
+                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-obsidian/75 dark:hover:text-obsidian hover:bg-obsidian-800/60 dark:hover:bg-cosmic-300/60"
                 }`}
               >
                 <span>Audiences (ICP)</span>
@@ -140,15 +143,15 @@ export function Header() {
                 onClick={() => setActiveTab("integrations")}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
                   pathname === "/" && activeTab === "integrations"
-                    ? "bg-lilac-600 text-white font-bold shadow-md shadow-lilac-900/40 border border-lilac-500"
-                    : "text-cosmic-300/80 hover:text-white dark:text-obsidian/75 dark:hover:text-obsidian hover:bg-obsidian-800/60 dark:hover:bg-cosmic-300/60"
+                    ? "border-2 border-lilac-500 text-white dark:text-obsidian bg-obsidian-800/90 dark:bg-cosmic-100 shadow-sm"
+                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-obsidian/75 dark:hover:text-obsidian hover:bg-obsidian-800/60 dark:hover:bg-cosmic-300/60"
                 }`}
               >
                 <span>Signal Engines</span>
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                     pathname === "/" && activeTab === "integrations"
-                      ? "bg-white/25 text-white border border-white/30"
+                      ? "bg-lilac-500/20 text-lilac-300 dark:text-lilac-700 border border-lilac-500/40"
                       : "bg-obsidian-800 text-cosmic-300 dark:bg-cosmic-100 dark:text-obsidian-700 border border-obsidian-700 dark:border-cosmic-300"
                   }`}
                 >
@@ -255,6 +258,7 @@ export function Header() {
                       onClick={() => {
                         setShowProfileMenu(false);
                         logout();
+                        window.location.href = "/";
                       }}
                       className="w-full text-left px-3 py-2 rounded-xl text-rose-400 hover:bg-rose-950/40 dark:text-rose-600 dark:hover:bg-rose-100 font-semibold flex items-center gap-2 transition cursor-pointer"
                     >
