@@ -199,26 +199,26 @@ export function IntegrationSettings() {
   return (
     <div className="space-y-6">
       {/* Header & Policy Explanation Banner */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80">
+      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
             <div className="flex items-center gap-2.5">
               <span className="w-2.5 h-2.5 rounded-full bg-lilac-500 animate-pulse"></span>
-              <h2 className="text-xl font-bold text-obsidian tracking-tight">Provider Controls & Quota Guard</h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-blush-100 text-blush-600 border border-blush-200">
+              <h2 className="text-xl font-bold text-obsidian dark:text-cosmic-100 tracking-tight">Provider Controls & Quota Guard</h2>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-blush-100 dark:bg-blush-950/60 text-blush-600 dark:text-blush-300 border border-blush-200 dark:border-blush-800">
                 Zero-Cost Policy
               </span>
             </div>
-            <p className="text-obsidian/70 text-xs sm:text-sm mt-1.5 max-w-2xl leading-relaxed">
+            <p className="text-obsidian/70 dark:text-cosmic-300 text-xs sm:text-sm mt-1.5 max-w-2xl leading-relaxed">
               Granular control over external data integrations. Every provider is bounded by hard-coded zero-cost safety limits and local fallbacks.
             </p>
           </div>
 
-          {/* Futuristic Master Switch Pill */}
-          <div className="flex items-center space-x-4 bg-cosmic-100/90 border border-cosmic-300 rounded-2xl px-5 py-3 shadow-sm">
+          {/* Master Switch Pill */}
+          <div className="flex items-center space-x-4 bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-300 dark:border-obsidian-700 rounded-2xl px-5 py-3 shadow-sm">
             <div>
-              <div className="text-xs font-bold text-obsidian tracking-tight">Master External Switch</div>
-              <div className="text-[10px] font-mono text-obsidian/60 mt-0.5">
+              <div className="text-xs font-bold text-obsidian dark:text-cosmic-100 tracking-tight">Master External Switch</div>
+              <div className="text-[10px] font-mono text-obsidian/60 dark:text-cosmic-400 mt-0.5">
                 {masterEnabled ? "Live connections enabled" : "All external APIs paused"}
               </div>
             </div>
@@ -227,12 +227,14 @@ export function IntegrationSettings() {
               disabled={savingKey === "master"}
               onClick={handleToggleMaster}
               className={`relative inline-flex h-6 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-lilac-400 focus:ring-offset-2 ${
-                masterEnabled ? "bg-obsidian" : "bg-cosmic-300"
+                masterEnabled ? "bg-obsidian dark:bg-lilac-600" : "bg-cosmic-300 dark:bg-obsidian-700"
               }`}
             >
               <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-cosmic-50 shadow-md ring-0 transition duration-200 ease-in-out ${
-                  masterEnabled ? "translate-x-6 bg-lilac-300" : "translate-x-0"
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow-md ring-0 transition duration-200 ease-in-out ${
+                  masterEnabled
+                    ? "translate-x-6 bg-lilac-300 dark:bg-obsidian-950"
+                    : "translate-x-0 bg-cosmic-50 dark:bg-cosmic-300"
                 }`}
               />
             </button>
@@ -240,10 +242,10 @@ export function IntegrationSettings() {
         </div>
 
         {/* Free Plan Guarantee Callout */}
-        <div className="mt-5 p-3.5 bg-lilac-50/70 border border-lilac-200/80 rounded-2xl text-xs text-obsidian/90 flex items-start gap-3">
-          <span className="text-base leading-none mt-0.5 text-lilac-600">✦</span>
+        <div className="mt-5 p-3.5 bg-lilac-50/70 dark:bg-lilac-950/30 border border-lilac-200/80 dark:border-lilac-800/60 rounded-2xl text-xs text-obsidian/90 dark:text-cosmic-200 flex items-start gap-3">
+          <span className="text-base leading-none mt-0.5 text-lilac-600 dark:text-lilac-400">✦</span>
           <div className="leading-relaxed">
-            <span className="font-bold text-obsidian">Zero-Cost Policy:</span> LeadFlow will never incur cloud billing surprises. Providers lacking permanent free tiers (Apollo.io, Snov.io) are locked by policy. When free daily limits are reached, the platform switches seamlessly to local native execution.
+            <span className="font-bold text-obsidian dark:text-cosmic-100">Zero-Cost Policy:</span> LeadFlow will never incur cloud billing surprises. Providers lacking permanent free tiers (Apollo.io, Snov.io) are locked by policy. When free daily limits are reached, the platform switches seamlessly to local native execution.
           </div>
         </div>
 
@@ -251,10 +253,10 @@ export function IntegrationSettings() {
           <div
             className={`mt-4 p-3.5 rounded-2xl text-xs font-medium border ${
               message.type === "success"
-                ? "bg-blush-50 text-obsidian border-blush-300"
+                ? "bg-blush-50 dark:bg-blush-950/40 text-obsidian dark:text-cosmic-100 border-blush-300 dark:border-blush-800"
                 : message.type === "error"
-                ? "bg-rose-50 text-rose-900 border-rose-200"
-                : "bg-cosmic-100 text-obsidian border-cosmic-300"
+                ? "bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border-rose-200 dark:border-rose-800"
+                : "bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 border-cosmic-300 dark:border-obsidian-700"
             }`}
           >
             {message.text}
@@ -272,7 +274,7 @@ export function IntegrationSettings() {
           return (
             <div
               key={p.key}
-              className={`rounded-3xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200 border border-lilac-300/90 dark:border-lilac-700 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:bg-lilac-50/75 dark:hover:bg-lilac-950/30 hover:border-lilac-400 hover:shadow-futuristic-hover ${
+              className={`rounded-3xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200 border-2 border-lilac-300/90 dark:border-lilac-700 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:bg-lilac-50/75 dark:hover:bg-lilac-950/40 hover:border-lilac-400 dark:hover:border-lilac-600 hover:shadow-futuristic-hover ${
                 isPolicyBlocked ? "opacity-90" : ""
               }`}
             >
@@ -285,10 +287,10 @@ export function IntegrationSettings() {
                   <span
                     className={`text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider border ${
                       isPolicyBlocked
-                        ? "bg-sky-50 text-sky-700 border-sky-200"
+                        ? "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800"
                         : p.enabled && masterEnabled
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800"
+                        : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
                     }`}
                   >
                     {isPolicyBlocked ? "Policy Locked" : p.enabled && masterEnabled ? "Active" : "Disabled"}
@@ -296,31 +298,31 @@ export function IntegrationSettings() {
                 </div>
 
                 {/* Provider Title */}
-                <h3 className="font-bold text-sm text-obsidian mb-1.5 tracking-tight">{p.name}</h3>
+                <h3 className="font-bold text-sm text-obsidian dark:text-cosmic-100 mb-1.5 tracking-tight">{p.name}</h3>
 
                 {/* Free Quota Allowance Badge */}
-                <div className="p-3 bg-cosmic-100/80 border border-cosmic-200/90 rounded-2xl text-xs space-y-1 mb-3.5">
-                  <div className="text-[9px] font-mono uppercase tracking-wider text-obsidian/50 font-bold">
+                <div className="p-3 bg-cosmic-100/80 dark:bg-obsidian-800/80 border border-cosmic-200/90 dark:border-obsidian-700 rounded-2xl text-xs space-y-1 mb-3.5">
+                  <div className="text-[9px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
                     Free Allowance:
                   </div>
-                  <div className="text-obsidian/90 font-medium leading-snug">{p.free_quota_description}</div>
+                  <div className="text-obsidian/90 dark:text-cosmic-200 font-medium leading-snug">{p.free_quota_description}</div>
                 </div>
 
-                <p className="text-[11px] text-obsidian/60 mb-5 leading-normal">{p.status_label}</p>
+                <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 mb-5 leading-normal">{p.status_label}</p>
               </div>
 
               {/* Action Button & Toggle */}
-              <div className="pt-3.5 border-t border-cosmic-200 flex items-center justify-between">
-                <span className="text-xs font-semibold text-obsidian/80">
+              <div className="pt-3.5 border-t border-cosmic-200 dark:border-obsidian-800 flex items-center justify-between">
+                <span className="text-xs font-semibold text-obsidian/80 dark:text-cosmic-300">
                   {isNative ? "Built-in Engine" : isPolicyBlocked ? "Paid API Blocked" : "Enable Integration"}
                 </span>
 
                 {isNative ? (
-                  <span className="text-xs font-bold text-obsidian flex items-center gap-1.5 font-mono">
+                  <span className="text-xs font-bold text-obsidian dark:text-cosmic-100 flex items-center gap-1.5 font-mono">
                     <span className="w-2 h-2 rounded-full bg-lilac-500"></span> Always Active
                   </span>
                 ) : isPolicyBlocked ? (
-                  <span className="text-xs font-mono font-bold text-obsidian/50 flex items-center gap-1">
+                  <span className="text-xs font-mono font-bold text-obsidian/50 dark:text-cosmic-400 flex items-center gap-1">
                     🔒 Zero-Cost Protected
                   </span>
                 ) : (
@@ -330,15 +332,17 @@ export function IntegrationSettings() {
                     onClick={() => handleToggleProvider(p.key, p.enabled)}
                     className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                       !masterEnabled
-                        ? "bg-cosmic-300 cursor-not-allowed opacity-50"
+                        ? "bg-cosmic-300 dark:bg-obsidian-800 cursor-not-allowed opacity-50"
                         : p.enabled
-                        ? "bg-obsidian"
-                        : "bg-cosmic-300"
+                        ? "bg-obsidian dark:bg-lilac-600"
+                        : "bg-cosmic-300 dark:bg-obsidian-800"
                     }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-cosmic-50 shadow-sm ring-0 transition duration-200 ease-in-out ${
-                        p.enabled && masterEnabled ? "translate-x-5 bg-lilac-300" : "translate-x-0"
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                        p.enabled && masterEnabled
+                          ? "translate-x-5 bg-lilac-300 dark:bg-obsidian-950"
+                          : "translate-x-0 bg-cosmic-50 dark:bg-cosmic-300"
                       }`}
                     />
                   </button>
@@ -350,29 +354,29 @@ export function IntegrationSettings() {
       </div>
 
       {/* Quota Safeguards Technical Card */}
-      <div className="glass-panel border border-blush-200/80 rounded-3xl p-6 text-xs text-obsidian/80 space-y-3 shadow-sm">
+      <div className="glass-panel border border-blush-200/80 dark:border-obsidian-700 rounded-3xl p-6 text-xs text-obsidian/80 dark:text-cosmic-300 space-y-3 shadow-sm">
         <div className="flex items-center gap-2">
-          <span className="text-obsidian font-bold text-sm tracking-tight">Active Budget Protection Architecture</span>
-          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-cosmic-200 text-obsidian/70 uppercase">
+          <span className="text-obsidian dark:text-cosmic-100 font-bold text-sm tracking-tight">Active Budget Protection Architecture</span>
+          <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-cosmic-200 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700 uppercase">
             SaaS Guard
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
-          <div className="p-3.5 rounded-2xl bg-cosmic-100/70 border border-cosmic-200/80 space-y-1">
-            <div className="font-bold text-obsidian">1. Redis Token Bucket</div>
-            <p className="text-[11px] text-obsidian/70 leading-relaxed">
+          <div className="p-3.5 rounded-2xl bg-cosmic-100/70 dark:bg-obsidian-800/80 border border-cosmic-200/80 dark:border-obsidian-700 space-y-1">
+            <div className="font-bold text-obsidian dark:text-cosmic-100">1. Redis Token Bucket</div>
+            <p className="text-[11px] text-obsidian/70 dark:text-cosmic-300 leading-relaxed">
               Every query deducts tokens from a Redis token bucket. Queries pause automatically before exceeding vendor limits.
             </p>
           </div>
-          <div className="p-3.5 rounded-2xl bg-cosmic-100/70 border border-cosmic-200/80 space-y-1">
-            <div className="font-bold text-obsidian">2. Seamless Native Fallback</div>
-            <p className="text-[11px] text-obsidian/70 leading-relaxed">
+          <div className="p-3.5 rounded-2xl bg-cosmic-100/70 dark:bg-obsidian-800/80 border border-cosmic-200/80 dark:border-obsidian-700 space-y-1">
+            <div className="font-bold text-obsidian dark:text-cosmic-100">2. Seamless Native Fallback</div>
+            <p className="text-[11px] text-obsidian/70 dark:text-cosmic-300 leading-relaxed">
               If an external service is unavailable or reaches daily limits, LeadFlow scores with native crawler heuristics.
             </p>
           </div>
-          <div className="p-3.5 rounded-2xl bg-cosmic-100/70 border border-cosmic-200/80 space-y-1">
-            <div className="font-bold text-obsidian">3. Hard Spending Ceiling</div>
-            <p className="text-[11px] text-obsidian/70 leading-relaxed">
+          <div className="p-3.5 rounded-2xl bg-cosmic-100/70 dark:bg-obsidian-800/80 border border-cosmic-200/80 dark:border-obsidian-700 space-y-1">
+            <div className="font-bold text-obsidian dark:text-cosmic-100">3. Hard Spending Ceiling</div>
+            <p className="text-[11px] text-obsidian/70 dark:text-cosmic-300 leading-relaxed">
               No payment card information is stored. Automatic background batch jobs can never trigger unapproved charges.
             </p>
           </div>

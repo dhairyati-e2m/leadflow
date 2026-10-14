@@ -23,17 +23,17 @@ export function Header() {
             </div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-base text-obsidian dark:text-cosmic-100 tracking-tight">LeadFlow</span>
-              <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider bg-lilac-100 text-lilac-800 rounded-full border border-lilac-200/80">
+              <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider bg-lilac-100 dark:bg-lilac-950/60 text-lilac-800 dark:text-lilac-300 rounded-full border border-lilac-200/80 dark:border-lilac-800">
                 Live 22-Signal
               </span>
             </div>
           </Link>
 
           {/* Operator Status Pill */}
-          <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-cosmic-300/80">
+          <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-cosmic-300/80 dark:border-obsidian-700">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lilac-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-lilac-600"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-lilac-600 dark:bg-lilac-400"></span>
             </span>
             <span className="text-[11px] font-medium text-obsidian/70 dark:text-cosmic-300 tracking-wide">
               Operator Pipeline: <span className="font-bold text-obsidian dark:text-cosmic-100">Active</span>
@@ -42,14 +42,14 @@ export function Header() {
         </div>
 
         {/* Center: Main View Toggle moved to Navbar (Item 7) */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2 bg-cosmic-100/90 dark:bg-obsidian-800 p-1 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 bg-cosmic-100/90 dark:bg-obsidian-800/90 p-1 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
           <button
             type="button"
             onClick={() => setActiveTab("leads")}
             className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
               activeTab === "leads"
                 ? "btn-obsidian"
-                : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
+                : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
             }`}
           >
             <span>Lead Pipeline</span>
@@ -57,7 +57,7 @@ export function Header() {
               className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                 activeTab === "leads"
                   ? "bg-lilac-300 text-obsidian"
-                  : "bg-cosmic-200 dark:bg-obsidian-700 text-obsidian/70 dark:text-cosmic-300"
+                  : "bg-cosmic-200 dark:bg-obsidian-700 text-obsidian/70 dark:text-cosmic-200 border border-transparent dark:border-obsidian-600"
               }`}
             >
               {leadsCount}
@@ -70,7 +70,7 @@ export function Header() {
             className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
               activeTab === "integrations"
                 ? "btn-obsidian"
-                : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
+                : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
             }`}
           >
             <span>Live Providers</span>
@@ -78,7 +78,7 @@ export function Header() {
               className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                 activeTab === "integrations"
                   ? "bg-lilac-300 text-obsidian"
-                  : "bg-cosmic-200 dark:bg-obsidian-700 text-obsidian/70 dark:text-cosmic-300"
+                  : "bg-cosmic-200 dark:bg-obsidian-700 text-obsidian/70 dark:text-cosmic-200 border border-transparent dark:border-obsidian-600"
               }`}
             >
               Rule A Guard

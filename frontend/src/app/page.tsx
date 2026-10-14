@@ -598,7 +598,7 @@ export default function DashboardPage() {
       )}
 
       {/* Futuristic Hero & Funnel Overview */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80">
+      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
@@ -674,19 +674,19 @@ export default function DashboardPage() {
           {/* Controls & Metrics Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Qualification Standard Slider */}
-            <div className="glass-panel rounded-3xl p-5 border border-blush-200/80 shadow-sm">
+            <div className="glass-panel rounded-3xl p-5 border border-blush-200/80 dark:border-obsidian-700 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 block">
+                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 block">
                     Target Lead Qualification Standard
                   </span>
-                  <span className="text-xs text-obsidian/70 mt-0.5 block leading-relaxed">
+                  <span className="text-xs text-obsidian/70 dark:text-cosmic-300 mt-0.5 block leading-relaxed">
                     Threshold separating Review from Qualified (10 Website + 12 Marketing checks).
                   </span>
                 </div>
-                <div className="flex items-center space-x-3 bg-cosmic-100/90 px-3 py-2 rounded-2xl border border-cosmic-300">
+                <div className="flex items-center space-x-3 bg-cosmic-100/90 dark:bg-obsidian-800 px-3 py-2 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
                   <div className="flex items-center space-x-2">
-                    <label htmlFor="threshold-slider" className="text-[11px] text-obsidian/70 font-medium">Cutoff:</label>
+                    <label htmlFor="threshold-slider" className="text-[11px] text-obsidian/70 dark:text-cosmic-300 font-medium">Cutoff:</label>
                     <input
                       id="threshold-slider"
                       type="range"
@@ -694,13 +694,13 @@ export default function DashboardPage() {
                       max="90"
                       value={icpThreshold}
                       onChange={(e) => setIcpThreshold(Number(e.target.value))}
-                      className="w-20 accent-obsidian cursor-pointer"
+                      className="w-20 accent-obsidian dark:accent-lilac-400 cursor-pointer"
                     />
-                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg bg-cosmic-50 text-obsidian border border-cosmic-300">
+                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg bg-cosmic-50 dark:bg-obsidian-900 text-obsidian dark:text-cosmic-100 border border-cosmic-300 dark:border-obsidian-700">
                       {icpThreshold}/100
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-lilac-700 font-bold px-2 py-0.5 rounded-lg bg-lilac-50 border border-lilac-200">
+                  <span className="text-[10px] font-mono text-lilac-700 dark:text-lilac-300 font-bold px-2 py-0.5 rounded-lg bg-lilac-50 dark:bg-lilac-950/50 border border-lilac-200 dark:border-lilac-800">
                     +10 Bonus
                   </span>
                 </div>
@@ -708,27 +708,27 @@ export default function DashboardPage() {
             </div>
 
             {/* Monthly Budget & Usage Strip */}
-            <div className="glass-panel rounded-3xl p-5 border border-blush-200/80 shadow-sm">
+            <div className="glass-panel rounded-3xl p-5 border border-blush-200/80 dark:border-obsidian-700 shadow-sm">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-lilac-500"></span>
                     SaaS Allotment & Safety Ledger
                   </span>
-                  <span className="text-xs text-obsidian/70 mt-0.5 block">
+                  <span className="text-xs text-obsidian/70 dark:text-cosmic-300 mt-0.5 block">
                     Zero-Cost Guarantee: Hard spend cap enforced ($0.00 billable)
                   </span>
                 </div>
                 <div className="flex items-center space-x-2.5 text-xs">
-                  <div className="px-3 py-1.5 rounded-2xl bg-cosmic-100/90 border border-cosmic-300">
-                    <span className="text-obsidian/50 text-[9px] uppercase font-mono font-bold block">Scanned Sites</span>
-                    <span className="font-bold text-obsidian font-mono">14 <span className="text-obsidian/40 font-normal">/ 10,000</span></span>
+                  <div className="px-3 py-1.5 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-300 dark:border-obsidian-700">
+                    <span className="text-obsidian/50 dark:text-cosmic-400 text-[9px] uppercase font-mono font-bold block">Scanned Sites</span>
+                    <span className="font-bold text-obsidian dark:text-cosmic-100 font-mono">14 <span className="text-obsidian/40 dark:text-cosmic-400/60 font-normal">/ 10,000</span></span>
                   </div>
-                  <div className="px-3 py-1.5 rounded-2xl bg-cosmic-100/90 border border-cosmic-300">
-                    <span className="text-obsidian/50 text-[9px] uppercase font-mono font-bold block">Evaluated</span>
-                    <span className="font-bold text-obsidian font-mono">18 <span className="text-obsidian/40 font-normal">/ 5,000</span></span>
+                  <div className="px-3 py-1.5 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-300 dark:border-obsidian-700">
+                    <span className="text-obsidian/50 dark:text-cosmic-400 text-[9px] uppercase font-mono font-bold block">Evaluated</span>
+                    <span className="font-bold text-obsidian dark:text-cosmic-100 font-mono">18 <span className="text-obsidian/40 dark:text-cosmic-400/60 font-normal">/ 5,000</span></span>
                   </div>
-                  <span className="px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold bg-lilac-100 text-lilac-700 border border-lilac-200 uppercase">
+                  <span className="px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold bg-lilac-100 dark:bg-lilac-950/50 text-lilac-700 dark:text-lilac-300 border border-lilac-200 dark:border-lilac-800 uppercase">
                     Worker Idle
                   </span>
                 </div>
@@ -737,11 +737,11 @@ export default function DashboardPage() {
           </div>
 
           {/* Sourcing & Action Header */}
-          <div className="glass-panel rounded-3xl p-6 border border-blush-200/80 shadow-sm">
+          <div className="glass-panel rounded-3xl p-6 border border-blush-200/80 dark:border-obsidian-700 shadow-sm">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-base font-bold text-obsidian tracking-tight">Sourcing & Batch Pipeline</h2>
-                <p className="text-xs text-obsidian/70 mt-0.5">
+                <h2 className="text-base font-bold text-obsidian dark:text-cosmic-100 tracking-tight">Sourcing & Batch Pipeline</h2>
+                <p className="text-xs text-obsidian/70 dark:text-cosmic-300 mt-0.5">
                   Import Apollo contacts or spreadsheet leads safely. Automatic formula guard and deduplication.
                 </p>
               </div>
@@ -749,11 +749,11 @@ export default function DashboardPage() {
               <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   onClick={handleDownloadSampleCSV}
-                  className="text-xs font-semibold px-3 py-2 rounded-xl border border-cosmic-300 bg-cosmic-100/80 text-obsidian hover:bg-cosmic-200 transition"
+                  className="text-xs font-semibold px-3 py-2 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-cosmic-100/80 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-200 dark:hover:bg-obsidian-700 transition"
                 >
                   Download Sample CSV
                 </button>
-                <label className="cursor-pointer text-xs font-semibold px-4 py-2 rounded-xl bg-cosmic-200 hover:bg-cosmic-300 border border-cosmic-300 text-obsidian transition shadow-sm">
+                <label className="cursor-pointer text-xs font-semibold px-4 py-2 rounded-xl bg-cosmic-200 dark:bg-obsidian-700 hover:bg-cosmic-300 dark:hover:bg-obsidian-600 border border-cosmic-300 dark:border-obsidian-600 text-obsidian dark:text-cosmic-100 transition shadow-sm">
                   Upload CSV
                   <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
                 </label>
@@ -780,7 +780,7 @@ export default function DashboardPage() {
             </div>
 
             {uploadStatus && (
-              <div className="mt-4 p-3 rounded-2xl text-xs font-medium bg-lilac-50 border border-lilac-200 text-obsidian">
+              <div className="mt-4 p-3 rounded-2xl text-xs font-medium bg-lilac-50 dark:bg-lilac-950/40 border border-lilac-200 dark:border-lilac-800 text-obsidian dark:text-cosmic-200">
                 {uploadStatus}
               </div>
             )}
@@ -788,40 +788,40 @@ export default function DashboardPage() {
 
           {/* Active Batch Run Monitor */}
           {activeRun && (
-            <div className="glass-panel rounded-3xl p-5 border border-lilac-300/80 shadow-futuristic bg-gradient-to-r from-lilac-50/50 via-cosmic-100/40 to-blush-50/50">
+            <div className="glass-panel rounded-3xl p-5 border border-lilac-300/80 dark:border-lilac-800 shadow-futuristic bg-gradient-to-r from-lilac-50/50 via-cosmic-100/40 to-blush-50/50 dark:from-lilac-950/30 dark:via-obsidian-900/50 dark:to-blush-950/30">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
                 <div className="flex items-center space-x-3">
-                  <span className={`w-3 h-3 rounded-full ${activeRun.status === "running" ? "bg-lilac-500 animate-pulse" : "bg-obsidian"}`}></span>
+                  <span className={`w-3 h-3 rounded-full ${activeRun.status === "running" ? "bg-lilac-500 animate-pulse" : "bg-obsidian dark:bg-cosmic-100"}`}></span>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <h3 className="text-sm font-bold text-obsidian">
-                        Active Job: <code className="font-mono text-xs text-lilac-700">{activeRun.run_id}</code>
+                      <h3 className="text-sm font-bold text-obsidian dark:text-cosmic-100">
+                        Active Job: <code className="font-mono text-xs text-lilac-700 dark:text-lilac-300">{activeRun.run_id}</code>
                       </h3>
-                      <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded-full bg-cosmic-200 border border-cosmic-300 font-bold text-obsidian/70">
+                      <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded-full bg-cosmic-200 dark:bg-obsidian-800 border border-cosmic-300 dark:border-obsidian-700 font-bold text-obsidian/70 dark:text-cosmic-300">
                         {activeRun.status}
                       </span>
                     </div>
-                    <p className="text-xs text-obsidian/70 mt-0.5">
-                      Target: <span className="font-semibold text-obsidian">{activeRun.current_company || "Processing..."}</span>
+                    <p className="text-xs text-obsidian/70 dark:text-cosmic-400 mt-0.5">
+                      Target: <span className="font-semibold text-obsidian dark:text-cosmic-100">{activeRun.current_company || "Processing..."}</span>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  <span className="text-xs font-mono font-bold text-obsidian">
+                  <span className="text-xs font-mono font-bold text-obsidian dark:text-cosmic-100">
                     {activeRun.processed_items} / {activeRun.total_items} evaluated
                   </span>
                   {activeRun.status === "running" ? (
                     <button
                       onClick={handleCancelBatchRun}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-rose-300 text-rose-700 hover:bg-rose-50 transition"
+                      className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-rose-300 dark:border-rose-800 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                     >
                       Halt Run
                     </button>
                   ) : (
                     <button
                       onClick={() => setActiveRun(null)}
-                      className="text-xs font-medium px-2.5 py-1 rounded-xl text-obsidian/50 hover:text-obsidian"
+                      className="text-xs font-medium px-2.5 py-1 rounded-xl text-obsidian/50 dark:text-cosmic-400 hover:text-obsidian dark:hover:text-cosmic-200"
                     >
                       Dismiss
                     </button>
@@ -830,9 +830,9 @@ export default function DashboardPage() {
               </div>
 
               {/* Progress bar */}
-              <div className="w-full bg-cosmic-200 rounded-full h-1.5 overflow-hidden">
+              <div className="w-full bg-cosmic-200 dark:bg-obsidian-800 rounded-full h-1.5 overflow-hidden">
                 <div
-                  className="h-1.5 bg-obsidian transition-all duration-300 rounded-full"
+                  className="h-1.5 bg-obsidian dark:bg-lilac-500 transition-all duration-300 rounded-full"
                   style={{
                     width: `${Math.min(100, Math.round((activeRun.processed_items / Math.max(activeRun.total_items, 1)) * 100))}%`,
                   }}
@@ -842,22 +842,22 @@ export default function DashboardPage() {
           )}
 
           {/* Prospects Pipeline Table */}
-          <div className="glass-panel rounded-3xl overflow-hidden border border-blush-200/80 shadow-futuristic">
+          <div className="glass-panel rounded-3xl overflow-hidden border border-blush-200/80 dark:border-obsidian-700 shadow-futuristic">
             {/* Filter Bar */}
-            <div className="p-4 border-b border-cosmic-200/90 bg-cosmic-100/70 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="p-4 border-b border-cosmic-200/90 dark:border-obsidian-800 bg-cosmic-100/70 dark:bg-obsidian-900/90 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="flex items-center space-x-3 flex-1 max-w-md">
                 <input
                   type="text"
                   placeholder="Filter company, domain, or industry..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full text-xs px-3.5 py-2 border border-cosmic-300 rounded-xl bg-cosmic-50 focus:outline-none focus:ring-2 focus:ring-lilac-400 placeholder:text-obsidian/40"
+                  className="w-full text-xs px-3.5 py-2 border border-cosmic-300 dark:border-obsidian-700 rounded-xl bg-cosmic-50 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400 placeholder:text-obsidian/40 dark:placeholder:text-cosmic-400/50"
                 />
               </div>
 
               {/* Funnel Stage Filter Buttons */}
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] text-obsidian/50 font-mono uppercase mr-1">Stage:</span>
+                <span className="text-[11px] text-obsidian/50 dark:text-cosmic-400 font-mono uppercase mr-1">Stage:</span>
                 {["all", "review", "qualified", "approved", "drafted", "synced", "rejected"].map((st) => (
                   <button
                     key={st}
@@ -865,7 +865,7 @@ export default function DashboardPage() {
                     className={`text-xs px-2.5 py-1 rounded-xl font-medium capitalize transition ${
                       selectedFunnelState === st
                         ? "btn-obsidian"
-                        : "bg-cosmic-50 text-obsidian/70 border border-cosmic-200 hover:bg-cosmic-100"
+                        : "bg-cosmic-50 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-200 dark:border-obsidian-700 hover:bg-cosmic-100 dark:hover:bg-obsidian-700"
                     }`}
                   >
                     {st === "synced" ? "In HubSpot" : st}
@@ -877,7 +877,7 @@ export default function DashboardPage() {
             {/* Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-cosmic-200/50 text-obsidian/60 font-mono text-[10px] uppercase tracking-wider border-b border-cosmic-200">
+                <thead className="bg-cosmic-200/50 dark:bg-obsidian-900 text-obsidian/60 dark:text-cosmic-400 font-mono text-[10px] uppercase tracking-wider border-b border-cosmic-200 dark:border-obsidian-800">
                   <tr>
                     <th className="py-3 px-5">Company & Contact</th>
                     <th className="py-3 px-4">Market & Location</th>
@@ -886,10 +886,10 @@ export default function DashboardPage() {
                     <th className="py-3 px-5 text-right">Pipeline Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-cosmic-200/70">
+                <tbody className="divide-y divide-cosmic-200/70 dark:divide-obsidian-800">
                   {filteredLeads.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center text-obsidian/50">
+                      <td colSpan={5} className="py-10 text-center text-obsidian/50 dark:text-cosmic-400">
                         No prospects found matching your search criteria.
                       </td>
                     </tr>
@@ -903,16 +903,16 @@ export default function DashboardPage() {
                       const isSynced = lead.pipeline_state === "synced";
 
                       return (
-                        <tr key={lead.id} className="hover:bg-cosmic-100/50 transition">
+                        <tr key={lead.id} className="hover:bg-cosmic-100/50 dark:hover:bg-obsidian-800/40 transition">
                           {/* Company & Contact Column */}
                           <td className="py-3.5 px-5">
-                            <div className="font-bold text-obsidian text-sm">{lead.company_name}</div>
+                            <div className="font-bold text-obsidian dark:text-cosmic-100 text-sm">{lead.company_name}</div>
                             <div className="flex items-center gap-2 mt-0.5">
                               <a
                                 href={`https://${lead.domain}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-obsidian/60 hover:text-obsidian flex items-center gap-1 font-mono text-[11px]"
+                                className="text-obsidian/60 dark:text-cosmic-400 hover:text-obsidian dark:hover:text-cosmic-200 flex items-center gap-1 font-mono text-[11px]"
                               >
                                 {lead.domain} <span className="text-[9px]">↗</span>
                               </a>
@@ -921,17 +921,17 @@ export default function DashboardPage() {
                             {/* Contact Badge */}
                             {lead.contact && (
                               <div className="mt-2 flex items-center gap-2">
-                                <span className="text-[11px] font-medium text-obsidian/80">
+                                <span className="text-[11px] font-medium text-obsidian/80 dark:text-cosmic-300">
                                   {lead.contact.name} ({lead.contact.title})
                                 </span>
                                 {lead.contact.revealed ? (
-                                  <span className="text-[10px] font-mono text-lilac-700 bg-lilac-100 px-2 py-0.5 rounded-full border border-lilac-200">
+                                  <span className="text-[10px] font-mono text-lilac-700 dark:text-lilac-300 bg-lilac-100 dark:bg-lilac-950/60 px-2 py-0.5 rounded-full border border-lilac-200 dark:border-lilac-800">
                                     {lead.contact.email}
                                   </span>
                                 ) : (
                                   <button
                                     onClick={() => setRevealModalLead(lead)}
-                                    className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-cosmic-300 bg-cosmic-100 hover:bg-cosmic-200 text-obsidian/70 transition"
+                                    className="text-[10px] font-mono px-2 py-0.5 rounded-full border border-cosmic-300 dark:border-obsidian-700 bg-cosmic-100 dark:bg-obsidian-800 hover:bg-cosmic-200 dark:hover:bg-obsidian-700 text-obsidian/70 dark:text-cosmic-300 transition"
                                     title="Human credit gate"
                                   >
                                     Reveal Contact (1 Cr)
@@ -943,8 +943,8 @@ export default function DashboardPage() {
 
                           {/* Industry & Location */}
                           <td className="py-3.5 px-4">
-                            <div className="text-obsidian font-medium">{lead.industry || "—"}</div>
-                            <div className="text-obsidian/50 text-[11px]">{lead.location || "—"}</div>
+                            <div className="text-obsidian dark:text-cosmic-200 font-medium">{lead.industry || "—"}</div>
+                            <div className="text-obsidian/50 dark:text-cosmic-400 text-[11px]">{lead.location || "—"}</div>
                           </td>
 
                           {/* 22-Signal Score */}
@@ -953,7 +953,7 @@ export default function DashboardPage() {
                               <div className="flex items-center space-x-2">
                                 <span
                                   className={`text-sm font-mono font-extrabold ${
-                                    lead.latest_score! >= icpThreshold ? "text-obsidian" : "text-obsidian/60"
+                                    lead.latest_score! >= icpThreshold ? "text-obsidian dark:text-cosmic-100" : "text-obsidian/60 dark:text-cosmic-400"
                                   }`}
                                 >
                                   {lead.latest_score}/100
@@ -961,17 +961,17 @@ export default function DashboardPage() {
                                 <span
                                   className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider border ${
                                     lead.score_band === "qualified"
-                                      ? "bg-lilac-100 text-lilac-700 border-lilac-300"
+                                      ? "bg-lilac-100 dark:bg-lilac-950/50 text-lilac-700 dark:text-lilac-300 border-lilac-300 dark:border-lilac-800"
                                       : lead.score_band === "review"
-                                      ? "bg-blush-100 text-blush-600 border-blush-200"
-                                      : "bg-cosmic-200 text-obsidian/60 border-cosmic-300"
+                                      ? "bg-blush-100 dark:bg-blush-950/50 text-blush-600 dark:text-blush-300 border-blush-200 dark:border-blush-800"
+                                      : "bg-cosmic-200 dark:bg-obsidian-800 text-obsidian/60 dark:text-cosmic-400 border-cosmic-300 dark:border-obsidian-700"
                                   }`}
                                 >
                                   {lead.score_band}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-obsidian/40 italic font-mono text-[11px]">Pending audit</span>
+                              <span className="text-obsidian/40 dark:text-cosmic-400/60 italic font-mono text-[11px]">Pending audit</span>
                             )}
                           </td>
 
@@ -980,16 +980,16 @@ export default function DashboardPage() {
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-mono font-bold uppercase text-[9px] tracking-wider border ${
                                 lead.pipeline_state === "synced"
-                                  ? "bg-lilac-200 text-lilac-800 border-lilac-400"
+                                  ? "bg-lilac-200 dark:bg-lilac-950/60 text-lilac-800 dark:text-lilac-200 border-lilac-400 dark:border-lilac-700"
                                   : lead.pipeline_state === "drafted"
-                                  ? "bg-lilac-100 text-lilac-700 border-lilac-300"
+                                  ? "bg-lilac-100 dark:bg-lilac-950/40 text-lilac-700 dark:text-lilac-300 border-lilac-300 dark:border-lilac-800"
                                   : lead.pipeline_state === "approved"
-                                  ? "bg-cosmic-100 text-obsidian border-cosmic-300"
+                                  ? "bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 border-cosmic-300 dark:border-obsidian-700"
                                   : lead.pipeline_state === "qualified"
-                                  ? "bg-blush-100 text-blush-600 border-blush-200"
+                                  ? "bg-blush-100 dark:bg-blush-950/40 text-blush-600 dark:text-blush-300 border-blush-200 dark:border-blush-800"
                                   : lead.pipeline_state === "review"
-                                  ? "bg-cosmic-200 text-obsidian/70 border-cosmic-300"
-                                  : "bg-cosmic-100 text-obsidian/50 border-cosmic-200"
+                                  ? "bg-cosmic-200 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border-cosmic-300 dark:border-obsidian-700"
+                                  : "bg-cosmic-100 dark:bg-obsidian-800 text-obsidian/50 dark:text-cosmic-400 border-cosmic-200 dark:border-obsidian-700"
                               }`}
                             >
                               {lead.pipeline_state === "synced" ? "In HubSpot" : lead.pipeline_state}
@@ -1004,7 +1004,7 @@ export default function DashboardPage() {
                                 setSelectedLead(lead);
                                 setActiveModalTab(hasScore ? "scoring" : "crawl");
                               }}
-                              className="px-2.5 py-1 text-xs font-semibold rounded-xl border border-cosmic-300 text-obsidian/80 hover:bg-cosmic-200 transition"
+                              className="px-2.5 py-1 text-xs font-semibold rounded-xl border border-cosmic-300 dark:border-obsidian-700 text-obsidian/80 dark:text-cosmic-300 hover:bg-cosmic-200 dark:hover:bg-obsidian-800 dark:hover:text-cosmic-100 transition"
                             >
                               Audit
                             </button>
@@ -1013,7 +1013,7 @@ export default function DashboardPage() {
                             <button
                               disabled={isScoring}
                               onClick={() => handleScoreLead(lead.id)}
-                              className="px-2.5 py-1 text-xs font-semibold rounded-xl border border-cosmic-300 text-obsidian/80 hover:bg-cosmic-200 transition"
+                              className="px-2.5 py-1 text-xs font-semibold rounded-xl border border-cosmic-300 dark:border-obsidian-700 text-obsidian/80 dark:text-cosmic-300 hover:bg-cosmic-200 dark:hover:bg-obsidian-800 dark:hover:text-cosmic-100 transition"
                             >
                               {isScoring ? "Scoring..." : hasScore ? "Re-score" : "Score"}
                             </button>
@@ -1029,7 +1029,7 @@ export default function DashboardPage() {
                                 </button>
                                 <button
                                   onClick={() => handleRejectLead(lead.id)}
-                                  className="px-2.5 py-1 text-xs font-semibold rounded-xl border border-cosmic-300 text-obsidian/50 hover:bg-rose-50 hover:text-rose-700 transition"
+                                  className="px-2.5 py-1 text-xs font-semibold rounded-xl border border-cosmic-300 dark:border-obsidian-700 text-obsidian/50 dark:text-cosmic-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:text-rose-700 dark:hover:text-rose-300 transition"
                                 >
                                   Reject
                                 </button>
@@ -1050,14 +1050,14 @@ export default function DashboardPage() {
                             {isDrafted && !isSynced && (
                               <button
                                 onClick={() => handleSyncToHubSpot(lead.id)}
-                                className="px-3 py-1 text-xs font-bold rounded-xl bg-lilac-200 hover:bg-lilac-300 text-lilac-800 border border-lilac-300 transition"
+                                className="px-3 py-1 text-xs font-bold rounded-xl bg-lilac-200 hover:bg-lilac-300 dark:bg-lilac-900/60 dark:hover:bg-lilac-800/80 text-lilac-800 dark:text-lilac-200 border border-lilac-300 dark:border-lilac-700 transition"
                               >
                                 Sync CRM
                               </button>
                             )}
 
                             {isSynced && (
-                              <span className="text-[11px] font-mono text-lilac-700 font-bold px-2 py-0.5 rounded-lg bg-lilac-100 border border-lilac-200">
+                              <span className="text-[11px] font-mono text-lilac-700 dark:text-lilac-300 font-bold px-2 py-0.5 rounded-lg bg-lilac-100 dark:bg-lilac-950/60 border border-lilac-200 dark:border-lilac-800">
                                 Synced ✓
                               </span>
                             )}
