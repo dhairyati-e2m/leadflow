@@ -272,27 +272,23 @@ export function IntegrationSettings() {
           return (
             <div
               key={p.key}
-              className={`rounded-3xl border p-5 sm:p-6 flex flex-col justify-between glass-card glass-card-hover ${
-                isPolicyBlocked
-                  ? "opacity-75 bg-cosmic-100/60 border-cosmic-300"
-                  : p.enabled && masterEnabled
-                  ? "border-lilac-300/80 ring-1 ring-lilac-200 shadow-futuristic"
-                  : "border-blush-100/80"
+              className={`rounded-3xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200 border border-lilac-300/90 dark:border-lilac-700 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:bg-lilac-50/75 dark:hover:bg-lilac-950/30 hover:border-lilac-400 hover:shadow-futuristic-hover ${
+                isPolicyBlocked ? "opacity-90" : ""
               }`}
             >
               <div>
-                {/* Category & Status Pill */}
+                {/* Category & Status Pill (Item 6: Active = light green, Disabled = light yellow, Policy Locked = light blue) */}
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 font-bold">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
                     {p.category}
                   </span>
                   <span
                     className={`text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider border ${
                       isPolicyBlocked
-                        ? "bg-cosmic-200 text-obsidian/60 border-cosmic-300"
+                        ? "bg-sky-50 text-sky-700 border-sky-200"
                         : p.enabled && masterEnabled
-                        ? "bg-lilac-100 text-lilac-700 border-lilac-300"
-                        : "bg-cosmic-100 text-obsidian/50 border-cosmic-200"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
                     }`}
                   >
                     {isPolicyBlocked ? "Policy Locked" : p.enabled && masterEnabled ? "Active" : "Disabled"}

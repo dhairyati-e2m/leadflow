@@ -7,6 +7,11 @@
   --foreground: #0D0D12;
 }
 
+.dark {
+  --background: #09090D;
+  --foreground: #FAF7F2;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
@@ -17,7 +22,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Futuristic background ambient mesh */
+/* Cosmic Latte ambient mesh for light mode */
 .cosmic-mesh {
   background: 
     radial-gradient(circle at 10% 20%, rgba(240, 224, 242, 0.45) 0%, transparent 40%),
@@ -26,42 +31,65 @@ body {
     #FAF7F2;
 }
 
+.dark .cosmic-mesh {
+  background: 
+    radial-gradient(circle at 10% 20%, rgba(42, 34, 56, 0.35) 0%, transparent 45%),
+    radial-gradient(circle at 90% 10%, rgba(35, 25, 48, 0.4) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(20, 20, 28, 0.5) 0%, transparent 50%),
+    #09090D;
+}
+
 /* Glassmorphism surfaces */
 .glass-panel {
-  background: rgba(253, 251, 247, 0.82);
+  background: rgba(253, 251, 247, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(229, 220, 206, 0.55);
+  border: 1px solid rgba(229, 220, 206, 0.6);
+}
+
+.dark .glass-panel {
+  background: rgba(18, 18, 24, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(48, 42, 60, 0.7);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(240, 224, 242, 0.7);
 }
 
-.glass-card-hover {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+.dark .glass-card {
+  background: rgba(20, 20, 28, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-.glass-card-hover:hover {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(194, 167, 238, 0.8);
-  box-shadow: 0 12px 32px -4px rgba(180, 154, 235, 0.22);
-  transform: translateY(-1px);
-}
-
-/* Obsidian contrast badge & button */
+/* Refined Obsidian Buttons: No static dark shadow. Subtle lighter black shadow only on hover */
 .btn-obsidian {
-  background: #0D0D12;
+  background: #14141A;
   color: #FAF7F2;
-  border: 1px solid #22222D;
-  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-obsidian:hover {
-  background: #1A1A23;
+  background: #202029;
   color: #FFFFFF;
-  box-shadow: 0 4px 16px rgba(13, 13, 18, 0.25);
+  box-shadow: 0 6px 18px -2px rgba(13, 13, 18, 0.18), 0 2px 6px -1px rgba(13, 13, 18, 0.10);
+  transform: translateY(-0.5px);
+}
+
+.dark .btn-obsidian {
+  background: #FAF7F2;
+  color: #0D0D12;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .btn-obsidian:hover {
+  background: #FFFFFF;
+  color: #000000;
+  box-shadow: 0 6px 18px -2px rgba(255, 255, 255, 0.2), 0 2px 6px -1px rgba(255, 255, 255, 0.12);
 }

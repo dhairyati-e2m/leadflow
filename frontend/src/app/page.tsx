@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { IntegrationSettings } from "@/components/IntegrationSettings";
+import { useNav } from "@/lib/nav-context";
 
 interface SignalExplanation {
   signal_key: string;
@@ -217,8 +218,12 @@ interface ActiveRunInfo {
 }
 
 export default function DashboardPage() {
-  const [mainTab, setMainTab] = useState<"leads" | "integrations">("leads");
+  const { activeTab, setLeadsCount } = useNav();
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_DEMO_LEADS);
+
+  useEffect(() => {
+    setLeadsCount(leads.length);
+  }, [leads.length, setLeadsCount]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFunnelState, setSelectedFunnelState] = useState<string>("all");
   const [selectedLead, setSelectedLead] = useState<LeadItem | null>(null);
@@ -584,10 +589,10 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-7">
-      {/* Toast Notification */}
+      {/* Toast Notification (Item 5: light red shade for clear visibility) */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 glass-panel border border-obsidian/20 text-obsidian px-4 py-2.5 rounded-2xl shadow-obsidian flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2">
-          <span className="w-2 h-2 rounded-full bg-lilac-500"></span>
+        <div className="fixed bottom-6 right-6 z-50 bg-rose-50/95 dark:bg-rose-950/90 border border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-100 px-4 py-2.5 rounded-2xl shadow-lg flex items-center gap-2.5 text-xs font-semibold animate-in fade-in slide-in-from-bottom-2">
+          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
           {toastMessage}
         </div>
       )}
@@ -597,80 +602,74 @@ export default function DashboardPage() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-cosmic-200 text-obsidian/70 border border-cosmic-300">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-cosmic-200 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700">
                 Handbook 5.3 Funnel
               </span>
-              <span className="text-xs text-obsidian/50 font-mono">Apollo → Enrich → 22 Signals → HubSpot</span>
+              <span className="text-xs text-obsidian/50 dark:text-cosmic-400 font-mono">Apollo → Enrich → 22 Signals → HubSpot</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-obsidian tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-obsidian dark:text-cosmic-100 tracking-tight">
               Qualification & CRM Outreach Hub
             </h1>
-            <p className="text-obsidian/70 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
+            <p className="text-obsidian/70 dark:text-cosmic-300 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
               Autonomous multi-signal audit across 22 parameters, credit-safe contact reveals, and bespoke AI outreach generation before CRM sync.
             </p>
           </div>
 
           {/* Interactive Live Funnel Metrics Strip */}
-          <div className="grid grid-cols-5 gap-2 bg-cosmic-100/90 p-2 rounded-2xl border border-cosmic-300">
-            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 border border-cosmic-200">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50">Review</div>
-              <div className="text-sm sm:text-base font-extrabold text-obsidian">{funnelCounts.review}</div>
+          <div className="grid grid-cols-5 gap-2 bg-cosmic-100/90 dark:bg-obsidian-800 p-2 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
+            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 dark:bg-obsidian-900 border border-cosmic-200 dark:border-obsidian-700">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50 dark:text-cosmic-400">Review</div>
+              <div className="text-sm sm:text-base font-extrabold text-obsidian dark:text-cosmic-100">{funnelCounts.review}</div>
             </div>
-            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 border border-cosmic-200">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50">Qualified</div>
-              <div className="text-sm sm:text-base font-extrabold text-obsidian">{funnelCounts.qualified}</div>
+            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 dark:bg-obsidian-900 border border-cosmic-200 dark:border-obsidian-700">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50 dark:text-cosmic-400">Qualified</div>
+              <div className="text-sm sm:text-base font-extrabold text-obsidian dark:text-cosmic-100">{funnelCounts.qualified}</div>
             </div>
-            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 border border-cosmic-200">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50">Approved</div>
-              <div className="text-sm sm:text-base font-extrabold text-obsidian">{funnelCounts.approved}</div>
+            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 dark:bg-obsidian-900 border border-cosmic-200 dark:border-obsidian-700">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50 dark:text-cosmic-400">Approved</div>
+              <div className="text-sm sm:text-base font-extrabold text-obsidian dark:text-cosmic-100">{funnelCounts.approved}</div>
             </div>
-            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 border border-cosmic-200">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50">Drafted</div>
-              <div className="text-sm sm:text-base font-extrabold text-obsidian">{funnelCounts.drafted}</div>
+            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 dark:bg-obsidian-900 border border-cosmic-200 dark:border-obsidian-700">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50 dark:text-cosmic-400">Drafted</div>
+              <div className="text-sm sm:text-base font-extrabold text-obsidian dark:text-cosmic-100">{funnelCounts.drafted}</div>
             </div>
-            <div className="px-3 py-2 text-center rounded-xl bg-lilac-100/80 border border-lilac-200">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-lilac-700 font-bold">In CRM</div>
-              <div className="text-sm sm:text-base font-extrabold text-lilac-800">{funnelCounts.synced}</div>
+            <div className="px-3 py-2 text-center rounded-xl bg-lilac-100/80 dark:bg-lilac-950/40 border border-lilac-200 dark:border-lilac-800">
+              <div className="text-[10px] uppercase font-mono tracking-wider text-lilac-700 dark:text-lilac-300 font-bold">In CRM</div>
+              <div className="text-sm sm:text-base font-extrabold text-lilac-800 dark:text-lilac-200">{funnelCounts.synced}</div>
             </div>
           </div>
         </div>
 
-        {/* Tab Switcher Pills */}
-        <div className="flex border-t border-cosmic-200/80 mt-6 pt-4 space-x-3 text-xs font-semibold">
-          <button
-            onClick={() => setMainTab("leads")}
-            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 ${
-              mainTab === "leads"
-                ? "btn-obsidian shadow-obsidian"
-                : "bg-cosmic-100/80 text-obsidian/70 hover:bg-cosmic-200"
-            }`}
-          >
-            <span>Lead Pipeline & Qualification</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold ${
-              mainTab === "leads" ? "bg-lilac-300 text-obsidian" : "bg-cosmic-200 text-obsidian/70"
-            }`}>
-              {leads.length}
+        {/* Arrow Flow shifted to hero card (Item 7) */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mt-5 pt-4 border-t border-cosmic-200/80 dark:border-obsidian-700">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
+              Funnel Flow:
             </span>
-          </button>
+            <div className="flex items-center space-x-1.5 bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-300 dark:border-obsidian-700 rounded-full px-3.5 py-1 text-xs text-obsidian/80 dark:text-cosmic-200 font-medium">
+              <span className="font-semibold text-obsidian dark:text-cosmic-100">Review</span>
+              <span className="text-blush-400 font-mono text-xs">→</span>
+              <span className="font-semibold text-obsidian dark:text-cosmic-100">Qualified</span>
+              <span className="text-blush-400 font-mono text-xs">→</span>
+              <span className="font-semibold text-obsidian dark:text-cosmic-100">Approved</span>
+              <span className="text-blush-400 font-mono text-xs">→</span>
+              <span className="font-semibold text-obsidian dark:text-cosmic-100">Drafted</span>
+              <span className="text-blush-400 font-mono text-xs">→</span>
+              <span className="text-lilac-700 dark:text-lilac-300 font-bold flex items-center gap-1.5">
+                In HubSpot
+                <span className="w-1.5 h-1.5 rounded-full bg-lilac-500 animate-pulse"></span>
+              </span>
+            </div>
+          </div>
 
-          <button
-            onClick={() => setMainTab("integrations")}
-            className={`px-4 py-2 rounded-xl transition flex items-center gap-2 ${
-              mainTab === "integrations"
-                ? "btn-obsidian shadow-obsidian"
-                : "bg-cosmic-100/80 text-obsidian/70 hover:bg-cosmic-200"
-            }`}
-          >
-            <span>Live Providers & Zero-Cost Guard</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-blush-100 text-blush-600 border border-blush-200">
-              Rule A Guard
-            </span>
-          </button>
+          <div className="text-[11px] font-mono text-obsidian/50 dark:text-cosmic-400">
+            Pipeline Mode: <span className="text-obsidian dark:text-cosmic-200 font-semibold">{activeTab === "leads" ? "Lead Qualification" : "Provider Settings"}</span>
+          </div>
         </div>
       </div>
 
       {/* Main Tab 1: Leads Pipeline & Funnel */}
-      {mainTab === "leads" && (
+      {activeTab === "leads" && (
         <div className="space-y-6">
           {/* Controls & Metrics Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -1075,41 +1074,41 @@ export default function DashboardPage() {
       )}
 
       {/* Main Tab 2: Providers & Free Quotas */}
-      {mainTab === "integrations" && <IntegrationSettings />}
+      {activeTab === "integrations" && <IntegrationSettings />}
 
       {/* Credit-Gated Contact Reveal Modal (Handbook 5.4) */}
       {revealModalLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/50 backdrop-blur-sm p-4">
-          <div className="glass-panel border border-blush-200 rounded-3xl max-w-md w-full p-6 space-y-4 shadow-futuristic">
-            <div className="flex items-center justify-between border-b border-cosmic-200 pb-3">
-              <h3 className="text-base font-bold text-obsidian tracking-tight">Confirm Contact Reveal</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/40 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-obsidian-700 rounded-3xl max-w-md w-full p-6 sm:p-7 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-obsidian-700 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Confirm Contact Reveal</h3>
               <button
                 onClick={() => setRevealModalLead(null)}
-                className="text-obsidian/40 hover:text-obsidian font-bold text-lg"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg"
               >
                 &times;
               </button>
             </div>
-            <div className="text-xs text-obsidian/80 space-y-2 leading-relaxed">
+            <div className="text-xs text-slate-700 dark:text-slate-300 space-y-2 leading-relaxed">
               <p>
-                Revealing verified contact information for <span className="font-bold text-obsidian">{revealModalLead.contact?.name}</span> ({revealModalLead.contact?.title}) at <span className="font-bold text-obsidian">{revealModalLead.company_name}</span>.
+                Revealing verified contact information for <span className="font-bold text-slate-900 dark:text-white">{revealModalLead.contact?.name}</span> ({revealModalLead.contact?.title}) at <span className="font-bold text-slate-900 dark:text-white">{revealModalLead.company_name}</span>.
               </p>
-              <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300 space-y-1">
-                <div className="text-[10px] font-mono uppercase text-obsidian/50 font-bold">Credit Gate Policy:</div>
-                <div className="text-obsidian font-semibold">Consumes 1 Apollo Reveal Credit</div>
-                <div className="text-obsidian/60 text-[11px]">Human authorization required. No silent credit deduction.</div>
+              <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200 dark:border-obsidian-700 space-y-1">
+                <div className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold">Credit Gate Policy:</div>
+                <div className="text-slate-900 dark:text-white font-semibold">Consumes 1 Apollo Reveal Credit</div>
+                <div className="text-slate-500 dark:text-slate-400 text-[11px]">Human authorization required. No silent credit deduction.</div>
               </div>
             </div>
-            <div className="flex items-center justify-end space-x-3 pt-3 border-t border-cosmic-200">
+            <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200 dark:border-obsidian-700">
               <button
                 onClick={() => setRevealModalLead(null)}
-                className="px-4 py-2 text-xs font-semibold rounded-xl border border-cosmic-300 text-obsidian/70 hover:bg-cosmic-100"
+                className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-obsidian-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-obsidian-800"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleConfirmReveal(revealModalLead.id)}
-                className="btn-obsidian px-4 py-2 text-xs font-semibold rounded-xl shadow-obsidian"
+                className="btn-obsidian px-4 py-2 text-xs font-semibold rounded-xl"
               >
                 Confirm Reveal
               </button>
@@ -1120,29 +1119,29 @@ export default function DashboardPage() {
 
       {/* AI Outreach Draft Studio Modal (Handbook 3.2) */}
       {activeDraftLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/50 backdrop-blur-sm p-4">
-          <div className="glass-panel border border-blush-200 rounded-3xl max-w-2xl w-full p-6 space-y-5 shadow-futuristic max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-cosmic-200 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/40 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-obsidian-700 rounded-3xl max-w-2xl w-full p-6 sm:p-7 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-obsidian-700 pb-3">
               <div>
-                <h3 className="text-base font-bold text-obsidian tracking-tight">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
                   Draft Studio: {activeDraftLead.company_name}
                 </h3>
-                <p className="text-[11px] text-obsidian/60">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
                   Recipient: {activeDraftLead.contact?.name} ({activeDraftLead.contact?.title}) | OpenRouter AI
                 </p>
               </div>
               <button
                 onClick={() => setActiveDraftLead(null)}
-                className="text-obsidian/40 hover:text-obsidian font-bold text-lg"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg"
               >
                 &times;
               </button>
             </div>
 
             {/* Tone Selector & Model Indicator */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-cosmic-100 p-3 rounded-2xl border border-cosmic-200 text-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-obsidian-800 p-3 rounded-2xl border border-slate-200 dark:border-obsidian-700 text-xs">
               <div className="flex items-center space-x-1.5">
-                <span className="text-[10px] font-mono uppercase text-obsidian/50 font-bold mr-1">Angle / Tone:</span>
+                <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold mr-1">Angle / Tone:</span>
                 {(["consultative", "direct", "short"] as const).map((t) => (
                   <button
                     key={t}
@@ -1151,7 +1150,7 @@ export default function DashboardPage() {
                       handleOpenDraftStudio(activeDraftLead);
                     }}
                     className={`px-2.5 py-1 rounded-xl text-xs font-semibold capitalize transition ${
-                      draftTone === t ? "btn-obsidian" : "bg-cosmic-50 text-obsidian/70 hover:bg-cosmic-200"
+                      draftTone === t ? "btn-obsidian" : "bg-white dark:bg-obsidian-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-obsidian-600 hover:bg-slate-100"
                     }`}
                   >
                     {t}
@@ -1159,51 +1158,51 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              <div className="flex items-center gap-2 text-[10px] font-mono text-obsidian/60">
+              <div className="flex items-center gap-2 text-[10px] font-mono text-slate-500 dark:text-slate-400">
                 <span>Model: claude-3.5-sonnet</span>
-                <span className="text-lilac-700 font-bold">~$0.02 / draft</span>
+                <span className="text-lilac-700 dark:text-lilac-300 font-bold">~$0.02 / draft</span>
               </div>
             </div>
 
             {/* Subject Input */}
             <div className="space-y-1 text-xs">
-              <label htmlFor="draft-subject" className="font-mono uppercase text-[10px] font-bold text-obsidian/60">Subject Line</label>
+              <label htmlFor="draft-subject" className="font-mono uppercase text-[10px] font-bold text-slate-500 dark:text-slate-400">Subject Line</label>
               <input
                 id="draft-subject"
                 type="text"
                 value={draftSubject}
                 onChange={(e) => setDraftSubject(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-cosmic-300 bg-cosmic-50 focus:outline-none focus:ring-2 focus:ring-lilac-400 font-medium text-obsidian"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-obsidian-700 bg-slate-50 dark:bg-obsidian-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-lilac-400 font-medium"
               />
             </div>
 
             {/* Body Input */}
             <div className="space-y-1 text-xs">
-              <label htmlFor="draft-body" className="font-mono uppercase text-[10px] font-bold text-obsidian/60">Email Copy (Editable)</label>
+              <label htmlFor="draft-body" className="font-mono uppercase text-[10px] font-bold text-slate-500 dark:text-slate-400">Email Copy (Editable)</label>
               <textarea
                 id="draft-body"
                 rows={7}
                 value={draftBody}
                 onChange={(e) => setDraftBody(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-cosmic-300 bg-cosmic-50 focus:outline-none focus:ring-2 focus:ring-lilac-400 font-sans text-xs text-obsidian leading-relaxed"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-obsidian-700 bg-slate-50 dark:bg-obsidian-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-lilac-400 font-sans text-xs leading-relaxed"
               ></textarea>
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-cosmic-200">
-              <div className="text-[11px] text-obsidian/50">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-obsidian-700">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 FDD Rule: Lead cannot sync to CRM until draft is approved.
               </div>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setActiveDraftLead(null)}
-                  className="px-4 py-2 text-xs font-semibold rounded-xl border border-cosmic-300 text-obsidian/70 hover:bg-cosmic-100"
+                  className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-obsidian-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-obsidian-800"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveAndApproveDraft}
-                  className="btn-obsidian px-4 py-2 text-xs font-semibold rounded-xl shadow-obsidian"
+                  className="btn-obsidian px-4 py-2 text-xs font-semibold rounded-xl"
                 >
                   Approve Draft
                 </button>
@@ -1213,33 +1212,33 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 22-Signal Score & Evidence Modal */}
+      {/* 22-Signal Score & Evidence Modal (Item 3: Clean, crisp white background) */}
       {selectedLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/50 backdrop-blur-sm p-4">
-          <div className="glass-panel border border-blush-200 rounded-3xl max-w-3xl w-full p-6 space-y-5 shadow-futuristic max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-cosmic-200 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-obsidian/40 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-obsidian-900 border border-slate-200 dark:border-obsidian-700 rounded-3xl max-w-3xl w-full p-6 sm:p-7 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-obsidian-700 pb-3">
               <div>
-                <h3 className="text-base font-bold text-obsidian tracking-tight">{selectedLead.company_name}</h3>
-                <p className="text-xs text-obsidian/60 font-mono">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{selectedLead.company_name}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
                   {selectedLead.domain} | 22-Signal Qualification Audit
                 </p>
               </div>
               <button
                 onClick={() => setSelectedLead(null)}
-                className="text-obsidian/40 hover:text-obsidian font-bold text-lg"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white font-bold text-lg"
               >
                 &times;
               </button>
             </div>
 
             {/* Modal Tabs */}
-            <div className="flex border-b border-cosmic-200 space-x-6 text-xs font-semibold">
+            <div className="flex border-b border-slate-200 dark:border-obsidian-700 space-x-6 text-xs font-semibold">
               <button
                 onClick={() => setActiveModalTab("scoring")}
                 className={`pb-2 border-b-2 transition ${
                   activeModalTab === "scoring"
-                    ? "border-obsidian text-obsidian font-bold"
-                    : "border-transparent text-obsidian/50 hover:text-obsidian"
+                    ? "border-slate-900 dark:border-white text-slate-900 dark:text-white font-bold"
+                    : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                 }`}
               >
                 22-Signal Audit Breakdown
@@ -1248,8 +1247,8 @@ export default function DashboardPage() {
                 onClick={() => setActiveModalTab("crawl")}
                 className={`pb-2 border-b-2 transition ${
                   activeModalTab === "crawl"
-                    ? "border-obsidian text-obsidian font-bold"
-                    : "border-transparent text-obsidian/50 hover:text-obsidian"
+                    ? "border-slate-900 dark:border-white text-slate-900 dark:text-white font-bold"
+                    : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                 }`}
               >
                 Website Verification & Tech Stack
@@ -1259,38 +1258,38 @@ export default function DashboardPage() {
             {activeModalTab === "scoring" ? (
               selectedLead.latest_score_record ? (
                 <div className="space-y-4 text-xs">
-                  {/* Metric Gauges */}
+                  {/* Metric Gauges with clean light background */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
-                      <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Overall Score</span>
-                      <span className="text-xl font-black text-obsidian font-mono">
+                    <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200/90 dark:border-obsidian-700">
+                      <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Overall Score</span>
+                      <span className="text-xl font-black text-slate-900 dark:text-white font-mono">
                         {selectedLead.latest_score_record.final_score}/100
                       </span>
                     </div>
-                    <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
-                      <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Funnel Band</span>
-                      <span className="font-bold text-lilac-700 uppercase font-mono">
+                    <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200/90 dark:border-obsidian-700">
+                      <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Funnel Band</span>
+                      <span className="font-bold text-lilac-700 dark:text-lilac-300 uppercase font-mono">
                         {selectedLead.latest_score_record.qualification_band}
                       </span>
                     </div>
-                    <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
-                      <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Website Group (1-10)</span>
-                      <span className="font-bold text-obsidian font-mono">
+                    <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200/90 dark:border-obsidian-700">
+                      <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Website Group (1-10)</span>
+                      <span className="font-bold text-slate-900 dark:text-white font-mono">
                         {selectedLead.latest_score_record.website_group_score}/100
                       </span>
                     </div>
-                    <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
-                      <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Marketing Group (11-22)</span>
-                      <span className="font-bold text-obsidian font-mono">
+                    <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200/90 dark:border-obsidian-700">
+                      <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Marketing Group (11-22)</span>
+                      <span className="font-bold text-slate-900 dark:text-white font-mono">
                         {selectedLead.latest_score_record.marketing_group_score}/100
                       </span>
                     </div>
                   </div>
 
-                  {/* 22 Signals Table */}
-                  <div className="border border-cosmic-200 rounded-2xl overflow-hidden">
+                  {/* 22 Signals Table on clean white background */}
+                  <div className="border border-slate-200 dark:border-obsidian-700 rounded-2xl overflow-hidden bg-white dark:bg-obsidian-900">
                     <table className="w-full text-left text-[11px]">
-                      <thead className="bg-cosmic-200/60 text-obsidian/60 font-mono uppercase text-[9px]">
+                      <thead className="bg-slate-100/90 dark:bg-obsidian-800 text-slate-700 dark:text-slate-300 font-mono uppercase text-[9px]">
                         <tr>
                           <th className="py-2.5 px-3">Signal Name</th>
                           <th className="py-2.5 px-3">Group</th>
@@ -1299,18 +1298,18 @@ export default function DashboardPage() {
                           <th className="py-2.5 px-3">Audit Evidence</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-cosmic-200/60">
+                      <tbody className="divide-y divide-slate-100 dark:divide-obsidian-800">
                         {selectedLead.latest_score_record.signal_breakdown.explanations.map((sig) => (
-                          <tr key={sig.signal_key} className="hover:bg-cosmic-100/50">
-                            <td className="py-2 px-3 font-semibold text-obsidian">{sig.name}</td>
-                            <td className="py-2 px-3 uppercase text-[9px] font-mono text-obsidian/50">
+                          <tr key={sig.signal_key} className="hover:bg-slate-50 dark:hover:bg-obsidian-800/60">
+                            <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white">{sig.name}</td>
+                            <td className="py-2 px-3 uppercase text-[9px] font-mono text-slate-500 dark:text-slate-400">
                               {sig.category}
                             </td>
-                            <td className="py-2 px-3 text-center font-mono font-bold text-obsidian">
+                            <td className="py-2 px-3 text-center font-mono font-bold text-slate-900 dark:text-white">
                               {sig.normalized_score}
                             </td>
-                            <td className="py-2 px-3 text-center font-mono text-obsidian/50">{sig.weight}</td>
-                            <td className="py-2 px-3 text-obsidian/70">{sig.summary}</td>
+                            <td className="py-2 px-3 text-center font-mono text-slate-500 dark:text-slate-400">{sig.weight}</td>
+                            <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{sig.summary}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1318,50 +1317,50 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ) : (
-                <div className="py-8 text-center text-obsidian/50 text-xs">
+                <div className="py-8 text-center text-slate-500 text-xs">
                   This lead has not been evaluated yet. Click Score to run the 22-signal engine.
                 </div>
               )
             ) : selectedLead.latest_enrichment ? (
               <div className="space-y-3 text-xs">
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
-                    <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Engine</span>
-                    <span className="font-semibold text-obsidian">Local Native Safe Crawler</span>
+                  <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200 dark:border-obsidian-700">
+                    <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Engine</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">Local Native Safe Crawler</span>
                   </div>
-                  <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
-                    <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Response Time</span>
-                    <span className="font-semibold text-obsidian font-mono">
+                  <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200 dark:border-obsidian-700">
+                    <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Response Time</span>
+                    <span className="font-semibold text-slate-900 dark:text-white font-mono">
                       {selectedLead.latest_enrichment.evidence.load_time_ms} ms
                     </span>
                   </div>
-                  <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300">
-                    <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Security</span>
-                    <span className="font-semibold text-lilac-700 font-mono">
+                  <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200 dark:border-obsidian-700">
+                    <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Security</span>
+                    <span className="font-semibold text-lilac-700 dark:text-lilac-300 font-mono">
                       {selectedLead.latest_enrichment.evidence.ssl_valid ? "TLS / HTTPS" : "Insecure"}
                     </span>
                   </div>
                 </div>
 
-                <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300 space-y-1">
-                  <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Title</span>
-                  <p className="font-medium text-obsidian">
+                <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200 dark:border-obsidian-700 space-y-1">
+                  <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Title</span>
+                  <p className="font-medium text-slate-900 dark:text-white">
                     {selectedLead.latest_enrichment.evidence.title || "No page title detected"}
                   </p>
                 </div>
 
-                <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300 space-y-1">
-                  <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Meta Description</span>
-                  <p className="text-obsidian/70">
+                <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200 dark:border-obsidian-700 space-y-1">
+                  <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Meta Description</span>
+                  <p className="text-slate-600 dark:text-slate-300">
                     {selectedLead.latest_enrichment.evidence.meta_description || "No description found"}
                   </p>
                 </div>
 
-                <div className="p-3 bg-cosmic-100 rounded-2xl border border-cosmic-300 space-y-2">
-                  <span className="text-[9px] font-mono uppercase text-obsidian/50 font-bold block">Detected Technologies</span>
+                <div className="p-3.5 bg-slate-50 dark:bg-obsidian-800 rounded-2xl border border-slate-200 dark:border-obsidian-700 space-y-2">
+                  <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 font-bold block">Detected Technologies</span>
                   <div className="flex flex-wrap gap-1.5">
                     {selectedLead.latest_enrichment.evidence.detected_tech?.map((t) => (
-                      <span key={t} className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold bg-lilac-100 text-lilac-800 border border-lilac-200">
+                      <span key={t} className="px-2 py-0.5 rounded-lg text-[10px] font-mono font-semibold bg-lilac-100 dark:bg-lilac-950/60 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-lilac-800">
                         {t}
                       </span>
                     ))}
@@ -1369,13 +1368,13 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-obsidian/50 py-6 text-center">No website scan record found for this prospect.</p>
+              <p className="text-xs text-slate-500 py-6 text-center">No website scan record found for this prospect.</p>
             )}
 
-            <div className="text-right pt-3 border-t border-cosmic-200">
+            <div className="text-right pt-3 border-t border-slate-200 dark:border-obsidian-700">
               <button
                 onClick={() => setSelectedLead(null)}
-                className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-cosmic-200 text-obsidian hover:bg-cosmic-300 transition"
+                className="btn-obsidian px-4 py-1.5 rounded-xl text-xs font-semibold"
               >
                 Close
               </button>
