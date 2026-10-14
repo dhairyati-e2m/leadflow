@@ -20,7 +20,13 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push("/");
+      if (email.toLowerCase().includes("client")) {
+        router.push("/portal");
+      } else if (email.toLowerCase().includes("superadmin")) {
+        router.push("/super-admin");
+      } else {
+        router.push("/");
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unable to sign in. Please verify your credentials.";
       setErrorMessage(msg);

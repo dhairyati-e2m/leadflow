@@ -50,87 +50,61 @@ export function ClientPortal() {
 
   return (
     <div className="space-y-8">
-      {/* Client Welcome & Strategic Header (ZERO Cost Metrics) */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700 dark:bg-obsidian-900/90">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <h2 className="text-xl font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
-                Client Qualification & Pipeline Portal
-              </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-50 dark:bg-obsidian-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-obsidian-700">
-                Verified Prospects
-              </span>
-            </div>
-            <p className="text-obsidian/70 dark:text-cosmic-300 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
-              Curated prospects meeting your Ideal Customer Profile criteria. Every company is inspected across 22 technical and growth signals before presentation.
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <span className="text-[11px] font-mono px-3 py-1.5 rounded-xl bg-cosmic-100 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-200 dark:border-obsidian-700">
-              Read-Only Client Access
+      {/* Client Welcome & Strategic Hero Card (Half page vertical, full page horizontal) */}
+      <div className="glass-panel card-cosmic rounded-3xl p-8 sm:p-10 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700 w-full min-h-[42vh] flex flex-col justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-obsidian dark:text-cosmic-100 tracking-tight">
+              Client Qualification & Pipeline Portal
+            </h2>
+            <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              Verified Prospects
             </span>
           </div>
+          <p className="text-obsidian/75 dark:text-cosmic-300 text-sm sm:text-base mt-2 max-w-3xl leading-relaxed">
+            Curated high-fit prospects meeting your strategic criteria. Every organization is audited across 22 technical and growth parameters before qualification and outreach.
+          </p>
         </div>
 
-        {/* Funnel Quality Summary Cards (Strictly NO Dollar Costs) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-5 border-t border-cosmic-200 dark:border-obsidian-800">
-          <div className="p-4 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-200 dark:border-obsidian-700">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
-              Fully Qualified
+        {/* Funnel Quality Summary Cards (Bigger KPI boxes with Power BI style figures) */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 pt-6 border-t border-cosmic-200/80 dark:border-obsidian-800">
+          <div className="card-nested p-6 rounded-2xl flex flex-col justify-between">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
+              Fully Qualified Prospects
             </div>
-            <div className="text-2xl font-extrabold text-obsidian dark:text-cosmic-100 mt-1">
+            <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-2">
               {qualifiedCount}
             </div>
-            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-0.5">
-              High-fit technical & marketing opportunity
+            <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+              Verified high-fit technical & marketing opportunity
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-200 dark:border-obsidian-700">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
+          <div className="card-nested p-6 rounded-2xl flex flex-col justify-between">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
               Under Strategist Review
             </div>
-            <div className="text-2xl font-extrabold text-obsidian dark:text-cosmic-100 mt-1">
+            <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-2">
               {reviewCount}
             </div>
-            <div className="text-[11px] text-obsidian/60 dark:text-cosmic-400 font-medium mt-0.5">
-              Passing baseline criteria
+            <div className="text-xs text-obsidian/60 dark:text-cosmic-400 font-medium">
+              Passing baseline criteria & pending final audit
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-200 dark:border-obsidian-700">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
+          <div className="card-nested p-6 rounded-2xl flex flex-col justify-between">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
               Synced to CRM
             </div>
-            <div className="text-2xl font-extrabold text-obsidian dark:text-cosmic-100 mt-1">
+            <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-2">
               {syncedCount}
             </div>
-            <div className="text-[11px] text-obsidian/60 dark:text-cosmic-400 font-medium mt-0.5">
-              Ready for sales outreach
+            <div className="text-xs text-lilac-700 dark:text-lilac-300 font-medium">
+              Transferred to HubSpot sales pipeline
             </div>
           </div>
         </div>
-      </div>
-
-      {/* ICP & Engine Strategy Brief Summary (Read-Only) */}
-      <div className="glass-panel rounded-3xl p-6 border border-blush-200/80 dark:border-obsidian-700 dark:bg-obsidian-900/90 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-lilac-500"></span>
-            <h3 className="text-sm font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
-              Active ICP Criteria & Strategic Guardrails
-            </h3>
-          </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700">
-            Live Strategy
-          </span>
-        </div>
-        <p className="text-xs text-obsidian/70 dark:text-cosmic-300 leading-relaxed">
-          The pipeline actively scans for companies exhibiting dual opportunities: outdated website infrastructure (slow mobile performance, missing modern schema, legacy CMS) combined with active growth budgets (hiring engineering/marketing roles, ad spend, and active digital conversion gaps).
-        </p>
       </div>
 
       {/* Qualified Prospects Table (Read-Only, Zero Mutation Actions) */}

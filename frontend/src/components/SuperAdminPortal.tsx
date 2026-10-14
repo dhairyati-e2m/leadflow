@@ -160,9 +160,9 @@ export function SuperAdminPortal() {
           </div>
         </div>
 
-        {/* Scalability & Capacity Status Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-6 pt-5 border-t border-cosmic-200 dark:border-obsidian-800">
-          <div className="p-4 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-200 dark:border-obsidian-700">
+        {/* System Capacity Status Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-5 border-t border-cosmic-200/80 dark:border-obsidian-800">
+          <div className="card-nested p-4 rounded-2xl">
             <div className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
               Active Tenants
             </div>
@@ -171,7 +171,7 @@ export function SuperAdminPortal() {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-200 dark:border-obsidian-700">
+          <div className="card-nested p-4 rounded-2xl">
             <div className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
               Total Prospects
             </div>
@@ -180,24 +180,12 @@ export function SuperAdminPortal() {
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-200 dark:border-obsidian-700">
+          <div className="card-nested p-4 rounded-2xl">
             <div className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
               Registered Users
             </div>
             <div className="text-2xl font-extrabold text-obsidian dark:text-cosmic-100 mt-1">
               {totalUsers}
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-200 dark:border-obsidian-700">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
-              Target Scalability
-            </div>
-            <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-1">
-              1,000–1,500 Users Verified
-            </div>
-            <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400 mt-0.5">
-              PgBouncer + Async Redis ARQ
             </div>
           </div>
         </div>

@@ -5,6 +5,8 @@ import { IntegrationSettings } from "@/components/IntegrationSettings";
 import { IcpEditor } from "@/components/IcpEditor";
 import { ClientPortal } from "@/components/ClientPortal";
 import { SuperAdminPortal } from "@/components/SuperAdminPortal";
+import { WelcomeLanding } from "@/components/WelcomeLanding";
+import { useAuth } from "@/lib/auth-context";
 import { useNav } from "@/lib/nav-context";
 
 interface SignalExplanation {
@@ -221,6 +223,7 @@ interface ActiveRunInfo {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const { activeTab, role, setLeadsCount } = useNav();
   const [leads, setLeads] = useState<LeadItem[]>(INITIAL_DEMO_LEADS);
 
@@ -590,6 +593,10 @@ export default function DashboardPage() {
     return matchesSearch && matchesState;
   });
 
+  if (!user) {
+    return <WelcomeLanding />;
+  }
+
   return (
     <div className="space-y-7">
       {/* Toast Notification (Item 5: light red shade for clear visibility) */}
@@ -600,83 +607,83 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Futuristic Hero & Funnel Overview */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-cosmic-200 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700">
-                Handbook 5.3 Funnel
-              </span>
-              <span className="text-xs text-obsidian/50 dark:text-cosmic-400 font-mono">Apollo → Enrich → 22 Signals → HubSpot</span>
-            </div>
+      {/* Hero Card: Qualification & CRM Outreach Hub (Half page vertically, full page horizontally) */}
+      <div className="glass-panel card-cosmic rounded-3xl p-8 sm:p-10 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700 w-full min-h-[42vh] flex flex-col justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-3">
+            <span className="w-3 h-3 rounded-full bg-lilac-500 animate-pulse"></span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-obsidian dark:text-cosmic-100 tracking-tight">
               Qualification & CRM Outreach Hub
             </h1>
-            <p className="text-obsidian/70 dark:text-cosmic-300 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
-              Autonomous multi-signal audit across 22 parameters, credit-safe contact reveals, and bespoke AI outreach generation before CRM sync.
-            </p>
+            <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700">
+              Live Pipeline
+            </span>
           </div>
-
-          {/* Interactive Live Funnel Metrics Strip */}
-          <div className="grid grid-cols-5 gap-2 bg-cosmic-100/90 dark:bg-obsidian-800 p-2 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
-            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 dark:bg-obsidian-900 border border-cosmic-200 dark:border-obsidian-700">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50 dark:text-cosmic-400">Review</div>
-              <div className="text-sm sm:text-base font-extrabold text-obsidian dark:text-cosmic-100">{funnelCounts.review}</div>
-            </div>
-            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 dark:bg-obsidian-900 border border-cosmic-200 dark:border-obsidian-700">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50 dark:text-cosmic-400">Qualified</div>
-              <div className="text-sm sm:text-base font-extrabold text-obsidian dark:text-cosmic-100">{funnelCounts.qualified}</div>
-            </div>
-            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 dark:bg-obsidian-900 border border-cosmic-200 dark:border-obsidian-700">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50 dark:text-cosmic-400">Approved</div>
-              <div className="text-sm sm:text-base font-extrabold text-obsidian dark:text-cosmic-100">{funnelCounts.approved}</div>
-            </div>
-            <div className="px-3 py-2 text-center rounded-xl bg-cosmic-50/70 dark:bg-obsidian-900 border border-cosmic-200 dark:border-obsidian-700">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50 dark:text-cosmic-400">Drafted</div>
-              <div className="text-sm sm:text-base font-extrabold text-obsidian dark:text-cosmic-100">{funnelCounts.drafted}</div>
-            </div>
-            <div className="px-3 py-2 text-center rounded-xl bg-lilac-100/80 dark:bg-obsidian-900 border border-lilac-200 dark:border-lilac-800/80">
-              <div className="text-[10px] uppercase font-mono tracking-wider text-lilac-700 dark:text-lilac-300 font-bold">In CRM</div>
-              <div className="text-sm sm:text-base font-extrabold text-lilac-800 dark:text-lilac-300">{funnelCounts.synced}</div>
-            </div>
-          </div>
+          <p className="text-obsidian/75 dark:text-cosmic-300 text-sm sm:text-base mt-2 max-w-3xl leading-relaxed">
+            Autonomous multi-signal audit across 22 parameters, credit-safe contact reveals, and bespoke AI outreach generation before CRM sync.
+          </p>
         </div>
 
-        {/* Arrow Flow shifted to hero card (Item 7) */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mt-5 pt-4 border-t border-cosmic-200/80 dark:border-obsidian-700">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
-              Funnel Flow:
-            </span>
-            <div className="flex items-center space-x-1.5 bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-300 dark:border-obsidian-700 rounded-full px-3.5 py-1 text-xs text-obsidian/80 dark:text-cosmic-200 font-medium">
-              <span className="font-semibold text-obsidian dark:text-cosmic-100">Review</span>
-              <span className="text-blush-400 font-mono text-xs">→</span>
-              <span className="font-semibold text-obsidian dark:text-cosmic-100">Qualified</span>
-              <span className="text-blush-400 font-mono text-xs">→</span>
-              <span className="font-semibold text-obsidian dark:text-cosmic-100">Approved</span>
-              <span className="text-blush-400 font-mono text-xs">→</span>
-              <span className="font-semibold text-obsidian dark:text-cosmic-100">Drafted</span>
-              <span className="text-blush-400 font-mono text-xs">→</span>
-              <span className="text-lilac-700 dark:text-lilac-300 font-bold flex items-center gap-1.5">
-                In HubSpot
-                <span className="w-1.5 h-1.5 rounded-full bg-lilac-500 animate-pulse"></span>
-              </span>
+        {/* Big KPI Metrics in Boxes (Power BI style figures) */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-6 border-t border-cosmic-200/80 dark:border-obsidian-800">
+          <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
+              Review
+            </div>
+            <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-1.5">
+              {funnelCounts.review}
+            </div>
+            <div className="text-[11px] text-obsidian/50 dark:text-cosmic-400 font-medium">
+              Awaiting qualification score
             </div>
           </div>
 
-          <div className="text-[11px] font-mono text-obsidian/50 dark:text-cosmic-400">
-            Pipeline Mode: <span className="text-obsidian dark:text-cosmic-200 font-semibold">{
-              role === "client_viewer" || activeTab === "portal"
-                ? "Client Verified Portal"
-                : activeTab === "icp"
-                ? "Audiences & ICP Builder"
-                : activeTab === "admin" || activeTab === "audit"
-                ? "Super Admin Multi-Tenant Oversight"
-                : activeTab === "leads"
-                ? "Lead Qualification"
-                : "Signal Engines & Rules"
-            }</span>
+          <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
+              Qualified
+            </div>
+            <div className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 my-1.5">
+              {funnelCounts.qualified}
+            </div>
+            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+              Met ICP threshold standard
+            </div>
+          </div>
+
+          <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
+              Approved
+            </div>
+            <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-1.5">
+              {funnelCounts.approved}
+            </div>
+            <div className="text-[11px] text-obsidian/50 dark:text-cosmic-400 font-medium">
+              Human approved for draft
+            </div>
+          </div>
+
+          <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
+              Drafted
+            </div>
+            <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-1.5">
+              {funnelCounts.drafted}
+            </div>
+            <div className="text-[11px] text-obsidian/50 dark:text-cosmic-400 font-medium">
+              Ready for CRM handoff
+            </div>
+          </div>
+
+          <div className="card-nested p-5 rounded-2xl flex flex-col justify-between border-lilac-300 dark:border-lilac-800">
+            <div className="text-[11px] font-mono uppercase tracking-wider text-lilac-700 dark:text-lilac-300 font-bold">
+              In CRM
+            </div>
+            <div className="text-3xl sm:text-4xl font-black text-lilac-700 dark:text-lilac-300 my-1.5">
+              {funnelCounts.synced}
+            </div>
+            <div className="text-[11px] text-lilac-700 dark:text-lilac-300 font-medium">
+              Synced to HubSpot ✓
+            </div>
           </div>
         </div>
       </div>
@@ -694,67 +701,36 @@ export default function DashboardPage() {
       {/* 3. Main Tab 1: Leads Pipeline & Funnel (Org Admin & Super Admin) */}
       {role !== "client_viewer" && activeTab === "leads" && (
         <div className="space-y-6">
-          {/* Controls & Metrics Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Qualification Standard Slider */}
-            <div className="glass-panel rounded-3xl p-5 border border-blush-200/80 dark:border-obsidian-700 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 block">
-                    Target Lead Qualification Standard
-                  </span>
-                  <span className="text-xs text-obsidian/70 dark:text-cosmic-300 mt-0.5 block leading-relaxed">
-                    Threshold separating Review from Qualified (10 Website + 12 Marketing checks).
-                  </span>
-                </div>
-                <div className="flex items-center space-x-3 bg-cosmic-100/90 dark:bg-obsidian-800 px-3 py-2 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
-                  <div className="flex items-center space-x-2">
-                    <label htmlFor="threshold-slider" className="text-[11px] text-obsidian/70 dark:text-cosmic-300 font-medium">Cutoff:</label>
-                    <input
-                      id="threshold-slider"
-                      type="range"
-                      min="50"
-                      max="90"
-                      value={icpThreshold}
-                      onChange={(e) => setIcpThreshold(Number(e.target.value))}
-                      className="w-20 accent-obsidian dark:accent-lilac-400 cursor-pointer"
-                    />
-                    <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg bg-cosmic-50 dark:bg-obsidian-900 text-obsidian dark:text-cosmic-100 border border-cosmic-300 dark:border-obsidian-700">
-                      {icpThreshold}/100
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono text-lilac-700 dark:text-lilac-300 font-bold px-2 py-0.5 rounded-lg bg-lilac-50 dark:bg-obsidian-900 border border-lilac-200 dark:border-lilac-800/80">
-                    +10 Bonus
-                  </span>
-                </div>
+          {/* Target Lead Qualification Standard (Full width matching Sourcing & Batch Pipeline card) */}
+          <div className="glass-panel card-cosmic rounded-3xl p-6 border border-blush-200/80 dark:border-obsidian-700 shadow-sm w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-xs font-mono uppercase tracking-wider font-bold text-obsidian/70 dark:text-cosmic-300 block">
+                  Target Lead Qualification Standard
+                </span>
+                <span className="text-xs text-obsidian/60 dark:text-cosmic-400 mt-1 block leading-relaxed max-w-xl">
+                  Threshold score separating Review from Qualified (10 Website Architecture + 12 Marketing signals). Leads scoring at or above this standard pass automatically to verified qualification.
+                </span>
               </div>
-            </div>
-
-            {/* Monthly Budget & Usage Strip */}
-            <div className="glass-panel rounded-3xl p-5 border border-blush-200/80 dark:border-obsidian-700 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-lilac-500"></span>
-                    SaaS Allotment & Safety Ledger
-                  </span>
-                  <span className="text-xs text-obsidian/70 dark:text-cosmic-300 mt-0.5 block">
-                    Zero-Cost Guarantee: Hard spend cap enforced ($0.00 billable)
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2.5 text-xs">
-                  <div className="px-3 py-1.5 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-300 dark:border-obsidian-700">
-                    <span className="text-obsidian/50 dark:text-cosmic-400 text-[9px] uppercase font-mono font-bold block">Scanned Sites</span>
-                    <span className="font-bold text-obsidian dark:text-cosmic-100 font-mono">14 <span className="text-obsidian/40 dark:text-cosmic-400/60 font-normal">/ 10,000</span></span>
-                  </div>
-                  <div className="px-3 py-1.5 rounded-2xl bg-cosmic-100/90 dark:bg-obsidian-800 border border-cosmic-300 dark:border-obsidian-700">
-                    <span className="text-obsidian/50 dark:text-cosmic-400 text-[9px] uppercase font-mono font-bold block">Evaluated</span>
-                    <span className="font-bold text-obsidian dark:text-cosmic-100 font-mono">18 <span className="text-obsidian/40 dark:text-cosmic-400/60 font-normal">/ 5,000</span></span>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold bg-lilac-100 dark:bg-obsidian-900 text-lilac-700 dark:text-lilac-300 border border-lilac-200 dark:border-lilac-800/80 uppercase">
-                    Worker Idle
+              <div className="flex items-center space-x-3 bg-cosmic-100/90 dark:bg-obsidian-800 px-4 py-2.5 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
+                <div className="flex items-center space-x-2.5">
+                  <label htmlFor="threshold-slider" className="text-xs text-obsidian/70 dark:text-cosmic-300 font-medium">Threshold:</label>
+                  <input
+                    id="threshold-slider"
+                    type="range"
+                    min="50"
+                    max="90"
+                    value={icpThreshold}
+                    onChange={(e) => setIcpThreshold(Number(e.target.value))}
+                    className="w-28 accent-obsidian dark:accent-lilac-400 cursor-pointer"
+                  />
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-lg bg-cosmic-50 dark:bg-obsidian-900 text-obsidian dark:text-cosmic-100 border border-cosmic-300 dark:border-obsidian-700">
+                    {icpThreshold}/100
                   </span>
                 </div>
+                <span className="text-[10px] font-mono text-lilac-700 dark:text-lilac-300 font-bold px-2.5 py-1 rounded-lg bg-lilac-50 dark:bg-obsidian-900 border border-lilac-200 dark:border-lilac-800/80">
+                  +10 Bonus Applied
+                </span>
               </div>
             </div>
           </div>

@@ -415,11 +415,23 @@ export function IntegrationSettings() {
     }
   };
 
+  const [auditLogEntries, setAuditLogEntries] = useState<Array<{ timestamp: string; operator: string; action: string }>>([]);
+
   const handleAdjustWeight = (key: string, name: string, delta: number) => {
+    const operatorIdentity = user?.email || user?.full_name || "Authorized Operator";
     setWeights((prev) => {
       const current = prev[key] ?? 1.0;
       const next = Math.max(0.1, Math.min(3.0, Math.round((current + delta) * 10) / 10));
-      showNotification(`Scoring weight for "${name}" tuned to ${next.toFixed(1)}x.`);
+      const logMsg = `Weight for "${name}" updated to ${next.toFixed(1)}x by ${operatorIdentity}`;
+      showNotification(`${logMsg} [Audit Logged]`);
+      setAuditLogEntries((old) => [
+        {
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          operator: operatorIdentity,
+          action: `Tuned "${name}" from ${current.toFixed(1)}x to ${next.toFixed(1)}x`,
+        },
+        ...old.slice(0, 19),
+      ]);
       return { ...prev, [key]: next };
     });
   };
@@ -449,7 +461,7 @@ export function IntegrationSettings() {
       )}
 
       {/* Header & Policy Explanation Banner */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700 dark:bg-obsidian-900/90">
+      <div className="glass-panel card-cosmic rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
             <div className="flex items-center gap-2.5">
@@ -457,9 +469,6 @@ export function IntegrationSettings() {
               <h2 className="text-xl font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
                 Signal Engines & Integration Hub
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-blush-100 dark:bg-obsidian-800 text-blush-600 dark:text-blush-300 border border-blush-200 dark:border-obsidian-700">
-                Rule A Zero-Cost Guard
-              </span>
             </div>
             <p className="text-obsidian/70 dark:text-cosmic-300 text-xs sm:text-sm mt-1.5 max-w-2xl leading-relaxed">
               Granular controls for external live API providers alongside all 22 deterministic native scoring signals and interactive weight multipliers.

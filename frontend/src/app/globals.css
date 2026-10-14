@@ -37,30 +37,44 @@ body {
 
 /* Glassmorphism surfaces */
 .glass-panel {
-  background: rgba(253, 251, 247, 0.88);
+  background: rgba(253, 251, 247, 0.92);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(229, 220, 206, 0.6);
+  border: 1px solid rgba(229, 220, 206, 0.65);
 }
 
-.dark .glass-panel {
-  background: rgba(14, 14, 19, 0.95);
+/* User requirement: In dark theme, keep bg as is, but make all cards translucent/transparent cosmic latte beige */
+.dark .glass-panel,
+.dark .glass-card,
+.dark .card-cosmic {
+  background: rgba(250, 247, 242, 0.055) !important;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(250, 247, 242, 0.12) !important;
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 220, 206, 0.5);
 }
 
-.dark .glass-card {
-  background: rgba(17, 17, 23, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+/* User requirement: Cards inside card with very transparent effect in blush lavender */
+.card-nested,
+.inner-card {
+  background: rgba(240, 224, 242, 0.4);
+  border: 1px solid rgba(230, 204, 231, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.dark .card-nested,
+.dark .inner-card {
+  background: rgba(230, 204, 231, 0.08) !important;
+  border: 1px solid rgba(230, 204, 231, 0.18) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 /* Refined Obsidian Buttons: No static dark shadow. Subtle lighter black shadow only on hover */
