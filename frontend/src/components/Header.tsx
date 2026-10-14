@@ -41,7 +41,7 @@ export function Header() {
           </div>
         </div>
 
-        {/* Center: Main View Toggle moved to Navbar (Item 7) */}
+        {/* Center: Main View Toggle moved to Navbar (Item 7 & 4: Renamed to Signal Engines) */}
         <div className="flex items-center space-x-1.5 sm:space-x-2 bg-cosmic-100/90 dark:bg-obsidian-800/90 p-1 rounded-2xl border border-cosmic-300 dark:border-obsidian-700">
           <button
             type="button"
@@ -56,8 +56,8 @@ export function Header() {
             <span
               className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                 activeTab === "leads"
-                  ? "bg-lilac-300 text-obsidian"
-                  : "bg-cosmic-200 dark:bg-obsidian-700 text-obsidian/70 dark:text-cosmic-200 border border-transparent dark:border-obsidian-600"
+                  ? "bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950"
+                  : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
               }`}
             >
               {leadsCount}
@@ -73,15 +73,15 @@ export function Header() {
                 : "bg-transparent text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian dark:hover:text-cosmic-100 hover:bg-cosmic-200/80 dark:hover:bg-obsidian-700"
             }`}
           >
-            <span>Live Providers</span>
+            <span>Signal Engines</span>
             <span
               className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                 activeTab === "integrations"
-                  ? "bg-lilac-300 text-obsidian"
-                  : "bg-cosmic-200 dark:bg-obsidian-700 text-obsidian/70 dark:text-cosmic-200 border border-transparent dark:border-obsidian-600"
+                  ? "bg-lilac-300 text-obsidian dark:bg-lilac-400 dark:text-obsidian-950"
+                  : "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
               }`}
             >
-              Rule A Guard
+              22 Signals & Rules
             </span>
           </button>
         </div>

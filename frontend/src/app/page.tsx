@@ -633,9 +633,9 @@ export default function DashboardPage() {
               <div className="text-[10px] uppercase font-mono tracking-wider text-obsidian/50 dark:text-cosmic-400">Drafted</div>
               <div className="text-sm sm:text-base font-extrabold text-obsidian dark:text-cosmic-100">{funnelCounts.drafted}</div>
             </div>
-            <div className="px-3 py-2 text-center rounded-xl bg-lilac-100/80 dark:bg-lilac-950/40 border border-lilac-200 dark:border-lilac-800">
+            <div className="px-3 py-2 text-center rounded-xl bg-lilac-100/80 dark:bg-obsidian-900 border border-lilac-200 dark:border-lilac-800/80">
               <div className="text-[10px] uppercase font-mono tracking-wider text-lilac-700 dark:text-lilac-300 font-bold">In CRM</div>
-              <div className="text-sm sm:text-base font-extrabold text-lilac-800 dark:text-lilac-200">{funnelCounts.synced}</div>
+              <div className="text-sm sm:text-base font-extrabold text-lilac-800 dark:text-lilac-300">{funnelCounts.synced}</div>
             </div>
           </div>
         </div>
@@ -663,7 +663,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="text-[11px] font-mono text-obsidian/50 dark:text-cosmic-400">
-            Pipeline Mode: <span className="text-obsidian dark:text-cosmic-200 font-semibold">{activeTab === "leads" ? "Lead Qualification" : "Provider Settings"}</span>
+            Pipeline Mode: <span className="text-obsidian dark:text-cosmic-200 font-semibold">{activeTab === "leads" ? "Lead Qualification" : "Signal Engines & Rules"}</span>
           </div>
         </div>
       </div>
@@ -700,7 +700,7 @@ export default function DashboardPage() {
                       {icpThreshold}/100
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-lilac-700 dark:text-lilac-300 font-bold px-2 py-0.5 rounded-lg bg-lilac-50 dark:bg-lilac-950/50 border border-lilac-200 dark:border-lilac-800">
+                  <span className="text-[10px] font-mono text-lilac-700 dark:text-lilac-300 font-bold px-2 py-0.5 rounded-lg bg-lilac-50 dark:bg-obsidian-900 border border-lilac-200 dark:border-lilac-800/80">
                     +10 Bonus
                   </span>
                 </div>
@@ -728,7 +728,7 @@ export default function DashboardPage() {
                     <span className="text-obsidian/50 dark:text-cosmic-400 text-[9px] uppercase font-mono font-bold block">Evaluated</span>
                     <span className="font-bold text-obsidian dark:text-cosmic-100 font-mono">18 <span className="text-obsidian/40 dark:text-cosmic-400/60 font-normal">/ 5,000</span></span>
                   </div>
-                  <span className="px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold bg-lilac-100 dark:bg-lilac-950/50 text-lilac-700 dark:text-lilac-300 border border-lilac-200 dark:border-lilac-800 uppercase">
+                  <span className="px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold bg-lilac-100 dark:bg-obsidian-900 text-lilac-700 dark:text-lilac-300 border border-lilac-200 dark:border-lilac-800/80 uppercase">
                     Worker Idle
                   </span>
                 </div>
@@ -925,7 +925,7 @@ export default function DashboardPage() {
                                   {lead.contact.name} ({lead.contact.title})
                                 </span>
                                 {lead.contact.revealed ? (
-                                  <span className="text-[10px] font-mono text-lilac-700 dark:text-lilac-300 bg-lilac-100 dark:bg-lilac-950/60 px-2 py-0.5 rounded-full border border-lilac-200 dark:border-lilac-800">
+                                  <span className="text-[10px] font-mono text-lilac-700 dark:text-lilac-300 bg-lilac-100 dark:bg-obsidian-900 px-2 py-0.5 rounded-full border border-lilac-200 dark:border-lilac-800/80">
                                     {lead.contact.email}
                                   </span>
                                 ) : (
@@ -961,9 +961,9 @@ export default function DashboardPage() {
                                 <span
                                   className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider border ${
                                     lead.score_band === "qualified"
-                                      ? "bg-lilac-100 dark:bg-lilac-950/50 text-lilac-700 dark:text-lilac-300 border-lilac-300 dark:border-lilac-800"
+                                      ? "bg-lilac-100 dark:bg-obsidian-900 text-lilac-700 dark:text-lilac-300 border-lilac-300 dark:border-lilac-800/80"
                                       : lead.score_band === "review"
-                                      ? "bg-blush-100 dark:bg-blush-950/50 text-blush-600 dark:text-blush-300 border-blush-200 dark:border-blush-800"
+                                      ? "bg-blush-100 dark:bg-obsidian-900 text-blush-600 dark:text-blush-300 border-blush-200 dark:border-blush-800/80"
                                       : "bg-cosmic-200 dark:bg-obsidian-800 text-obsidian/60 dark:text-cosmic-400 border-cosmic-300 dark:border-obsidian-700"
                                   }`}
                                 >
@@ -980,16 +980,16 @@ export default function DashboardPage() {
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-mono font-bold uppercase text-[9px] tracking-wider border ${
                                 lead.pipeline_state === "synced"
-                                  ? "bg-lilac-200 dark:bg-lilac-950/60 text-lilac-800 dark:text-lilac-200 border-lilac-400 dark:border-lilac-700"
+                                  ? "bg-lilac-200 dark:bg-obsidian-900 text-lilac-800 dark:text-lilac-200 border-lilac-400 dark:border-lilac-700"
                                   : lead.pipeline_state === "drafted"
-                                  ? "bg-lilac-100 dark:bg-lilac-950/40 text-lilac-700 dark:text-lilac-300 border-lilac-300 dark:border-lilac-800"
+                                  ? "bg-lilac-100 dark:bg-obsidian-900 text-lilac-700 dark:text-lilac-300 border-lilac-300 dark:border-lilac-800"
                                   : lead.pipeline_state === "approved"
-                                  ? "bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 border-cosmic-300 dark:border-obsidian-700"
+                                  ? "bg-cosmic-100 dark:bg-obsidian-900 text-obsidian dark:text-cosmic-200 border-cosmic-300 dark:border-obsidian-700"
                                   : lead.pipeline_state === "qualified"
-                                  ? "bg-blush-100 dark:bg-blush-950/40 text-blush-600 dark:text-blush-300 border-blush-200 dark:border-blush-800"
+                                  ? "bg-blush-100 dark:bg-obsidian-900 text-blush-600 dark:text-blush-300 border-blush-200 dark:border-blush-800"
                                   : lead.pipeline_state === "review"
-                                  ? "bg-cosmic-200 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border-cosmic-300 dark:border-obsidian-700"
-                                  : "bg-cosmic-100 dark:bg-obsidian-800 text-obsidian/50 dark:text-cosmic-400 border-cosmic-200 dark:border-obsidian-700"
+                                  ? "bg-cosmic-200 dark:bg-obsidian-900 text-obsidian/70 dark:text-cosmic-300 border-cosmic-300 dark:border-obsidian-700"
+                                  : "bg-cosmic-100 dark:bg-obsidian-900 text-obsidian/50 dark:text-cosmic-400 border-cosmic-200 dark:border-obsidian-700"
                               }`}
                             >
                               {lead.pipeline_state === "synced" ? "In HubSpot" : lead.pipeline_state}
@@ -1018,12 +1018,12 @@ export default function DashboardPage() {
                               {isScoring ? "Scoring..." : hasScore ? "Re-score" : "Score"}
                             </button>
 
-                            {/* Human Approval Gate (Handbook FDD Rule 2) */}
+                            {/* Human Approval Gate (Item 3: Light green Approve button) */}
                             {lead.pipeline_state === "qualified" && (
                               <>
                                 <button
                                   onClick={() => handleApproveLead(lead.id)}
-                                  className="btn-obsidian px-3 py-1 text-xs font-semibold rounded-xl"
+                                  className="px-3 py-1 text-xs font-semibold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 shadow-sm transition"
                                 >
                                   Approve
                                 </button>
