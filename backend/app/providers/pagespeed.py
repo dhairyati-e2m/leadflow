@@ -9,13 +9,16 @@ from backend.app.providers.base import BaseProvider, ProviderResult
 logger = logging.getLogger(__name__)
 
 
+_DEFAULT_KEY = object()
+
+
 class GooglePageSpeedProvider(BaseProvider):
     DAILY_FREE_LIMIT: int = 25000
     RATE_LIMIT_PER_MINUTE: int = 240
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: Any = _DEFAULT_KEY,
         mode: Optional[Literal["mock", "live", "disabled"]] = None,
         timeout_seconds: float = 15.0,
     ):
@@ -25,7 +28,7 @@ class GooglePageSpeedProvider(BaseProvider):
             name="Google PageSpeed Insights",
             mode=provider_mode,
         )
-        self.api_key = api_key or settings.GOOGLE_PAGESPEED_API_KEY
+        self.api_key = settings.GOOGLE_PAGESPEED_API_KEY if api_key is _DEFAULT_KEY else api_key
         self.timeout_seconds = timeout_seconds
         # In-memory daily usage tracking (mirrored to Redis when available)
         self._daily_usage_cache: Dict[str, int] = {}

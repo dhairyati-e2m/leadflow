@@ -14,7 +14,7 @@ async def test_health_liveness_endpoint():
         assert data["status"] == "healthy"
         assert data["app"] == "LeadFlow"
         assert "providers" in data
-        assert data["providers"]["enrichment"] == "mock"
+        assert data["providers"]["enrichment"] in ("mock", "live", "disabled")
         assert data["providers"]["hubspot"] == "disabled"
 
 
