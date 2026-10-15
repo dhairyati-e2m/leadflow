@@ -10,7 +10,11 @@ import {
   createAudience,
   updateAudience,
   aiProposeIcp,
+  discoverCompaniesForIcp,
+  moveCompanyToPipeline,
+  DiscoveredCompany,
 } from "@/lib/api";
+import { useNav } from "@/lib/nav-context";
 
 const DEFAULT_FILTERS: AudienceFilters = {
   verticals: ["B2B SaaS & Enterprise Software"],
@@ -78,9 +82,17 @@ export function IcpEditor() {
   const [showCityDropdown, setShowCityDropdown] = useState<boolean>(false);
 
   // UI state
+  const { setActiveTab } = useNav();
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [customKeyword, setCustomKeyword] = useState<string>("");
+
+  // Hunter.io Live Discovery State & Fetch Constraint
+  const [fetchLimit, setFetchLimit] = useState<number>(5);
+  const [isDiscovering, setIsDiscovering] = useState<boolean>(false);
+  const [discoveredCompanies, setDiscoveredCompanies] = useState<DiscoveredCompany[]>([]);
+  const [movedCompanyDomains, setMovedCompanyDomains] = useState<Set<string>>(new Set());
+  const [movingDomain, setMovingDomain] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -189,6 +201,47 @@ export function IcpEditor() {
       showNotification(msg);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDiscoverCompanies = async () => {
+    setIsDiscovering(true);
+    try {
+      const constrainedLimit = Math.max(1, Math.min(fetchLimit, 25));
+      const res = await discoverCompaniesForIcp({
+        filters,
+        limit: constrainedLimit,
+      });
+      setDiscoveredCompanies(res.companies);
+      showNotification(`Discovered ${res.companies.length} companies matching your ICP criteria.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to fetch companies from Hunter.io";
+      showNotification(msg);
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  const handleMoveToReview = async (company: DiscoveredCompany) => {
+    setMovingDomain(company.domain);
+    try {
+      await moveCompanyToPipeline({
+        company_name: company.company_name,
+        domain: company.domain,
+        industry: company.industry,
+        location: company.location,
+        employee_count: company.employee_count,
+        contact_email: company.sample_email,
+        contact_name: "Executive Leader",
+        pipeline_state: "review",
+      });
+      setMovedCompanyDomains((prev) => new Set(prev).add(company.domain));
+      showNotification(`✓ Moved "${company.company_name}" to Review in Lead Pipeline!`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to move company to pipeline";
+      showNotification(msg);
+    } finally {
+      setMovingDomain(null);
     }
   };
 
@@ -823,6 +876,158 @@ export function IcpEditor() {
                     </span>
                   ))}
                 </div>
+              </div>
+
+              {/* Target Company Discovery & Live Sourcing (Hunter.io) */}
+              <div className="pt-6 border-t border-cosmic-200 dark:border-obsidian-800 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <h4 className="text-sm font-bold text-obsidian dark:text-cosmic-100">
+                        Target Company Discovery & Sourcing (Hunter.io)
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                        Live Filter API
+                      </span>
+                    </div>
+                    <p className="text-xs text-obsidian/60 dark:text-cosmic-400 mt-1">
+                      Query Hunter.io Discover with active filters ({filters.verticals[0] || "All"} &bull; {filters.locations[0] || "All"} &bull; {filters.headcount_ranges[0] || "All"}).
+                    </p>
+                  </div>
+
+                  {/* Limit constraint input & fetch trigger */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 bg-cosmic-100 dark:bg-obsidian-800 px-3 py-1.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 text-xs">
+                      <label htmlFor="fetch-constraint" className="text-[11px] font-medium text-obsidian/70 dark:text-cosmic-300">
+                        Fetch Constraint:
+                      </label>
+                      <input
+                        id="fetch-constraint"
+                        type="number"
+                        min={1}
+                        max={25}
+                        value={fetchLimit}
+                        onChange={(e) => setFetchLimit(Math.max(1, Math.min(25, parseInt(e.target.value) || 5)))}
+                        className="w-12 px-2 py-0.5 rounded-lg border border-cosmic-300 dark:border-obsidian-600 bg-white dark:bg-obsidian-900 text-center font-bold text-xs"
+                      />
+                      <span className="text-[10px] text-obsidian/50 dark:text-cosmic-400">companies (max 25)</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isDiscovering}
+                      onClick={handleDiscoverCompanies}
+                      className="btn-obsidian px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm cursor-pointer whitespace-nowrap"
+                    >
+                      {isDiscovering ? (
+                        <>
+                          <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                          <span>Fetching from Hunter...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>⚡</span>
+                          <span>Fetch Companies</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Discovered Companies List */}
+                {discoveredCompanies.length > 0 && (
+                  <div className="mt-4 card-nested p-4 sm:p-5 rounded-2xl space-y-3 border border-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/10">
+                    <div className="flex items-center justify-between pb-2 border-b border-cosmic-200 dark:border-obsidian-800">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-bold text-emerald-700 dark:text-emerald-400">
+                          {discoveredCompanies.length} companies match your filters
+                        </span>
+                        <span className="text-[10px] text-obsidian/50 dark:text-cosmic-400">
+                          (Select companies to move to Review for 22-signal scoring)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("leads")}
+                        className="text-xs font-semibold text-lilac-600 dark:text-lilac-400 hover:underline flex items-center gap-1"
+                      >
+                        <span>Open Lead Pipeline</span>
+                        <span>&rarr;</span>
+                      </button>
+                    </div>
+
+                    <div className="divide-y divide-cosmic-200 dark:divide-obsidian-800">
+                      {discoveredCompanies.map((comp) => {
+                        const isMoved = movedCompanyDomains.has(comp.domain);
+                        const isMoving = movingDomain === comp.domain;
+
+                        return (
+                          <div
+                            key={comp.domain}
+                            className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/40 dark:hover:bg-obsidian-800/40 px-2 rounded-xl transition"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-obsidian dark:text-cosmic-100">
+                                  {comp.company_name}
+                                </span>
+                                <a
+                                  href={`https://${comp.domain}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-xs font-mono text-lilac-600 dark:text-lilac-400 hover:underline"
+                                >
+                                  {comp.domain} &nearr;
+                                </a>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2 text-[11px] text-obsidian/60 dark:text-cosmic-400">
+                                <span className="px-2 py-0.5 rounded-md bg-cosmic-100 dark:bg-obsidian-800 border border-cosmic-200 dark:border-obsidian-700">
+                                  👥 {comp.employee_count}
+                                </span>
+                                <span>📍 {comp.location}</span>
+                                <span>&bull;</span>
+                                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                                  ✉️ {comp.emails_count} email addresses
+                                </span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <button
+                                type="button"
+                                disabled={isMoved || isMoving}
+                                onClick={() => handleMoveToReview(comp)}
+                                className={`px-4 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+                                  isMoved
+                                    ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 cursor-default"
+                                    : "btn-obsidian cursor-pointer hover:scale-[1.02]"
+                                }`}
+                              >
+                                {isMoving ? (
+                                  <>
+                                    <span className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                                    <span>Moving...</span>
+                                  </>
+                                ) : isMoved ? (
+                                  <>
+                                    <span>✓</span>
+                                    <span>Moved to Review</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>📥</span>
+                                    <span>Move to Review</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Action Footer */}

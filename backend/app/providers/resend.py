@@ -50,14 +50,21 @@ class ResendProvider(BaseProvider):
                 error_message="Invalid recipient email address.",
             )
 
-        # Enforce transactional purpose check
+        # Enforce email purpose check (security & quota safety)
         email_purpose = kwargs.get("purpose", "transactional_notification")
-        if email_purpose not in ["password_reset", "transactional_notification", "quota_alert"]:
-            logger.warning("Rejected non-transactional email dispatch attempt via Resend: %s", email_purpose)
+        allowed_purposes = [
+            "password_reset",
+            "transactional_notification",
+            "quota_alert",
+            "lead_outreach",
+            "approved_outreach",
+        ]
+        if email_purpose not in allowed_purposes:
+            logger.warning("Rejected unapproved email dispatch attempt via Resend: %s", email_purpose)
             return ProviderResult(
                 provider_key=self.key,
                 status="error",
-                error_message="Resend is strictly restricted to transactional system emails.",
+                error_message="Resend is restricted to transactional security emails and human-approved lead outreach.",
             )
 
         if self.mode == "disabled":
@@ -161,6 +168,32 @@ class ResendProvider(BaseProvider):
             subject=subject,
             html_content=html,
             purpose="password_reset",
+        )
+
+    async def send_lead_outreach_email(
+        self,
+        to_email: str,
+        subject: str,
+        body_text: str,
+        html_content: Optional[str] = None,
+    ) -> ProviderResult:
+        """Sends approved outreach email to target company lead."""
+        if not html_content:
+            paragraphs = "".join(f"<p>{p.strip()}</p>" for p in body_text.split("\n\n") if p.strip())
+            html_content = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; line-height: 1.6; color: #1e293b;">
+                {paragraphs}
+                <br />
+                <p style="font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+                    Sent on behalf of verified workspace strategy team via LeadFlow Outreach.
+                </p>
+            </div>
+            """
+        return await self.execute(
+            target=to_email,
+            subject=subject,
+            html_content=html_content,
+            purpose="approved_outreach",
         )
 
     def get_quota_info(self) -> Dict[str, Any]:

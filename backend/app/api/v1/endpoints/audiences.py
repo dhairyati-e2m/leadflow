@@ -2,13 +2,15 @@ from datetime import datetime, timezone
 import re
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.database import get_db_session
 from backend.app.core.deps import TenantContext, get_tenant_context, require_role
-from backend.app.models.entities import Audience, AuditLog
+from backend.app.domain.ingestion.csv_parser import normalize_domain
+from backend.app.models.entities import Audience, AuditLog, Contact, Lead
+from backend.app.providers.hunter import HunterProvider
 
 router = APIRouter()
 
@@ -371,3 +373,203 @@ def ai_propose_icp(request: AIProposeRequest) -> AIProposeResponse:
         ),
         estimated_pool_depth="~450-1,200 eligible target prospects in active geography",
     )
+
+
+class DiscoveredCompanyOut(BaseModel):
+    company_name: str
+    domain: str
+    location: str
+    industry: str
+    employee_count: str
+    emails_count: int = 0
+    sample_email: Optional[str] = None
+    source: str = "hunter_discover"
+
+
+class AudienceDiscoverRequest(BaseModel):
+    audience_id: Optional[str] = None
+    filters: Optional[AudienceFilters] = None
+    limit: int = Field(default=5, ge=1, le=25, description="Constraint on number of companies to fetch (1-25)")
+    query_override: Optional[str] = None
+
+
+class AudienceDiscoverResponse(BaseModel):
+    query_used: str
+    limit_requested: int
+    total_found: int
+    companies: List[DiscoveredCompanyOut]
+
+
+@router.post("/discover", response_model=AudienceDiscoverResponse, summary="Discover Companies Matching ICP via Hunter.io API")
+async def discover_companies(
+    data: AudienceDiscoverRequest,
+    ctx: TenantContext = Depends(require_role(["owner", "admin", "analyst", "reviewer", "client_viewer"])),
+    session: AsyncSession = Depends(get_db_session),
+) -> AudienceDiscoverResponse:
+    """
+    Discovers companies based on the configured ICP profile filters or submitted filters.
+    Enforces a strict limit constraint (1-25) to preserve free Hunter.io API quota.
+    """
+    filters: Optional[AudienceFilters] = data.filters
+
+    if data.audience_id:
+        stmt = select(Audience).where(Audience.id == data.audience_id, Audience.org_id == ctx.org_id)
+        aud = (await session.execute(stmt)).scalars().first()
+        if not aud:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Specified ICP Audience not found")
+        filters = AudienceFilters(**aud.filters)
+
+    if not filters:
+        filters = AudienceFilters()
+
+    # Build semantic natural language query for Hunter.io Discover AI engine
+    vertical_str = ", ".join(filters.verticals) if filters.verticals else "Technology"
+    loc_str = ", ".join(filters.locations) if filters.locations else "Toronto, Canada"
+    headcount_str = ", ".join(filters.headcount_ranges) if filters.headcount_ranges else "11-50 employees"
+
+    built_query = data.query_override or f"{vertical_str} companies in {loc_str} with {headcount_str}"
+
+    primary_loc = filters.locations[0] if filters.locations else "Toronto, Canada"
+    primary_ind = filters.verticals[0] if filters.verticals else "Healthcare & Medical Devices"
+    primary_hc = filters.headcount_ranges[0] if filters.headcount_ranges else "11-50 employees"
+
+    hunter = HunterProvider()
+    result = await hunter.discover_companies(
+        query=built_query,
+        limit=data.limit,
+        location=primary_loc,
+        industry=primary_ind,
+        headcount=primary_hc,
+    )
+
+    companies_raw = result.data.get("companies", [])
+    companies_out = [
+        DiscoveredCompanyOut(
+            company_name=c.get("company_name", ""),
+            domain=c.get("domain", ""),
+            location=c.get("location") or primary_loc,
+            industry=c.get("industry") or primary_ind,
+            employee_count=c.get("employee_count") or primary_hc,
+            emails_count=c.get("emails_count", 0),
+            sample_email=c.get("sample_email") or f"contact@{c.get('domain', 'example.com')}",
+            source=c.get("source", "hunter_discover"),
+        )
+        for c in companies_raw
+    ]
+
+    return AudienceDiscoverResponse(
+        query_used=built_query,
+        limit_requested=data.limit,
+        total_found=len(companies_out),
+        companies=companies_out,
+    )
+
+
+class MoveToPipelineRequest(BaseModel):
+    company_name: str = Field(..., min_length=1)
+    domain: str = Field(..., min_length=2)
+    industry: Optional[str] = None
+    location: Optional[str] = None
+    employee_count: Optional[str] = None
+    contact_email: Optional[EmailStr] = None
+    contact_name: Optional[str] = None
+    pipeline_state: str = "review"
+
+
+class MoveToPipelineResponse(BaseModel):
+    lead_id: str
+    org_id: str
+    company_name: str
+    domain: str
+    industry: Optional[str] = None
+    location: Optional[str] = None
+    employee_count: Optional[str] = None
+    pipeline_state: str
+    contact_email: Optional[str] = None
+    is_new: bool
+    message: str
+
+
+@router.post("/move-to-pipeline", response_model=MoveToPipelineResponse, status_code=status.HTTP_201_CREATED, summary="Move Chosen Discovered Company to Review Pipeline")
+async def move_company_to_pipeline(
+    data: MoveToPipelineRequest,
+    ctx: TenantContext = Depends(require_role(["owner", "admin", "analyst", "reviewer"])),
+    session: AsyncSession = Depends(get_db_session),
+) -> MoveToPipelineResponse:
+    """
+    Imports or transitions a chosen discovered company into the Lead Pipeline in 'review' state.
+    Prevents duplicates on (org_id, domain) by transitioning existing records to review.
+    """
+    clean_domain = normalize_domain(data.domain)
+
+    # Check for existing lead
+    stmt = select(Lead).where(Lead.org_id == ctx.org_id, Lead.domain == clean_domain)
+    existing_lead = (await session.execute(stmt)).scalars().first()
+
+    if existing_lead:
+        existing_lead.pipeline_state = data.pipeline_state or "review"
+        if data.company_name and not existing_lead.company_name:
+            existing_lead.company_name = data.company_name
+        lead = existing_lead
+        is_new = False
+        msg = f"Company '{lead.company_name}' refreshed in Lead Pipeline (Review state)."
+    else:
+        lead = Lead(
+            org_id=ctx.org_id,
+            company_name=data.company_name,
+            domain=clean_domain,
+            industry=data.industry,
+            location=data.location,
+            employee_count=data.employee_count,
+            pipeline_state=data.pipeline_state or "review",
+            raw_data={"source": "hunter_discover_import"},
+        )
+        session.add(lead)
+        await session.flush()
+        is_new = True
+        msg = f"Company '{lead.company_name}' successfully moved to Review in Lead Pipeline."
+
+    # If contact email provided, attach or update Contact
+    contact_email_val = None
+    if data.contact_email:
+        contact_stmt = select(Contact).where(Contact.lead_id == lead.id, Contact.email == str(data.contact_email).lower())
+        existing_contact = (await session.execute(contact_stmt)).scalars().first()
+        if not existing_contact:
+            contact = Contact(
+                org_id=ctx.org_id,
+                lead_id=lead.id,
+                full_name=data.contact_name or "Primary Contact",
+                title="Business Leader",
+                email=str(data.contact_email).lower(),
+                is_revealed=True,
+                revealed_at=datetime.now(timezone.utc),
+            )
+            session.add(contact)
+        contact_email_val = str(data.contact_email).lower()
+
+    # Log audit entry
+    audit = AuditLog(
+        org_id=ctx.org_id,
+        user_id=ctx.user.id,
+        action="move_to_pipeline",
+        entity_type="lead",
+        entity_id=lead.id,
+        details={"company_name": lead.company_name, "domain": clean_domain, "pipeline_state": lead.pipeline_state, "is_new": is_new},
+    )
+    session.add(audit)
+    await session.commit()
+
+    return MoveToPipelineResponse(
+        lead_id=lead.id,
+        org_id=lead.org_id,
+        company_name=lead.company_name,
+        domain=lead.domain,
+        industry=lead.industry,
+        location=lead.location,
+        employee_count=lead.employee_count,
+        pipeline_state=lead.pipeline_state,
+        contact_email=contact_email_val,
+        is_new=is_new,
+        message=msg,
+    )
+

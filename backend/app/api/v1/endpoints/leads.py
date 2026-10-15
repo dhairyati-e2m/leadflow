@@ -1,14 +1,16 @@
+from datetime import datetime, timezone
 import math
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.database import get_db_session
 from backend.app.core.deps import TenantContext, get_tenant_context, require_role
 from backend.app.domain.crawler.service import CrawlerService
 from backend.app.domain.scoring_service import ScoringService
-from backend.app.models.entities import Lead, Score
+from backend.app.models.entities import AuditLog, Draft, Lead, Score
+from backend.app.providers.resend import ResendProvider
 from backend.app.repositories.engines import EngineRepository
 from backend.app.repositories.enrichments import EnrichmentRepository
 from backend.app.repositories.leads import LeadRepository
@@ -303,3 +305,102 @@ async def delete_lead(
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
     await session.commit()
+
+
+class SendOutreachRequest(BaseModel):
+    to_email: EmailStr
+    subject: str = Field(..., min_length=3, max_length=255)
+    body: str = Field(..., min_length=10)
+    tone: Optional[str] = "consultative"
+
+
+class SendOutreachResponse(BaseModel):
+    lead_id: str
+    delivered: bool
+    recipient: str
+    subject: str
+    provider: str = "resend"
+    provider_message_id: Optional[str] = None
+    pipeline_state: str
+    message: str
+
+
+@router.post(
+    "/{lead_id}/send-outreach",
+    response_model=SendOutreachResponse,
+    summary="Dispatch approved outreach email directly to company contact via Resend API",
+)
+async def send_lead_outreach(
+    lead_id: str,
+    data: SendOutreachRequest,
+    ctx: TenantContext = Depends(require_role(["owner", "admin", "analyst"])),
+    session: AsyncSession = Depends(get_db_session),
+) -> SendOutreachResponse:
+    """
+    Sends the edited/approved outreach email to the company's fetched contact email using Resend API.
+    Transitions the lead to 'approved' / 'contacted' state and stores the approved draft in audit logs.
+    """
+    lead_repo = LeadRepository(session, ctx.org_id)
+    lead = await lead_repo.get_by_id(lead_id)
+    if not lead:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    # Send email via Resend
+    resend = ResendProvider()
+    result = await resend.send_lead_outreach_email(
+        to_email=str(data.to_email),
+        subject=data.subject,
+        body_text=data.body,
+    )
+
+    if result.status == "error":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result.error_message)
+
+    delivered = result.data.get("delivered", True)
+    msg_id = result.data.get("id")
+
+    # Update lead state to approved
+    lead.pipeline_state = "approved"
+
+    # Persist or update approved draft record
+    draft = Draft(
+        org_id=ctx.org_id,
+        lead_id=lead.id,
+        subject=data.subject,
+        body=data.body,
+        draft_type="ai",
+        is_approved=True,
+        approved_at=datetime.now(timezone.utc),
+        approved_by_user_id=ctx.user.id,
+    )
+    session.add(draft)
+
+    # Log audit entry
+    audit = AuditLog(
+        org_id=ctx.org_id,
+        user_id=ctx.user.id,
+        action="send_outreach_email",
+        entity_type="lead",
+        entity_id=lead.id,
+        details={
+            "recipient": str(data.to_email),
+            "subject": data.subject,
+            "provider": "resend",
+            "message_id": msg_id,
+            "delivered": delivered,
+        },
+    )
+    session.add(audit)
+    await session.commit()
+
+    return SendOutreachResponse(
+        lead_id=lead.id,
+        delivered=delivered,
+        recipient=str(data.to_email),
+        subject=data.subject,
+        provider="resend",
+        provider_message_id=msg_id,
+        pipeline_state=lead.pipeline_state,
+        message=f"Outreach email dispatched successfully to {data.to_email} via Resend.",
+    )
+

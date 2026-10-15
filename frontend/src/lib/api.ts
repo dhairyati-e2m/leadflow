@@ -850,5 +850,163 @@ export async function createAdminOrg(data: {
   return res.json();
 }
 
+export interface DiscoveredCompany {
+  company_name: string;
+  domain: string;
+  location: string;
+  industry: string;
+  employee_count: string;
+  emails_count: number;
+  sample_email?: string;
+  source: string;
+}
+
+export interface AudienceDiscoverResponse {
+  query_used: string;
+  limit_requested: number;
+  total_found: number;
+  companies: DiscoveredCompany[];
+}
+
+export async function discoverCompaniesForIcp(data: {
+  audience_id?: string;
+  filters?: AudienceFilters;
+  limit: number;
+  query_override?: string;
+}): Promise<AudienceDiscoverResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/audiences/discover`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to discover companies matching ICP" }));
+    throw new Error(err.detail || "Failed to discover companies matching ICP");
+  }
+  return res.json();
+}
+
+export interface MoveToPipelineResponse {
+  lead_id: string;
+  org_id: string;
+  company_name: string;
+  domain: string;
+  industry?: string;
+  location?: string;
+  employee_count?: string;
+  pipeline_state: string;
+  contact_email?: string;
+  is_new: boolean;
+  message: string;
+}
+
+export async function moveCompanyToPipeline(data: {
+  company_name: string;
+  domain: string;
+  industry?: string;
+  location?: string;
+  employee_count?: string;
+  contact_email?: string;
+  contact_name?: string;
+  pipeline_state?: string;
+}): Promise<MoveToPipelineResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/audiences/move-to-pipeline`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to move company to pipeline" }));
+    throw new Error(err.detail || "Failed to move company to pipeline");
+  }
+  return res.json();
+}
+
+export interface SendOutreachResponse {
+  lead_id: string;
+  delivered: boolean;
+  recipient: string;
+  subject: string;
+  provider: string;
+  provider_message_id?: string;
+  pipeline_state: string;
+  message: string;
+}
+
+export async function sendLeadOutreach(
+  leadId: string,
+  data: {
+    to_email: string;
+    subject: string;
+    body: string;
+    tone?: string;
+  }
+): Promise<SendOutreachResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/leads/${leadId}/send-outreach`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to dispatch email via Resend" }));
+    throw new Error(err.detail || "Failed to dispatch email via Resend");
+  }
+  return res.json();
+}
+
+export async function scoreLeadApi(leadId: string): Promise<any> {
+  const res = await authenticatedFetch(`${API_BASE}/leads/${leadId}/score`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to evaluate 22 signals for lead" }));
+    throw new Error(err.detail || "Failed to evaluate 22 signals for lead");
+  }
+  return res.json();
+}
+
+export interface LeadOutItem {
+  id: string;
+  org_id: string;
+  company_name: string;
+  domain: string;
+  industry?: string;
+  location?: string;
+  employee_count?: string;
+  pipeline_state: "sourced" | "review" | "qualified" | "approved" | "drafted" | "synced" | "rejected" | "disqualified";
+  score_band?: "qualified" | "review" | "disqualified";
+  latest_score?: number;
+  created_at?: string;
+}
+
+export interface PaginatedLeadsResponse {
+  items: LeadOutItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export async function fetchLeads(params?: {
+  page?: number;
+  page_size?: number;
+  state?: string;
+  search?: string;
+}): Promise<PaginatedLeadsResponse> {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", params.page.toString());
+  if (params?.page_size) query.set("page_size", params.page_size.toString());
+  if (params?.state && params.state !== "all") query.set("state", params.state);
+  if (params?.search) query.set("search", params.search);
+
+  const res = await authenticatedFetch(`${API_BASE}/leads?${query.toString()}`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error("Failed to fetch leads");
+  }
+  return res.json();
+}
+
+
+
 
 

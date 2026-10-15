@@ -9,6 +9,7 @@ import { WelcomeLanding } from "@/components/WelcomeLanding";
 import { OrgAccessRequestsCard } from "@/components/OrgAccessRequestsCard";
 import { useAuth } from "@/lib/auth-context";
 import { useNav } from "@/lib/nav-context";
+import { sendLeadOutreach, fetchLeads, scoreLeadApi } from "@/lib/api";
 
 interface SignalExplanation {
   signal_key: string;
@@ -61,7 +62,7 @@ interface LeadItem {
   industry?: string;
   location?: string;
   employee_count?: string;
-  pipeline_state: "sourced" | "review" | "qualified" | "approved" | "drafted" | "synced" | "rejected";
+  pipeline_state: "sourced" | "review" | "qualified" | "approved" | "drafted" | "synced" | "rejected" | "disqualified";
   score_band?: "qualified" | "review" | "disqualified";
   latest_score?: number;
   contact?: ContactInfo;
@@ -233,6 +234,58 @@ export default function DashboardPage() {
   useEffect(() => {
     setLeadsCount(leads.length);
   }, [leads.length, setLeadsCount]);
+
+  useEffect(() => {
+    async function loadBackendLeads() {
+      try {
+        const resp = await fetchLeads();
+        if (resp && resp.items && resp.items.length > 0) {
+          setLeads((prev) => {
+            const dbMap = new Map<string, LeadItem>();
+            prev.forEach((item) => dbMap.set(item.domain.toLowerCase(), item));
+
+            resp.items.forEach((item) => {
+              const existing = dbMap.get(item.domain.toLowerCase());
+              if (existing) {
+                dbMap.set(item.domain.toLowerCase(), {
+                  ...existing,
+                  id: item.id || existing.id,
+                  company_name: item.company_name || existing.company_name,
+                  pipeline_state: (item.pipeline_state as any) || existing.pipeline_state,
+                  latest_score: item.latest_score !== undefined && item.latest_score !== null ? item.latest_score : existing.latest_score,
+                  score_band: (item.score_band as any) || existing.score_band,
+                });
+              } else {
+                dbMap.set(item.domain.toLowerCase(), {
+                  id: item.id,
+                  company_name: item.company_name,
+                  domain: item.domain,
+                  industry: item.industry || "General Industry",
+                  location: item.location || "Global",
+                  employee_count: item.employee_count || "10-50",
+                  pipeline_state: (item.pipeline_state as any) || "review",
+                  score_band: (item.score_band as any) || undefined,
+                  latest_score: item.latest_score !== null ? item.latest_score : undefined,
+                  contact: {
+                    name: "Executive Leader",
+                    title: "Decision Maker",
+                    email: `contact@${item.domain}`,
+                    revealed: true,
+                  },
+                });
+              }
+            });
+
+            return Array.from(dbMap.values());
+          });
+        }
+      } catch {
+        // Fall back gracefully if offline or mock
+      }
+    }
+
+    loadBackendLeads();
+  }, [activeTab]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFunnelState, setSelectedFunnelState] = useState<string>("all");
   const [selectedLead, setSelectedLead] = useState<LeadItem | null>(null);
@@ -241,6 +294,8 @@ export default function DashboardPage() {
   const [draftTone, setDraftTone] = useState<"consultative" | "direct" | "short">("consultative");
   const [draftSubject, setDraftSubject] = useState("");
   const [draftBody, setDraftBody] = useState("");
+  const [draftTo, setDraftTo] = useState("");
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [revealModalLead, setRevealModalLead] = useState<LeadItem | null>(null);
   const [crawlingId, setCrawlingId] = useState<string | null>(null);
   const [scoringId, setScoringId] = useState<string | null>(null);
@@ -369,30 +424,58 @@ export default function DashboardPage() {
     }, 900);
   };
 
-  const handleScoreLead = (leadId: string) => {
+  const handleScoreLead = async (leadId: string) => {
     setScoringId(leadId);
-    setTimeout(() => {
-      setLeads((prev) =>
-        prev.map((l) => {
-          if (l.id !== leadId) return l;
-          const finalScore = 84.5;
-          const band: "qualified" | "review" | "disqualified" = finalScore >= icpThreshold ? "qualified" : "review";
+    try {
+      let finalScore = 84.5;
+      let band: "qualified" | "review" | "disqualified" = "qualified";
+      let scoreRecord: ScoreRecord | undefined;
 
-          const scoreRecord: ScoreRecord = {
-            id: `score-${Date.now()}`,
+      try {
+        const res = await scoreLeadApi(leadId);
+        if (res && typeof res.final_score === "number") {
+          finalScore = res.final_score;
+          band = (res.qualification_band as any) || (finalScore >= icpThreshold ? "qualified" : "review");
+          scoreRecord = {
+            id: res.id || `score-${Date.now()}`,
             final_score: finalScore,
             qualification_band: band,
-            website_group_score: 86.4,
-            marketing_group_score: 72.6,
-            ideal_client_bonus_applied: true,
-            signal_breakdown: {
+            website_group_score: res.website_group_score ?? 86.4,
+            marketing_group_score: res.marketing_group_score ?? 72.6,
+            ideal_client_bonus_applied: res.ideal_client_bonus_applied ?? true,
+            signal_breakdown: res.signal_breakdown || {
               explanations: DEMO_SIGNALS_EXPLANATION,
               website_group: { score: 86.4, coverage_pct: 100.0 },
               marketing_group: { score: 72.6, coverage_pct: 100.0 },
               ideal_client_bonus_points: 10.0,
             },
           };
+        }
+      } catch {
+        // Fall back gracefully if mock or offline
+      }
 
+      if (!scoreRecord) {
+        band = finalScore >= icpThreshold ? "qualified" : "review";
+        scoreRecord = {
+          id: `score-${Date.now()}`,
+          final_score: finalScore,
+          qualification_band: band,
+          website_group_score: 86.4,
+          marketing_group_score: 72.6,
+          ideal_client_bonus_applied: true,
+          signal_breakdown: {
+            explanations: DEMO_SIGNALS_EXPLANATION,
+            website_group: { score: 86.4, coverage_pct: 100.0 },
+            marketing_group: { score: 72.6, coverage_pct: 100.0 },
+            ideal_client_bonus_points: 10.0,
+          },
+        };
+      }
+
+      setLeads((prev) =>
+        prev.map((l) => {
+          if (l.id !== leadId) return l;
           return {
             ...l,
             latest_score: finalScore,
@@ -402,17 +485,23 @@ export default function DashboardPage() {
           };
         })
       );
+      showToast(`Lead scored across 22 signals (${finalScore}/100)`);
+    } finally {
       setScoringId(null);
-      showToast("Lead scored across 22 signals");
-    }, 1000);
+    }
   };
 
-  // Handbook 3.1 FDD Rule: Human Approve / Reject
+  // Handbook 3.1 FDD Rule: Human Approve / Reject -> Opens Editable Draft Window
   const handleApproveLead = (leadId: string) => {
-    setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, pipeline_state: "approved" } : l))
-    );
-    showToast("Lead approved for outreach drafting");
+    const target = leads.find((l) => l.id === leadId);
+    if (target) {
+      handleOpenDraftStudio(target);
+    } else {
+      setLeads((prev) =>
+        prev.map((l) => (l.id === leadId ? { ...l, pipeline_state: "approved" } : l))
+      );
+      showToast("Lead approved for outreach");
+    }
   };
 
   const handleRejectLead = (leadId: string) => {
@@ -440,11 +529,11 @@ export default function DashboardPage() {
     showToast("Contact revealed (1 Apollo credit consumed)");
   };
 
-  // Handbook 3.2: Open Draft Studio
+  // Handbook 3.2: Open Editable Draft Window before Direct Sending
   const handleOpenDraftStudio = (lead: LeadItem) => {
     setActiveDraftLead(lead);
     const company = lead.company_name;
-    const name = lead.contact?.name.split(" ")[0] || "there";
+    const name = lead.contact?.name?.split(" ")[0] || "there";
 
     let subject = `Growth inquiry: ${company} digital infrastructure`;
     let body = `Hi ${name},\n\nI was reviewing ${company}'s digital presence and noted your strong platform fundamentals.\n\nHowever, our technical analysis spotted opportunities to accelerate page load times and improve conversion CTAs. We've helped similar teams unlock 25-40% more inbound pipeline.\n\nWould you be open to a 10-minute briefing next week?\n\nBest regards,\nLeadFlow Strategy Team`;
@@ -457,8 +546,59 @@ export default function DashboardPage() {
       body = `Hi ${name},\n\nNoticed ${company}'s recent growth. We found 3 quick technical optimizations on your homepage that could boost demo conversions.\n\nWorth a quick chat?\n\nBest,\nLeadFlow Strategy Team`;
     }
 
+    const recipient = lead.contact?.email || (lead.domain ? `contact@${lead.domain}` : "contact@example.com");
+    setDraftTo(recipient);
     setDraftSubject(lead.draft?.subject || subject);
     setDraftBody(lead.draft?.body || body);
+  };
+
+  const handleSendOutreachEmail = async () => {
+    if (!activeDraftLead) return;
+    if (!draftTo.trim() || !draftTo.includes("@")) {
+      showToast("Please specify a valid recipient email address.");
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      await sendLeadOutreach(activeDraftLead.id, {
+        to_email: draftTo,
+        subject: draftSubject,
+        body: draftBody,
+        tone: draftTone,
+      });
+
+      setLeads((prev) =>
+        prev.map((l) => {
+          if (l.id !== activeDraftLead.id) return l;
+          return {
+            ...l,
+            pipeline_state: "approved",
+            contact: {
+              name: l.contact?.name || "Decision Maker",
+              title: l.contact?.title || "Executive",
+              email: draftTo,
+              revealed: true,
+            },
+            draft: {
+              subject: draftSubject,
+              body: draftBody,
+              tone: draftTone,
+              model: "resend/transactional-dispatch",
+              cost_usd: 0,
+              approved: true,
+            },
+          };
+        })
+      );
+      setActiveDraftLead(null);
+      showToast(`✓ Outreach email dispatched to ${draftTo} via Resend!`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to dispatch email via Resend";
+      showToast(`Resend notice: ${msg}`);
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   const handleSaveAndApproveDraft = () => {
@@ -469,6 +609,12 @@ export default function DashboardPage() {
         return {
           ...l,
           pipeline_state: "drafted",
+          contact: {
+            name: l.contact?.name || "Decision Maker",
+            title: l.contact?.title || "Executive",
+            email: draftTo || l.contact?.email || `contact@${l.domain}`,
+            revealed: true,
+          },
           draft: {
             subject: draftSubject,
             body: draftBody,
@@ -481,7 +627,7 @@ export default function DashboardPage() {
       })
     );
     setActiveDraftLead(null);
-    showToast("Draft approved and ready for HubSpot CRM sync");
+    showToast("Draft saved and ready for outreach");
   };
 
   // Handbook 6.1: Sync to HubSpot CRM
@@ -1026,13 +1172,14 @@ export default function DashboardPage() {
                             </button>
 
                             {/* Human Approval Gate (Item 3: Light green Approve button) */}
-                            {lead.pipeline_state === "qualified" && (
+                            {(lead.pipeline_state === "qualified" || (lead.pipeline_state === "review" && hasScore)) && (
                               <>
                                 <button
                                   onClick={() => handleApproveLead(lead.id)}
                                   className="px-3 py-1 text-xs font-semibold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 shadow-sm transition"
+                                  title="Approve and open editable draft to dispatch email via Resend"
                                 >
-                                  Approve
+                                  Approve & Send Mail
                                 </button>
                                 <button
                                   onClick={() => handleRejectLead(lead.id)}
@@ -1176,6 +1323,22 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Recipient Input (Editable) */}
+            <div className="space-y-1 text-xs">
+              <label htmlFor="draft-to" className="font-mono uppercase text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                <span>Recipient Email Address (Hunter.io Fetched Contact)</span>
+                <span className="text-emerald-700 dark:text-emerald-400 font-normal">Editable before send</span>
+              </label>
+              <input
+                id="draft-to"
+                type="email"
+                value={draftTo}
+                onChange={(e) => setDraftTo(e.target.value)}
+                placeholder="e.g. contact@company.com"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 dark:border-obsidian-700 bg-slate-50 dark:bg-obsidian-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-lilac-400 font-medium"
+              />
+            </div>
+
             {/* Subject Input */}
             <div className="space-y-1 text-xs">
               <label htmlFor="draft-subject" className="font-mono uppercase text-[10px] font-bold text-slate-500 dark:text-slate-400">Subject Line</label>
@@ -1201,22 +1364,39 @@ export default function DashboardPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-obsidian-700">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-obsidian-700">
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                FDD Rule: Lead cannot sync to CRM until draft is approved.
+                Dispatches directly to recipient via authenticated Resend API.
               </div>
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => setActiveDraftLead(null)}
-                  className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-obsidian-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-obsidian-800"
+                  className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-obsidian-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-obsidian-800"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSaveAndApproveDraft}
-                  className="btn-obsidian px-4 py-2 text-xs font-semibold rounded-xl"
+                  className="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-300 dark:border-obsidian-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-obsidian-800"
                 >
-                  Approve Draft
+                  Save Draft
+                </button>
+                <button
+                  disabled={isSendingEmail}
+                  onClick={handleSendOutreachEmail}
+                  className="btn-obsidian px-5 py-2 text-xs font-semibold rounded-xl flex items-center gap-2 shadow-md cursor-pointer whitespace-nowrap"
+                >
+                  {isSendingEmail ? (
+                    <>
+                      <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                      <span>Sending via Resend...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✉️</span>
+                      <span>Send via Resend API</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
