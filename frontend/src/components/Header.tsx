@@ -16,7 +16,7 @@ import {
 
 export function Header() {
   const { user, activeMembership, switchOrganization, logout } = useAuth();
-  const { activeTab, setActiveTab, setRole, leadsCount, theme, toggleTheme } = useNav();
+  const { role, activeTab, setActiveTab, setRole, leadsCount, theme, toggleTheme } = useNav();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
@@ -90,24 +90,47 @@ export function Header() {
       setRole("org_admin");
       setActiveTab("icp");
     } else if (pathname === "/") {
-      setRole("org_admin");
-      if (activeTab === "portal" || activeTab === "admin" || activeTab === "audit") {
-        setActiveTab("leads");
+      const isClient =
+        activeMembership?.role === "client_viewer" ||
+        activeMembership?.role === "reviewer" ||
+        role === "client_viewer";
+      const isSuper = Boolean(user?.is_superuser) || role === "super_admin";
+      if (!isSuper && !isClient) {
+        setRole("org_admin");
+        if (activeTab === "portal" || activeTab === "admin" || activeTab === "audit") {
+          setActiveTab("leads");
+        }
       }
     }
-  }, [pathname, setRole, setActiveTab, activeTab]);
+  }, [pathname, user?.is_superuser, activeMembership?.role, role, setRole, setActiveTab]);
 
   const displayName = user?.full_name || "Operator";
 
+  // Synchronous, instantaneous role resolution to prevent any split-second flashing
+  const isSuperUser =
+    Boolean(user?.is_superuser) || role === "super_admin" || pathname === "/super-admin";
+  const isClientRole =
+    !isSuperUser &&
+    (role === "client_viewer" ||
+      activeMembership?.role === "client_viewer" ||
+      activeMembership?.role === "reviewer" ||
+      pathname === "/portal");
+
+  const resolvedRole = isSuperUser
+    ? "super_admin"
+    : isClientRole
+    ? "client_viewer"
+    : "org_admin";
+
   const currentRoleName =
-    pathname === "/portal"
+    resolvedRole === "client_viewer"
       ? "Client Viewer"
-      : pathname === "/super-admin"
+      : resolvedRole === "super_admin"
       ? "Super Admin"
       : "Org Admin";
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0D0D12] text-cosmic-100 border-b border-obsidian-800 dark:bg-[#FAF7F2] dark:text-obsidian dark:border-cosmic-300 shadow-md transition-all">
+    <header className="sticky top-0 z-50 bg-[#0D0D12] text-cosmic-100 border-b border-obsidian-800 dark:bg-[#0D0D12] dark:text-cosmic-100 dark:border-b dark:border-[#FAF7F2] shadow-md transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Brand Logo & Status */}
         <div className="flex items-center space-x-3 sm:space-x-4">
@@ -116,7 +139,7 @@ export function Header() {
               LF
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-base text-white dark:text-obsidian tracking-tight">LeadFlow</span>
+              <span className="font-bold text-base text-white dark:text-white tracking-tight">LeadFlow</span>
               {user && (
                 <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider bg-lilac-950/80 text-lilac-300 dark:bg-lilac-100 dark:text-lilac-800 dark:border-lilac-300 rounded-full border border-lilac-800/60">
                   Live 22-Signal
@@ -127,13 +150,13 @@ export function Header() {
 
           {/* Current Role Indicator Pill: Only visible when logged in */}
           {user && (
-            <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-obsidian-700 dark:border-cosmic-300">
+            <div className="hidden xl:flex items-center gap-1.5 pl-3 border-l border-obsidian-700 dark:border-obsidian-700">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lilac-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-lilac-500"></span>
               </span>
-              <span className="text-[11px] font-medium text-cosmic-300 dark:text-obsidian/60 tracking-wide">
-                Role: <span className="font-bold text-white dark:text-obsidian font-mono">{currentRoleName}</span>
+              <span className="text-[11px] font-medium text-cosmic-300 dark:text-cosmic-300 tracking-wide">
+                Role: <span className="font-bold text-white dark:text-white font-mono">{currentRoleName}</span>
               </span>
             </div>
           )}
@@ -141,7 +164,7 @@ export function Header() {
 
         {/* Center: Contextual Navigation based on Direct URL - Only visible when logged in */}
         <div>
-          {!user || pathname === "/portal" || pathname === "/super-admin" ? (
+          {!user || resolvedRole !== "org_admin" || pathname === "/portal" || pathname === "/super-admin" ? (
             null
           ) : (
             <div className="flex items-center space-x-1 bg-obsidian-900/90 dark:bg-cosmic-200/90 p-1 rounded-2xl border border-obsidian-700 dark:border-cosmic-300 text-xs">

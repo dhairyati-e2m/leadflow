@@ -4,10 +4,12 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useNav } from "@/lib/nav-context";
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
+  const { setRole, setActiveTab } = useNav();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -21,10 +23,16 @@ export default function LoginPage() {
     try {
       const { isSuperAdmin, role } = await login(email, password);
       if (isSuperAdmin) {
+        setRole("super_admin");
+        setActiveTab("admin");
         router.push("/super-admin");
       } else if (role === "client_viewer" || role === "reviewer") {
+        setRole("client_viewer");
+        setActiveTab("portal");
         router.push("/portal");
       } else {
+        setRole("org_admin");
+        setActiveTab("leads");
         router.push("/");
       }
     } catch (err: unknown) {

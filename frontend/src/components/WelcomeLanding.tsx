@@ -22,22 +22,28 @@ export function WelcomeLanding() {
   const handleQuickRoleLogin = async (targetRole: "org_admin" | "client_viewer" | "super_admin") => {
     setIsSubmitting(true);
     setErrorMsg(null);
+    // Pre-emptively set role and tab so the header renders the correct role immediately without lag
+    setRole(targetRole);
+    if (targetRole === "client_viewer") {
+      setActiveTab("portal");
+    } else if (targetRole === "super_admin") {
+      setActiveTab("admin");
+    } else {
+      setActiveTab("leads");
+    }
+
     try {
       let testEmail = "admin@leadflow.io";
       if (targetRole === "client_viewer") testEmail = "client@acme.com";
       if (targetRole === "super_admin") testEmail = "superadmin@leadflow.io";
 
       await login(testEmail, "password123");
-      setRole(targetRole);
 
       if (targetRole === "client_viewer") {
-        setActiveTab("portal");
         router.push("/portal");
       } else if (targetRole === "super_admin") {
-        setActiveTab("admin");
         router.push("/super-admin");
       } else {
-        setActiveTab("leads");
         router.push("/");
       }
     } catch (err: unknown) {

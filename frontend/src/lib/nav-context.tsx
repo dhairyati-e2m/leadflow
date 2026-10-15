@@ -37,6 +37,19 @@ export function NavProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    if (typeof window !== "undefined") {
+      const currentPath = window.location.pathname;
+      if (currentPath === "/portal") {
+        setRoleState("client_viewer");
+        setActiveTab("portal");
+        return;
+      } else if (currentPath === "/super-admin") {
+        setRoleState("super_admin");
+        setActiveTab("admin");
+        return;
+      }
+    }
+
     const savedRole = localStorage.getItem("leadflow_role") as UserRole | null;
     if (savedRole && ["org_admin", "super_admin", "client_viewer"].includes(savedRole)) {
       setRoleState(savedRole);
