@@ -29,29 +29,127 @@ const DEFAULT_FILTERS: AudienceFilters = {
   negative_keywords: [],
 };
 
-const SEARCHABLE_CITIES = [
-  "New York Metro, NY",
-  "San Francisco Bay Area, CA",
-  "Austin, TX",
-  "Boston, MA",
-  "Seattle, WA",
-  "Chicago, IL",
-  "Los Angeles, CA",
-  "Denver, CO",
-  "Atlanta, GA",
-  "Dallas-Fort Worth, TX",
-  "Miami Metro, FL",
-  "Washington D.C. Metro",
-  "San Diego, CA",
-  "Salt Lake City, UT",
+export const HUNTER_INDUSTRIES: string[] = [
+  "Information Technology & Services",
+  "Computer Software",
+  "Internet",
+  "Marketing & Advertising",
+  "Financial Services",
+  "Management Consulting",
+  "Telecommunications",
+  "Hospital & Health Care",
+  "Construction",
+  "Real Estate",
+  "Retail",
+  "Education Management",
+  "Non-Profit Organization Management",
+  "Higher Education",
+  "Design",
+  "E-Commerce",
+  "Banking",
+  "Hospitality",
+  "Insurance",
+  "Human Resources",
+  "Legal Services",
+  "Automotive",
+  "Manufacturing",
+  "Consumer Goods",
+  "Media Production",
+  "Pharmaceuticals",
+  "Accounting",
+  "Staffing & Recruiting",
+  "Electrical/Electronic Manufacturing",
+  "Entertainment",
+  "Transportation/Trucking/Railroad",
+  "Biotechnology",
+  "Wholesale",
+  "Food & Beverages",
+  "Logistics & Supply Chain",
+  "Computer Hardware",
+  "Public Relations & Communications",
+  "Health, Wellness & Fitness",
+  "Civil Engineering",
+  "Architecture & Planning",
+  "Defense & Space",
+  "Mechanical or Industrial Engineering",
+  "Environmental Services",
+  "Apparel & Fashion",
+  "Publishing",
+  "Medical Devices",
+  "Venture Capital & Private Equity",
+  "Chemicals",
+  "Renewable Energy & Environment",
+  "Aviation & Aerospace",
+  "Graphic Design",
+  "Government Administration",
+  "Research",
+  "Security & Investigations",
+  "Oil & Energy",
+  "Semiconductors",
+  "Consumer Electronics",
+  "Computer Networking",
+  "Information Services",
+];
+
+export const HUNTER_LOCATIONS: string[] = [
+  "United States",
+  "United Kingdom",
+  "Canada",
+  "Australia",
+  "Germany",
+  "France",
+  "India",
+  "Netherlands",
+  "Singapore",
+  "Spain",
+  "Italy",
+  "Sweden",
+  "Switzerland",
+  "Ireland",
+  "Israel",
+  "Brazil",
+  "Japan",
+  "United Arab Emirates",
+  "New Zealand",
+  "Belgium",
+  "Denmark",
+  "Norway",
+  "Finland",
+  "Poland",
+  "Austria",
+  "Mexico",
+  "South Africa",
+  "Portugal",
+  "Hong Kong",
+  "New York Metro, NY, United States",
+  "San Francisco Bay Area, CA, United States",
+  "Austin, TX, United States",
+  "Boston, MA, United States",
+  "Seattle, WA, United States",
+  "Chicago, IL, United States",
+  "Los Angeles, CA, United States",
+  "Denver, CO, United States",
+  "Atlanta, GA, United States",
+  "Dallas-Fort Worth, TX, United States",
+  "Miami, FL, United States",
+  "Washington, D.C., United States",
+  "London, United Kingdom",
+  "Manchester, United Kingdom",
   "Toronto, Canada",
   "Vancouver, Canada",
-  "London, UK",
-  "Manchester, UK",
+  "Montreal, Canada",
   "Berlin, Germany",
+  "Munich, Germany",
+  "Paris, France",
   "Amsterdam, Netherlands",
-  "Singapore",
   "Sydney, Australia",
+  "Melbourne, Australia",
+  "Bengaluru, India",
+  "Mumbai, India",
+  "Delhi NCR, India",
+  "Tel Aviv, Israel",
+  "Tokyo, Japan",
+  "Dubai, United Arab Emirates",
 ];
 
 export function IcpEditor() {
@@ -77,9 +175,11 @@ export function IcpEditor() {
   const [aiRationale, setAiRationale] = useState<string | null>(null);
   const [poolDepth, setPoolDepth] = useState<string | null>(null);
 
-  // City Searchable Dropdown State (User Requirement 4)
-  const [citySearchQuery, setCitySearchQuery] = useState<string>("");
-  const [showCityDropdown, setShowCityDropdown] = useState<boolean>(false);
+  // Hunter.io Industry & Geographic Searchable Dropdown State (User Requirements 2 & 3)
+  const [industrySearchQuery, setIndustrySearchQuery] = useState<string>("");
+  const [showIndustryDropdown, setShowIndustryDropdown] = useState<boolean>(false);
+  const [geoSearchQuery, setGeoSearchQuery] = useState<string>("");
+  const [showGeoDropdown, setShowGeoDropdown] = useState<boolean>(false);
 
   // UI state
   const { setActiveTab } = useNav();
@@ -94,6 +194,36 @@ export function IcpEditor() {
   const [movedCompanyDomains, setMovedCompanyDomains] = useState<Set<string>>(new Set());
   const [movingDomain, setMovingDomain] = useState<string | null>(null);
 
+  const DRAFT_KEY = "leadflow_draft_icp";
+
+  // Auto-save half-filled ICP details to localStorage (User Requirement 5)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasData =
+      name.trim() !== "" ||
+      description.trim() !== "" ||
+      briefText.trim() !== "" ||
+      filters.verticals.length > 0 ||
+      filters.locations.length > 0;
+    if (hasData) {
+      try {
+        const draft = {
+          name,
+          description,
+          filters,
+          briefText,
+          isDefault,
+          showManualForm,
+          selectedAudienceId,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      } catch {
+        // ignore quota / private window errors
+      }
+    }
+  }, [name, description, filters, briefText, isDefault, showManualForm, selectedAudienceId]);
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -104,6 +234,33 @@ export function IcpEditor() {
         if (catData) setCatalog(catData);
         if (audData && audData.length > 0) {
           setAudiences(audData);
+        }
+
+        // Restore half-filled draft from localStorage if available (User Requirement 5)
+        let restoredFromDraft = false;
+        if (typeof window !== "undefined") {
+          try {
+            const rawDraft = localStorage.getItem(DRAFT_KEY);
+            if (rawDraft) {
+              const draft = JSON.parse(rawDraft);
+              if (draft && typeof draft === "object") {
+                if (draft.name !== undefined) setName(draft.name);
+                if (draft.description !== undefined) setDescription(draft.description);
+                if (draft.filters) setFilters(draft.filters);
+                if (draft.briefText !== undefined) setBriefText(draft.briefText);
+                if (draft.isDefault !== undefined) setIsDefault(draft.isDefault);
+                if (draft.showManualForm !== undefined) setShowManualForm(draft.showManualForm);
+                if (draft.selectedAudienceId) setSelectedAudienceId(draft.selectedAudienceId);
+                restoredFromDraft = true;
+              }
+            }
+          } catch (e) {
+            console.warn("Failed to restore draft:", e);
+          }
+        }
+
+        // Only default to first audience if no draft was restored
+        if (!restoredFromDraft && audData && audData.length > 0) {
           const active = audData.find((a) => a.is_default) || audData[0];
           setSelectedAudienceId(active.id);
           setName(active.name);
@@ -144,10 +301,50 @@ export function IcpEditor() {
     setDescription("Custom audience segment configured for automated qualification.");
     setFilters(DEFAULT_FILTERS);
     setIsDefault(false);
+    setBriefText("");
     setAiRationale(null);
     setPoolDepth(null);
     setShowManualForm(true);
     setActiveIcpTab("create");
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {}
+    }
+  };
+
+  // User Requirement 1 & 5: Clear ICP profile and prompt, and remove local storage draft
+  const handleClearProfileAndPrompt = () => {
+    setSelectedAudienceId(null);
+    setName("");
+    setDescription("");
+    setBriefText("");
+    setFilters({
+      verticals: [],
+      vertical_match: "or",
+      locations: [],
+      location_match: "or",
+      headcount_ranges: [],
+      exclude_locations: [],
+      exclude_verticals: [],
+      exclude_domains: [],
+      exclude_existing_crm: true,
+      negative_keywords: [],
+    });
+    setAiRationale(null);
+    setPoolDepth(null);
+    setCustomKeyword("");
+    setIndustrySearchQuery("");
+    setShowIndustryDropdown(false);
+    setGeoSearchQuery("");
+    setShowGeoDropdown(false);
+    setDiscoveredCompanies([]);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {}
+    }
+    showNotification("Cleared ICP profile fields, filters, and strategy prompt.");
   };
 
   // User Requirement 1: Generate ICP from strategy brief
@@ -195,6 +392,11 @@ export function IcpEditor() {
         setAudiences((prev) => [created, ...prev]);
         setSelectedAudienceId(created.id);
         showNotification(`ICP "${created.name}" created and saved successfully.`);
+      }
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem(DRAFT_KEY);
+        } catch {}
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to save ICP";
@@ -245,35 +447,40 @@ export function IcpEditor() {
     }
   };
 
-  const toggleVertical = (v: string) => {
-    setFilters((prev) => {
-      const exists = prev.verticals.includes(v);
-      return {
-        ...prev,
-        verticals: exists ? prev.verticals.filter((item) => item !== v) : [...prev.verticals, v],
-      };
-    });
-  };
-
-  const toggleLocation = (loc: string) => {
-    setFilters((prev) => {
-      const exists = prev.locations.includes(loc);
-      return {
-        ...prev,
-        locations: exists ? prev.locations.filter((item) => item !== loc) : [...prev.locations, loc],
-      };
-    });
-  };
-
-  const addCityFromDropdown = (city: string) => {
-    if (!filters.locations.includes(city)) {
+  const addIndustryFromDropdown = (ind: string) => {
+    if (!filters.verticals.includes(ind)) {
       setFilters((prev) => ({
         ...prev,
-        locations: [...prev.locations, city],
+        verticals: [...prev.verticals, ind],
       }));
     }
-    setCitySearchQuery("");
-    setShowCityDropdown(false);
+    setIndustrySearchQuery("");
+    setShowIndustryDropdown(false);
+  };
+
+  const removeIndustry = (ind: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      verticals: prev.verticals.filter((item) => item !== ind),
+    }));
+  };
+
+  const addLocationFromDropdown = (loc: string) => {
+    if (!filters.locations.includes(loc)) {
+      setFilters((prev) => ({
+        ...prev,
+        locations: [...prev.locations, loc],
+      }));
+    }
+    setGeoSearchQuery("");
+    setShowGeoDropdown(false);
+  };
+
+  const removeLocation = (loc: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      locations: prev.locations.filter((item) => item !== loc),
+    }));
   };
 
   const toggleHeadcount = (tier: string) => {
@@ -304,16 +511,13 @@ export function IcpEditor() {
     }));
   };
 
-  const verticalsList = catalog?.verticals || [
-    "B2B SaaS & Enterprise Software",
-    "Healthcare & Medical Devices",
-    "E-Commerce & Digital Brands",
-    "Professional & IT Services",
-    "Financial Services & FinTech",
-    "Commercial Real Estate & PropTech",
-    "Advanced Manufacturing & Logistics",
-    "Legal & Regulatory Compliance",
-  ];
+  const filteredIndustries = HUNTER_INDUSTRIES.filter((ind) =>
+    ind.toLowerCase().includes(industrySearchQuery.toLowerCase())
+  );
+
+  const filteredLocations = HUNTER_LOCATIONS.filter((loc) =>
+    loc.toLowerCase().includes(geoSearchQuery.toLowerCase())
+  );
 
   const headcountList = catalog?.headcount_ranges || [
     "1-10 employees",
@@ -323,10 +527,6 @@ export function IcpEditor() {
     "501-1,000 employees",
     "1,000+ enterprise",
   ];
-
-  const filteredCities = SEARCHABLE_CITIES.filter((c) =>
-    c.toLowerCase().includes(citySearchQuery.toLowerCase())
-  );
 
   return (
     <div className="space-y-6">
@@ -377,7 +577,16 @@ export function IcpEditor() {
         </div>
 
         {activeIcpTab === "create" && (
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2.5">
+            <button
+              type="button"
+              onClick={handleClearProfileAndPrompt}
+              className="text-xs font-semibold px-3.5 py-2 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50/90 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+              title="Clear all fields, filters, strategy prompt, and local draft"
+            >
+              <span>✕</span>
+              <span>Clear Profile & Prompt</span>
+            </button>
             <button
               type="button"
               onClick={handleCreateNew}
@@ -558,21 +767,37 @@ export function IcpEditor() {
                 <span className="text-[11px] text-obsidian/50 dark:text-cosmic-400">
                   LeadFlow parses verticals, locations, employee ranges, and negative exclusions.
                 </span>
-                <button
-                  type="button"
-                  disabled={isProposing}
-                  onClick={handleGenerateIcp}
-                  className="btn-obsidian px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm cursor-pointer"
-                >
-                  {isProposing ? (
-                    <>
-                      <span className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
-                      Extracting Parameters...
-                    </>
-                  ) : (
-                    <>⚡ Generate ICP</>
+                <div className="flex items-center gap-2">
+                  {(briefText || aiRationale) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBriefText("");
+                        setAiRationale(null);
+                        setPoolDepth(null);
+                        showNotification("Strategy prompt and extracted summary cleared.");
+                      }}
+                      className="px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 transition cursor-pointer"
+                    >
+                      Clear Prompt
+                    </button>
                   )}
-                </button>
+                  <button
+                    type="button"
+                    disabled={isProposing}
+                    onClick={handleGenerateIcp}
+                    className="btn-obsidian px-5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-sm cursor-pointer"
+                  >
+                    {isProposing ? (
+                      <>
+                        <span className="animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                        Extracting Parameters...
+                      </>
+                    ) : (
+                      <>⚡ Generate ICP</>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {aiRationale && (
@@ -598,9 +823,19 @@ export function IcpEditor() {
                 <h3 className="text-base font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
                   Manual ICP Criteria Configuration
                 </h3>
-                <span className="text-[11px] font-mono text-obsidian/50 dark:text-cosmic-400">
-                  Interactive Form & Filter Catalog
-                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleClearProfileAndPrompt}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>✕</span>
+                    <span>Clear All Fields</span>
+                  </button>
+                  <span className="text-[11px] font-mono text-obsidian/50 dark:text-cosmic-400">
+                    Interactive Form & Filter Catalog
+                  </span>
+                </div>
               </div>
 
               {/* 1. Profile Metadata */}
@@ -644,127 +879,188 @@ export function IcpEditor() {
                 </div>
               </div>
 
-              {/* 2. Verticals & Industries */}
+              {/* 2. Verticals & Industries (User Requirements 2 & 4: Exact Hunter.io Searchable Dropdown & Match Any/All Removed) */}
               <div className="space-y-3 pt-3 border-t border-cosmic-200 dark:border-obsidian-800">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
-                      Target Industry Verticals
+                      Target Industry Verticals (Hunter.io Classification)
                     </h4>
                     <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400">
-                      Match any selected industry (OR) or require all to be present (AND).
+                      Search and select from 58 standardized Hunter.io industry sectors.
                     </p>
                   </div>
-                  <div className="flex items-center space-x-1 bg-cosmic-100 dark:bg-obsidian-800 p-1 rounded-xl border border-cosmic-300 dark:border-obsidian-700 text-[10px] font-mono font-bold">
+                  {filters.verticals.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => setFilters((p) => ({ ...p, vertical_match: "or" }))}
-                      className={`px-2.5 py-1 rounded-lg transition ${
-                        filters.vertical_match === "or" ? "btn-obsidian" : "text-obsidian/60 dark:text-cosmic-400"
-                      }`}
+                      onClick={() => setFilters((p) => ({ ...p, verticals: [] }))}
+                      className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
                     >
-                      MATCH ANY (OR)
+                      Clear Industries ({filters.verticals.length})
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setFilters((p) => ({ ...p, vertical_match: "and" }))}
-                      className={`px-2.5 py-1 rounded-lg transition ${
-                        filters.vertical_match === "and" ? "btn-obsidian" : "text-obsidian/60 dark:text-cosmic-400"
-                      }`}
-                    >
-                      MATCH ALL (AND)
-                    </button>
-                  </div>
+                  )}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {verticalsList.map((v) => {
-                    const isSelected = filters.verticals.includes(v);
-                    return (
+                {/* Searchable Industry Dropdown */}
+                <div className="relative">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={industrySearchQuery}
+                      onChange={(e) => {
+                        setIndustrySearchQuery(e.target.value);
+                        setShowIndustryDropdown(true);
+                      }}
+                      onFocus={() => setShowIndustryDropdown(true)}
+                      placeholder="Search industry (e.g. Computer Software, Marketing & Advertising, Financial Services)..."
+                      className="w-full text-xs p-3 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white/90 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400"
+                    />
+                    {industrySearchQuery && (
                       <button
-                        key={v}
                         type="button"
-                        onClick={() => toggleVertical(v)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border flex items-center gap-1.5 ${
-                          isSelected
-                            ? "btn-obsidian"
-                            : "bg-cosmic-50/90 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border-cosmic-200 dark:border-obsidian-700 hover:bg-cosmic-100"
-                        }`}
+                        onClick={() => {
+                          setIndustrySearchQuery("");
+                          setShowIndustryDropdown(false);
+                        }}
+                        className="absolute right-3 top-3 text-xs text-obsidian/40 dark:text-cosmic-400 hover:text-obsidian"
                       >
-                        <span>{v}</span>
-                        {isSelected && <span className="text-emerald-400 font-bold">✓</span>}
+                        ✕
                       </button>
-                    );
-                  })}
+                    )}
+                  </div>
+
+                  {showIndustryDropdown && (
+                    <div className="absolute left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white dark:bg-obsidian-900 border border-cosmic-300 dark:border-obsidian-700 rounded-2xl shadow-xl z-20 py-1 text-xs">
+                      {filteredIndustries.length === 0 ? (
+                        <div className="p-3 text-obsidian/50 dark:text-cosmic-400 text-center">
+                          No matching Hunter.io industries found.
+                        </div>
+                      ) : (
+                        filteredIndustries.map((ind) => {
+                          const isAdded = filters.verticals.includes(ind);
+                          return (
+                            <button
+                              key={ind}
+                              type="button"
+                              onClick={() => addIndustryFromDropdown(ind)}
+                              className="w-full text-left px-3.5 py-2 hover:bg-lilac-50 dark:hover:bg-obsidian-800 flex items-center justify-between text-obsidian dark:text-cosmic-200 transition cursor-pointer"
+                            >
+                              <span>{ind}</span>
+                              {isAdded && (
+                                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
+                                  Added ✓
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Industry Chips */}
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {filters.verticals.map((v) => (
+                    <span
+                      key={v}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 border border-cosmic-300 dark:border-obsidian-700 flex items-center gap-2"
+                    >
+                      <span>{v}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeIndustry(v)}
+                        className="text-obsidian/50 hover:text-rose-600 dark:text-cosmic-400 dark:hover:text-rose-400 font-bold cursor-pointer"
+                        title="Remove industry"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                  {filters.verticals.length === 0 && (
+                    <span className="text-xs text-obsidian/40 dark:text-cosmic-400 italic">
+                      No industries selected yet. Search above to add target sectors.
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* 3. Geographic Locations & Cities with Searchable Dropdown (User Requirement 4) */}
+              {/* 3. Geographic Locations & Countries (User Requirement 3: Exact Hunter.io Searchable Dropdown) */}
               <div className="space-y-3 pt-3 border-t border-cosmic-200 dark:border-obsidian-800">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
-                      Geographic Locations & Cities (Searchable Dropdown)
+                      Geographic Locations & Countries (Hunter.io Classification)
                     </h4>
                     <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400">
-                      Type to filter verified city and metro names without typographical errors.
+                      Search and select countries and major metropolitan hubs supported by Hunter.io.
                     </p>
                   </div>
+                  {filters.locations.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setFilters((p) => ({ ...p, locations: [] }))}
+                      className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                    >
+                      Clear Locations ({filters.locations.length})
+                    </button>
+                  )}
                 </div>
 
                 {/* Searchable Dropdown Input */}
                 <div className="relative">
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={citySearchQuery}
-                        onChange={(e) => {
-                          setCitySearchQuery(e.target.value);
-                          setShowCityDropdown(true);
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={geoSearchQuery}
+                      onChange={(e) => {
+                        setGeoSearchQuery(e.target.value);
+                        setShowGeoDropdown(true);
+                      }}
+                      onFocus={() => setShowGeoDropdown(true)}
+                      placeholder="Search country or metro (e.g. United States, United Kingdom, Canada, Berlin, Austin)..."
+                      className="w-full text-xs p-3 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white/90 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400"
+                    />
+                    {geoSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGeoSearchQuery("");
+                          setShowGeoDropdown(false);
                         }}
-                        onFocus={() => setShowCityDropdown(true)}
-                        placeholder="Search city, metro, or country (e.g. Austin, New York, London)..."
-                        className="w-full text-xs p-3 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white/90 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400"
-                      />
-                      {citySearchQuery && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCitySearchQuery("");
-                            setShowCityDropdown(false);
-                          }}
-                          className="absolute right-3 top-3 text-xs text-obsidian/40 dark:text-cosmic-400 hover:text-obsidian"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
+                        className="absolute right-3 top-3 text-xs text-obsidian/40 dark:text-cosmic-400 hover:text-obsidian"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
 
                   {/* Filtered Dropdown Menu */}
-                  {showCityDropdown && (
-                    <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white dark:bg-obsidian-900 border border-cosmic-300 dark:border-obsidian-700 rounded-2xl shadow-xl z-20 py-1 text-xs">
-                      {filteredCities.length === 0 ? (
+                  {showGeoDropdown && (
+                    <div className="absolute left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-white dark:bg-obsidian-900 border border-cosmic-300 dark:border-obsidian-700 rounded-2xl shadow-xl z-20 py-1 text-xs">
+                      {filteredLocations.length === 0 ? (
                         <div className="p-3 text-obsidian/50 dark:text-cosmic-400 text-center">
-                          No matching verified cities found.
+                          No matching Hunter.io locations found.
                         </div>
                       ) : (
-                        filteredCities.map((city) => (
-                          <button
-                            key={city}
-                            type="button"
-                            onClick={() => addCityFromDropdown(city)}
-                            className="w-full text-left px-3.5 py-2 hover:bg-lilac-50 dark:hover:bg-obsidian-800 flex items-center justify-between text-obsidian dark:text-cosmic-200 transition"
-                          >
-                            <span>{city}</span>
-                            {filters.locations.includes(city) && (
-                              <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
-                                Added ✓
-                              </span>
-                            )}
-                          </button>
-                        ))
+                        filteredLocations.map((loc) => {
+                          const isAdded = filters.locations.includes(loc);
+                          return (
+                            <button
+                              key={loc}
+                              type="button"
+                              onClick={() => addLocationFromDropdown(loc)}
+                              className="w-full text-left px-3.5 py-2 hover:bg-lilac-50 dark:hover:bg-obsidian-800 flex items-center justify-between text-obsidian dark:text-cosmic-200 transition cursor-pointer"
+                            >
+                              <span>{loc}</span>
+                              {isAdded && (
+                                <span className="text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
+                                  Added ✓
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })
                       )}
                     </div>
                   )}
@@ -780,14 +1076,19 @@ export function IcpEditor() {
                       <span>{loc}</span>
                       <button
                         type="button"
-                        onClick={() => toggleLocation(loc)}
-                        className="text-obsidian/50 hover:text-rose-600 dark:text-cosmic-400 dark:hover:text-rose-400 font-bold"
+                        onClick={() => removeLocation(loc)}
+                        className="text-obsidian/50 hover:text-rose-600 dark:text-cosmic-400 dark:hover:text-rose-400 font-bold cursor-pointer"
                         title="Remove location"
                       >
                         ✕
                       </button>
                     </span>
                   ))}
+                  {filters.locations.length === 0 && (
+                    <span className="text-xs text-obsidian/40 dark:text-cosmic-400 italic">
+                      No locations selected yet. Search above to add target regions.
+                    </span>
+                  )}
                 </div>
               </div>
 

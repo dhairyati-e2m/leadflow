@@ -553,7 +553,7 @@ export function IntegrationSettings() {
             return (
               <div
                 key={p.key}
-                className={`rounded-3xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200 border-2 border-lilac-300/90 dark:border-obsidian-700 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:bg-lilac-50/75 dark:hover:bg-obsidian-800 hover:border-lilac-400 dark:hover:border-obsidian-600 ${
+                className={`rounded-3xl p-5 sm:p-6 flex flex-col justify-between transition-all duration-200 border border-lilac-300/80 dark:border-lilac-400/40 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:bg-lilac-50/75 dark:hover:bg-obsidian-800 hover:border-lilac-500 dark:hover:border-lilac-300 ${
                   isPolicyBlocked ? "opacity-90" : ""
                 }`}
               >
@@ -722,7 +722,7 @@ export function IntegrationSettings() {
             return (
               <div
                 key={sig.key}
-                className="rounded-3xl p-5 flex flex-col justify-between transition-all duration-200 border-2 border-lilac-200/90 dark:border-obsidian-700 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:bg-lilac-50/75 dark:hover:bg-obsidian-800 hover:border-lilac-400 dark:hover:border-obsidian-600"
+                className="rounded-3xl p-5 flex flex-col justify-between transition-all duration-200 border border-lilac-300/80 dark:border-lilac-400/40 bg-white/95 dark:bg-obsidian-900 shadow-sm hover:bg-lilac-50/75 dark:hover:bg-obsidian-800 hover:border-lilac-500 dark:hover:border-lilac-300"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2.5">
@@ -782,7 +782,7 @@ export function IntegrationSettings() {
       </div>
 
       {/* Quota Safeguards Technical Architecture Card (Dark Glass, Zero White Patches) */}
-      <div className="glass-panel border border-blush-200/80 dark:border-obsidian-700 rounded-3xl p-6 text-xs text-obsidian/80 dark:text-cosmic-300 space-y-3 shadow-sm dark:bg-obsidian-900/90">
+      <div className="glass-panel border border-lilac-300/60 dark:border-lilac-400/30 rounded-3xl p-6 text-xs text-obsidian/80 dark:text-cosmic-300 space-y-3 shadow-sm dark:bg-obsidian-900/90">
         <div className="flex items-center gap-2">
           <span className="text-obsidian dark:text-cosmic-100 font-bold text-sm tracking-tight">Active Budget Protection Architecture</span>
           <span className="px-2 py-0.5 rounded-full text-[9px] font-mono bg-cosmic-200 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700 uppercase">
@@ -813,7 +813,7 @@ export function IntegrationSettings() {
 
       {/* Organisation Ownership & Administration Transfer Card (Feature 3) */}
       {(activeMembership?.role === "owner" || activeMembership?.role === "admin") && (
-        <div className="glass-panel border border-blush-200/80 dark:border-obsidian-700 rounded-3xl p-6 text-xs text-obsidian/80 dark:text-cosmic-300 space-y-4 shadow-sm dark:bg-obsidian-900/90">
+        <div className="glass-panel border border-lilac-300/60 dark:border-lilac-400/30 rounded-3xl p-6 text-xs text-obsidian/80 dark:text-cosmic-300 space-y-4 shadow-sm dark:bg-obsidian-900/90">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">

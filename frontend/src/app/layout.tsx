@@ -22,6 +22,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={robotoFlex.variable}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@100..1000&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className={`${robotoFlex.className} min-h-screen cosmic-mesh text-obsidian antialiased selection:bg-lilac-200 selection:text-obsidian`}>
         <Providers>
           <Header />

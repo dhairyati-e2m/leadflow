@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useNav } from "@/lib/nav-context";
@@ -347,6 +348,14 @@ export function WelcomeLanding() {
                     placeholder="••••••••"
                     className="w-full text-xs p-3 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white/90 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400"
                   />
+                  <div className="flex justify-end mt-1.5">
+                    <Link
+                      href={`/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+                      className="text-[11px] font-semibold text-lilac-600 dark:text-lilac-400 hover:underline cursor-pointer"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
                 </div>
                 <button
                   type="submit"

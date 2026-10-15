@@ -101,8 +101,14 @@ class ResendProvider(BaseProvider):
                 error_message=reason,
             )
 
+        # Safeguard: Resend prohibits sending from public webmail domains like @gmail.com, @yahoo.com, @outlook.com
+        effective_from = self.from_email
+        if any(pub in effective_from.lower() for pub in ["@gmail.", "@yahoo.", "@outlook.", "@hotmail."]):
+            logger.info("Public webmail domain detected in RESEND_FROM_EMAIL (%s). Falling back to onboarding@resend.dev for Resend API compliance.", effective_from)
+            effective_from = "onboarding@resend.dev"
+
         payload = {
-            "from": self.from_email,
+            "from": effective_from,
             "to": [to_email],
             "subject": subject,
             "html": html_content or f"<p>System notification: {subject}</p>",
@@ -115,9 +121,15 @@ class ResendProvider(BaseProvider):
         try:
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
                 resp = await client.post(self.BASE_URL, json=payload, headers=headers)
+                # If unverified domain error was returned and we didn't already use onboarding@resend.dev, retry with onboarding@resend.dev
+                if resp.status_code == 403 and "domain is not verified" in resp.text.lower() and effective_from != "onboarding@resend.dev":
+                    logger.warning("Resend rejected '%s' as unverified domain. Retrying with onboarding@resend.dev...", effective_from)
+                    payload["from"] = "onboarding@resend.dev"
+                    resp = await client.post(self.BASE_URL, json=payload, headers=headers)
 
             if resp.status_code in [200, 201]:
                 res_data = resp.json()
+                logger.info("Resend email dispatched successfully: %s", res_data.get("id"))
                 return ProviderResult(
                     provider_key=self.key,
                     status="success",
