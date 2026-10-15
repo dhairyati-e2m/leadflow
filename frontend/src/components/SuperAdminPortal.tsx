@@ -29,10 +29,18 @@ export function SuperAdminPortal() {
   const [updatingOrgId, setUpdatingOrgId] = useState<string | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<"orgs" | "requests" | "audit">("orgs");
+  const [activeSubTab, setActiveSubTab] = useState<"orgs" | "requests" | "admin_transfers" | "audit">("orgs");
   const [actioningRequestId, setActioningRequestId] = useState<string | null>(null);
   const [rejectReasonInput, setRejectReasonInput] = useState<Record<string, string>>({});
   const [rejectingRequestId, setRejectingRequestId] = useState<string | null>(null);
+
+  // Dedicated Org Admin Changes / Transfers Tab State
+  const [transferOrgId, setTransferOrgId] = useState<string>("");
+  const [transferAdmins, setTransferAdmins] = useState<OrgAdminUser[]>([]);
+  const [loadingTransferAdmins, setLoadingTransferAdmins] = useState<boolean>(false);
+  const [newAdminEmail, setNewAdminEmail] = useState<string>("");
+  const [isChangingAdmin, setIsChangingAdmin] = useState<boolean>(false);
+  const [changeAdminError, setChangeAdminError] = useState<string | null>(null);
 
   // Add Organisation Modal State
   const [showCreateOrgModal, setShowCreateOrgModal] = useState<boolean>(false);
@@ -52,6 +60,7 @@ export function SuperAdminPortal() {
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
   const selectedOrg = orgs.find((o) => o.id === selectedOrgId) || null;
+  const selectedTransferOrg = orgs.find((o) => o.id === transferOrgId) || (orgs.length > 0 ? orgs[0] : null);
 
   const showNotification = (msg: string) => {
     setNotification(msg);
@@ -96,6 +105,69 @@ export function SuperAdminPortal() {
       setAssignError(null);
     }
   }, [selectedOrgId]);
+
+  useEffect(() => {
+    const targetId = transferOrgId || (orgs.length > 0 ? orgs[0].id : null);
+    if (targetId) {
+      setLoadingTransferAdmins(true);
+      setChangeAdminError(null);
+      fetchOrgAdmins(targetId)
+        .then(setTransferAdmins)
+        .catch(() => setTransferAdmins([]))
+        .finally(() => setLoadingTransferAdmins(false));
+    }
+  }, [transferOrgId, orgs]);
+
+  const handleAssignNewAdminInTransferTab = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetId = transferOrgId || (orgs.length > 0 ? orgs[0].id : null);
+    if (!targetId || !newAdminEmail.trim()) return;
+    setIsChangingAdmin(true);
+    setChangeAdminError(null);
+    try {
+      const assigned = await assignOrgAdmin(targetId, newAdminEmail.trim());
+      setTransferAdmins((prev) => {
+        const existing = prev.find((a) => a.user_id === assigned.user_id);
+        if (existing) {
+          return prev.map((a) => (a.user_id === assigned.user_id ? assigned : a));
+        }
+        return [...prev, assigned];
+      });
+      setNewAdminEmail("");
+      showNotification(`Designated "${assigned.email}" as Organisation Administrator.`);
+      fetchAdminOrgs().then(setOrgs).catch(() => {});
+      fetchAuditLogs(undefined, 50).then(setAuditLogs).catch(() => {});
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to change organisation administrator";
+      setChangeAdminError(msg);
+    } finally {
+      setIsChangingAdmin(false);
+    }
+  };
+
+  const handleDemoteAdminInTransferTab = async (admin: OrgAdminUser) => {
+    const targetId = transferOrgId || (orgs.length > 0 ? orgs[0].id : null);
+    if (!targetId) return;
+    if (transferAdmins.length <= 1) {
+      showNotification("Cannot remove the last administrator of an active organisation.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Revoke administrator privileges for "${admin.email}"? Their role will be demoted to Analyst without deleting their account.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await removeOrgAdmin(targetId, admin.user_id);
+      setTransferAdmins((prev) => prev.filter((a) => a.user_id !== admin.user_id));
+      showNotification(`Administrator privileges revoked for "${admin.email}". Role set to Analyst.`);
+      fetchAdminOrgs().then(setOrgs).catch(() => {});
+      fetchAuditLogs(undefined, 50).then(setAuditLogs).catch(() => {});
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to revoke administrator privileges";
+      showNotification(msg);
+    }
+  };
 
   const handleAssignAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -337,6 +409,17 @@ export function SuperAdminPortal() {
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-cosmic-200 dark:bg-obsidian-700">
                 {workspaceRequests.filter((r) => r.status === "pending").length}
               </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab("admin_transfers")}
+              className={`px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
+                activeSubTab === "admin_transfers"
+                  ? "btn-obsidian"
+                  : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian"
+              }`}
+            >
+              <span>Change in Org Admin</span>
             </button>
             <button
               type="button"
@@ -702,7 +785,251 @@ export function SuperAdminPortal() {
         </div>
       )}
 
-      {/* VIEW C: Audit Trail Viewer */}
+      {/* VIEW: Org Admin Changes & Transfers */}
+      {activeSubTab === "admin_transfers" && (
+        <div className="space-y-6">
+          <div className="glass-panel rounded-3xl overflow-hidden border border-blush-200/80 dark:border-obsidian-700 shadow-sm dark:bg-obsidian-900/90 p-5 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-cosmic-200 dark:border-obsidian-800">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-lilac-500 animate-pulse"></span>
+                  <h3 className="text-sm font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
+                    Change in Org Admin & Role Transfers
+                  </h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 font-bold border border-lilac-200 dark:border-obsidian-700">
+                    Dedicated Admin Controls
+                  </span>
+                </div>
+                <p className="text-xs text-obsidian/60 dark:text-cosmic-400 mt-1 max-w-2xl">
+                  Super Admin portal to review, approve, reassign, or revoke Organisation Administrator privileges across all tenant organisations with automatic last-admin safety guards and immutable audit logging.
+                </p>
+              </div>
+
+              {/* Organization Picker Dropdown */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-mono uppercase text-obsidian/60 dark:text-cosmic-400 font-bold whitespace-nowrap">
+                  Organisation:
+                </label>
+                <select
+                  value={transferOrgId}
+                  onChange={(e) => setTransferOrgId(e.target.value)}
+                  className="text-xs px-3 py-2 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 font-semibold focus:outline-none focus:ring-2 focus:ring-lilac-400 cursor-pointer"
+                >
+                  {orgs.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name} ({o.slug})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Selected Org Context Ribbon */}
+            {selectedTransferOrg && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5 p-4 rounded-2xl bg-cosmic-100/70 dark:bg-obsidian-800/60 border border-cosmic-200 dark:border-obsidian-700 text-xs">
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-obsidian/50 dark:text-cosmic-400 block font-bold">Organisation</span>
+                  <span className="font-bold text-obsidian dark:text-cosmic-100 text-sm truncate block">{selectedTransferOrg.name}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-obsidian/50 dark:text-cosmic-400 block font-bold">Status</span>
+                  <span className={`inline-block font-mono text-[10px] px-2 py-0.5 rounded-full font-bold uppercase mt-0.5 ${
+                    selectedTransferOrg.is_active ? "text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800" : "text-rose-700 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800"
+                  }`}>
+                    {selectedTransferOrg.is_active ? "Active" : "Suspended"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-obsidian/50 dark:text-cosmic-400 block font-bold">Active Administrators</span>
+                  <span className="font-bold text-obsidian dark:text-cosmic-100 font-mono">{transferAdmins.length} Admins</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-obsidian/50 dark:text-cosmic-400 block font-bold">Enrolled Users</span>
+                  <span className="font-bold text-obsidian dark:text-cosmic-100 font-mono">{selectedTransferOrg.user_count} Users</span>
+                </div>
+              </div>
+            )}
+
+            {/* Two Column Layout: Current Admins | Change / Assign Admin */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+              {/* Left Column (7 cols): Current Administrators Table */}
+              <div className="lg:col-span-7 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-mono uppercase tracking-wider font-bold text-obsidian/70 dark:text-cosmic-300">
+                    Current Organisation Administrators
+                  </h4>
+                  <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
+                    ✓ Last-Admin Guard Protected
+                  </span>
+                </div>
+
+                {loadingTransferAdmins ? (
+                  <div className="py-8 text-center text-xs text-obsidian/50 dark:text-cosmic-400">
+                    Loading administrators...
+                  </div>
+                ) : transferAdmins.length === 0 ? (
+                  <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300">
+                    No administrators currently assigned. Designate an administrator using the form on the right.
+                  </div>
+                ) : (
+                  <div className="divide-y divide-cosmic-200 dark:divide-obsidian-800 border border-cosmic-200 dark:border-obsidian-800 rounded-2xl overflow-hidden bg-white/40 dark:bg-obsidian-950/40">
+                    {transferAdmins.map((adm) => (
+                      <div key={adm.user_id} className="p-3.5 sm:px-4 flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-obsidian text-white dark:bg-cosmic-100 dark:text-obsidian flex items-center justify-center font-bold text-xs uppercase flex-shrink-0">
+                            {adm.full_name?.charAt(0) || adm.email.charAt(0)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-obsidian dark:text-cosmic-100 truncate">
+                              {adm.full_name || "LeadFlow User"}
+                            </div>
+                            <div className="text-[11px] font-mono text-obsidian/60 dark:text-cosmic-400 truncate">
+                              {adm.email}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase ${
+                            adm.role === "owner"
+                              ? "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                              : "bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700"
+                          }`}>
+                            {adm.role}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDemoteAdminInTransferTab(adm)}
+                            className="px-2.5 py-1 rounded-xl text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-100 transition cursor-pointer"
+                            title="Demote to Analyst"
+                          >
+                            Revoke / Demote
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column (5 cols): Designate / Change Administrator Form */}
+              <div className="lg:col-span-5 card-nested p-5 rounded-2xl border border-cosmic-200 dark:border-obsidian-700 space-y-3">
+                <div>
+                  <h4 className="text-xs font-mono uppercase tracking-wider font-bold text-obsidian/70 dark:text-cosmic-300">
+                    Designate / Change Org Admin
+                  </h4>
+                  <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 mt-0.5">
+                    Enter the registered email of the user to assign as an Organisation Administrator for this organisation.
+                  </p>
+                </div>
+
+                {changeAdminError && (
+                  <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-xs text-rose-800 dark:text-rose-200">
+                    {changeAdminError}
+                  </div>
+                )}
+
+                <form onSubmit={handleAssignNewAdminInTransferTab} className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase text-obsidian/60 dark:text-cosmic-400 font-bold mb-1">
+                      User Email Address
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="admin@example.com"
+                      value={newAdminEmail}
+                      onChange={(e) => setNewAdminEmail(e.target.value)}
+                      className="w-full text-xs p-2.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isChangingAdmin || !newAdminEmail.trim()}
+                    className="w-full btn-obsidian py-2 px-3 rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer disabled:opacity-50"
+                  >
+                    {isChangingAdmin ? "Assigning..." : "Assign as Organisation Administrator"}
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Admin Role Mutation & Transfer Audit History Table */}
+          <div className="glass-panel rounded-3xl overflow-hidden border border-blush-200/80 dark:border-obsidian-700 shadow-sm dark:bg-obsidian-900/90 p-5 sm:p-6">
+            <div className="flex items-center justify-between pb-4 border-b border-cosmic-200 dark:border-obsidian-800">
+              <div>
+                <h4 className="text-xs font-mono uppercase tracking-wider font-bold text-obsidian dark:text-cosmic-100">
+                  Admin Changes & Role Transfers History
+                </h4>
+                <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 mt-0.5">
+                  Platform-wide log of all administrator role transfers, promotions, and revocations.
+                </p>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cosmic-200 dark:bg-obsidian-700 text-obsidian/70 dark:text-cosmic-300 font-bold">
+                {auditLogs.filter((l) => ["transfer_org_admin", "assign_org_admin", "remove_org_admin"].includes(l.action)).length} Recorded
+              </span>
+            </div>
+
+            <div className="overflow-x-auto mt-4">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-cosmic-100/90 dark:bg-obsidian-800 text-obsidian/60 dark:text-cosmic-400 uppercase font-mono text-[10px] border-b border-cosmic-200 dark:border-obsidian-700">
+                  <tr>
+                    <th className="py-2.5 px-4 font-semibold">Timestamp (UTC)</th>
+                    <th className="py-2.5 px-3 font-semibold">Action</th>
+                    <th className="py-2.5 px-4 font-semibold">Initiated By</th>
+                    <th className="py-2.5 px-4 font-semibold">Target Admin</th>
+                    <th className="py-2.5 px-4 font-semibold">Outcome</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-cosmic-200 dark:divide-obsidian-800">
+                  {auditLogs.filter((l) => ["transfer_org_admin", "assign_org_admin", "remove_org_admin"].includes(l.action)).length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-obsidian/50 dark:text-cosmic-400">
+                        No administrator changes or role transfers recorded yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    auditLogs
+                      .filter((l) => ["transfer_org_admin", "assign_org_admin", "remove_org_admin"].includes(l.action))
+                      .map((log) => (
+                        <tr key={log.id} className="hover:bg-cosmic-100/60 dark:hover:bg-obsidian-800/60 transition font-mono">
+                          <td className="py-2.5 px-4 text-[11px] text-obsidian/70 dark:text-cosmic-300">
+                            {new Date(log.created_at).toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 border border-cosmic-200 dark:border-obsidian-700">
+                              {log.action}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-[11px] text-obsidian/80 dark:text-cosmic-200 font-sans">
+                            {(log.details as Record<string, string>)?.transferred_by ||
+                             (log.details as Record<string, string>)?.assigned_by ||
+                             (log.details as Record<string, string>)?.removed_by ||
+                             "Super Admin"}
+                          </td>
+                          <td className="py-2.5 px-4 text-[11px] text-obsidian/80 dark:text-cosmic-200 font-sans">
+                            {(log.details as Record<string, string>)?.transferred_to ||
+                             (log.details as Record<string, string>)?.target_email ||
+                             (log.details as Record<string, string>)?.member_email ||
+                             "-"}
+                          </td>
+                          <td className="py-2.5 px-4 text-[11px] text-emerald-600 dark:text-emerald-400 font-sans font-semibold">
+                            ✓ Applied
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW D: Audit Trail Viewer */}
       {activeSubTab === "audit" && (
         <div className="glass-panel rounded-3xl overflow-hidden border border-blush-200/80 dark:border-obsidian-700 shadow-sm dark:bg-obsidian-900/90">
           <div className="p-5 sm:p-6 border-b border-cosmic-200 dark:border-obsidian-800 flex items-center justify-between">

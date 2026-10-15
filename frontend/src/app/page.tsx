@@ -754,87 +754,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Hero Card: Qualification & CRM Outreach Hub (Half page vertically, full page horizontally) */}
-      <div className="glass-panel card-cosmic rounded-3xl p-8 sm:p-10 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700 w-full min-h-[42vh] flex flex-col justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="w-3 h-3 rounded-full bg-lilac-500 animate-pulse"></span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-obsidian dark:text-cosmic-100 tracking-tight">
-              Qualification & CRM Outreach Hub
-            </h1>
-            <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700">
-              Live Pipeline
-            </span>
-          </div>
-          <p className="text-obsidian/75 dark:text-cosmic-300 text-sm sm:text-base mt-2 max-w-3xl leading-relaxed">
-            Autonomous multi-signal audit across 22 parameters, credit-safe contact reveals, and bespoke AI outreach generation before CRM sync.
-          </p>
-        </div>
-
-        {/* Big KPI Metrics in Boxes (Power BI style figures) */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-6 border-t border-cosmic-200/80 dark:border-obsidian-800">
-          <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
-              Review
-            </div>
-            <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-1.5">
-              {funnelCounts.review}
-            </div>
-            <div className="text-[11px] text-obsidian/50 dark:text-cosmic-400 font-medium">
-              Awaiting qualification score
-            </div>
-          </div>
-
-          <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
-              Qualified
-            </div>
-            <div className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 my-1.5">
-              {funnelCounts.qualified}
-            </div>
-            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
-              Met ICP threshold standard
-            </div>
-          </div>
-
-          <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
-              Approved
-            </div>
-            <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-1.5">
-              {funnelCounts.approved}
-            </div>
-            <div className="text-[11px] text-obsidian/50 dark:text-cosmic-400 font-medium">
-              Human approved for draft
-            </div>
-          </div>
-
-          <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
-              Drafted
-            </div>
-            <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-1.5">
-              {funnelCounts.drafted}
-            </div>
-            <div className="text-[11px] text-obsidian/50 dark:text-cosmic-400 font-medium">
-              Ready for CRM handoff
-            </div>
-          </div>
-
-          <div className="card-nested p-5 rounded-2xl flex flex-col justify-between border-lilac-300 dark:border-lilac-800">
-            <div className="text-[11px] font-mono uppercase tracking-wider text-lilac-700 dark:text-lilac-300 font-bold">
-              In CRM
-            </div>
-            <div className="text-3xl sm:text-4xl font-black text-lilac-700 dark:text-lilac-300 my-1.5">
-              {funnelCounts.synced}
-            </div>
-            <div className="text-[11px] text-lilac-700 dark:text-lilac-300 font-medium">
-              Synced to HubSpot ✓
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* 1. Client Viewer Role Portal (Strictly No Cost Cards, Read-Only Qualified Pipeline) */}
       {(isClient || activeTab === "portal") && (
         <ClientPortal />
@@ -848,6 +767,86 @@ export default function DashboardPage() {
       {/* 3. Main Tab 1: Leads Pipeline & Funnel (Org Admin & Super Admin) */}
       {!isClient && activeTab === "leads" && (
         <div className="space-y-6">
+          {/* Hero Card: Qualification & CRM Outreach Hub (Shown exclusively on Lead Pipeline tab) */}
+          <div className="glass-panel card-cosmic rounded-3xl p-8 sm:p-10 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700 w-full min-h-[42vh] flex flex-col justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full bg-lilac-500 animate-pulse"></span>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-obsidian dark:text-cosmic-100 tracking-tight">
+                  Qualification & CRM Outreach Hub
+                </h1>
+                <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700">
+                  Live Pipeline
+                </span>
+              </div>
+              <p className="text-obsidian/75 dark:text-cosmic-300 text-sm sm:text-base mt-2 max-w-3xl leading-relaxed">
+                Autonomous multi-signal audit across 22 parameters, credit-safe contact reveals, and bespoke AI outreach generation before CRM sync.
+              </p>
+            </div>
+
+            {/* Big KPI Metrics in Boxes (Power BI style figures) */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-6 border-t border-cosmic-200/80 dark:border-obsidian-800">
+              <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
+                <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
+                  Review
+                </div>
+                <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-1.5">
+                  {funnelCounts.review}
+                </div>
+                <div className="text-[11px] text-obsidian/50 dark:text-cosmic-400 font-medium">
+                  Awaiting qualification score
+                </div>
+              </div>
+
+              <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
+                <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
+                  Qualified
+                </div>
+                <div className="text-3xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 my-1.5">
+                  {funnelCounts.qualified}
+                </div>
+                <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">
+                  Met ICP threshold standard
+                </div>
+              </div>
+
+              <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
+                <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
+                  Approved
+                </div>
+                <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-1.5">
+                  {funnelCounts.approved}
+                </div>
+                <div className="text-[11px] text-obsidian/50 dark:text-cosmic-400 font-medium">
+                  Human approved for draft
+                </div>
+              </div>
+
+              <div className="card-nested p-5 rounded-2xl flex flex-col justify-between">
+                <div className="text-[11px] font-mono uppercase tracking-wider text-obsidian/60 dark:text-cosmic-400 font-bold">
+                  Drafted
+                </div>
+                <div className="text-3xl sm:text-4xl font-black text-obsidian dark:text-cosmic-100 my-1.5">
+                  {funnelCounts.drafted}
+                </div>
+                <div className="text-[11px] text-obsidian/50 dark:text-cosmic-400 font-medium">
+                  Ready for CRM handoff
+                </div>
+              </div>
+
+              <div className="card-nested p-5 rounded-2xl flex flex-col justify-between border-lilac-300 dark:border-lilac-800">
+                <div className="text-[11px] font-mono uppercase tracking-wider text-lilac-700 dark:text-lilac-300 font-bold">
+                  In CRM
+                </div>
+                <div className="text-3xl sm:text-4xl font-black text-lilac-700 dark:text-lilac-300 my-1.5">
+                  {funnelCounts.synced}
+                </div>
+                <div className="text-[11px] text-lilac-700 dark:text-lilac-300 font-medium">
+                  Synced to HubSpot ✓
+                </div>
+              </div>
+            </div>
+          </div>
           {/* Target Lead Qualification Standard (Full width matching Sourcing & Batch Pipeline card) */}
           <div className="glass-panel card-cosmic rounded-3xl p-6 border border-blush-200/80 dark:border-obsidian-700 shadow-sm w-full">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

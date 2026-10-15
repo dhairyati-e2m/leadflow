@@ -130,11 +130,7 @@ export function Header() {
       : "Org Admin";
 
   return (
-    <header className={`sticky top-0 z-50 bg-[#0D0D12] text-cosmic-100 shadow-md transition-all ${
-      !user
-        ? "border-b border-obsidian-800"
-        : "border-b border-obsidian-800 dark:border-b dark:border-[#FAF7F2]"
-    }`}>
+    <header className="sticky top-0 z-50 bg-[#0D0D12] text-cosmic-100 shadow-md transition-all border-b border-[#FAF7F2]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Brand Logo & Status */}
         <div className="flex items-center space-x-3 sm:space-x-4">
@@ -426,8 +422,14 @@ export function Header() {
                     </div>
                   )}
 
-                  {/* Request Organisation Access Option: Not shown for Super Admin */}
-                  {!user.is_superuser && role !== "super_admin" && (
+                  {/* Request Organisation Access Option: Only shown for regular users/analysts (hidden for Super Admin and Org Admin) */}
+                  {!user.is_superuser &&
+                    role !== "super_admin" &&
+                    role !== "org_admin" &&
+                    resolvedRole !== "super_admin" &&
+                    resolvedRole !== "org_admin" &&
+                    activeMembership?.role !== "owner" &&
+                    activeMembership?.role !== "admin" && (
                     <div className="pt-1 px-1 border-t border-obsidian-800 dark:border-cosmic-200">
                       <button
                         type="button"
