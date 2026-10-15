@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   AudienceItem,
   AudienceFilters,
@@ -180,6 +180,32 @@ export function IcpEditor() {
   const [showIndustryDropdown, setShowIndustryDropdown] = useState<boolean>(false);
   const [geoSearchQuery, setGeoSearchQuery] = useState<string>("");
   const [showGeoDropdown, setShowGeoDropdown] = useState<boolean>(false);
+
+  // Container refs for detecting click outside (User Requirement 3)
+  const industryContainerRef = useRef<HTMLDivElement>(null);
+  const geoContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close industry and geographic dropdowns if clicking anywhere outside (User Requirement 3)
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        industryContainerRef.current &&
+        !industryContainerRef.current.contains(event.target as Node)
+      ) {
+        setShowIndustryDropdown(false);
+      }
+      if (
+        geoContainerRef.current &&
+        !geoContainerRef.current.contains(event.target as Node)
+      ) {
+        setShowGeoDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // UI state
   const { setActiveTab } = useNav();
@@ -730,17 +756,18 @@ export function IcpEditor() {
                 <h2 className="text-xl font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
                   Ideal Customer Profile (ICP)
                 </h2>
-                {/* User Requirement 1: Add Manually button right beside heading */}
+                {/* User Requirement 1 & 4: Explicit collapsible button right beside heading */}
                 <button
                   type="button"
                   onClick={() => setShowManualForm(!showManualForm)}
-                  className={`px-3 py-1 rounded-xl text-xs font-semibold transition border cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition border flex items-center gap-1.5 cursor-pointer shadow-sm ${
                     showManualForm
-                      ? "btn-obsidian shadow-sm"
-                      : "bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 border-cosmic-300 dark:border-obsidian-700 hover:bg-cosmic-200"
+                      ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-900/60 hover:bg-rose-100 dark:hover:bg-rose-900/60"
+                      : "btn-obsidian"
                   }`}
+                  title={showManualForm ? "Collapse manual configuration form" : "Expand manual configuration form"}
                 >
-                  {showManualForm ? "✓ Manual Form Open" : "+ Add Manually"}
+                  <span>{showManualForm ? "▲ Collapse Manual Form" : "▼ + Add Manually / Expand"}</span>
                 </button>
               </div>
 
@@ -816,14 +843,37 @@ export function IcpEditor() {
             </div>
           </div>
 
-          {/* User Requirement 4: ONLY upon clicking "Add Manually" button show the below cards as a grouped form */}
+          {/* User Requirement 4: Collapsible manual configuration form */}
           {showManualForm && (
             <div className="glass-panel card-cosmic rounded-3xl p-7 border border-blush-200/80 dark:border-obsidian-700 space-y-7 animate-in fade-in slide-in-from-top-3 duration-200">
-              <div className="flex items-center justify-between pb-3 border-b border-cosmic-200 dark:border-obsidian-800">
-                <h3 className="text-base font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
-                  Manual ICP Criteria Configuration
-                </h3>
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-cosmic-200 dark:border-obsidian-800 gap-3">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualForm(false)}
+                    className="w-7 h-7 rounded-lg bg-cosmic-100 dark:bg-obsidian-800 hover:bg-cosmic-200 dark:hover:bg-obsidian-700 text-obsidian dark:text-cosmic-200 flex items-center justify-center font-bold text-xs transition cursor-pointer border border-cosmic-300 dark:border-obsidian-700"
+                    title="Collapse manual configuration"
+                  >
+                    ▲
+                  </button>
+                  <div>
+                    <h3 className="text-base font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
+                      Manual ICP Criteria Configuration
+                    </h3>
+                    <span className="text-[11px] font-mono text-obsidian/50 dark:text-cosmic-400">
+                      Interactive Form & Filter Catalog
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualForm(false)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-200 dark:hover:bg-obsidian-700 transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span>▲</span>
+                    <span>Collapse Form</span>
+                  </button>
                   <button
                     type="button"
                     onClick={handleClearProfileAndPrompt}
@@ -832,9 +882,6 @@ export function IcpEditor() {
                     <span>✕</span>
                     <span>Clear All Fields</span>
                   </button>
-                  <span className="text-[11px] font-mono text-obsidian/50 dark:text-cosmic-400">
-                    Interactive Form & Filter Catalog
-                  </span>
                 </div>
               </div>
 
@@ -902,7 +949,7 @@ export function IcpEditor() {
                 </div>
 
                 {/* Searchable Industry Dropdown */}
-                <div className="relative">
+                <div ref={industryContainerRef} className="relative">
                   <div className="relative">
                     <input
                       type="text"
@@ -1008,7 +1055,7 @@ export function IcpEditor() {
                 </div>
 
                 {/* Searchable Dropdown Input */}
-                <div className="relative">
+                <div ref={geoContainerRef} className="relative">
                   <div className="relative">
                     <input
                       type="text"
@@ -1333,9 +1380,14 @@ export function IcpEditor() {
 
               {/* Action Footer */}
               <div className="pt-4 border-t border-cosmic-200 dark:border-obsidian-800 flex items-center justify-between">
-                <span className="text-xs text-obsidian/50 dark:text-cosmic-400">
-                  Ready to activate for qualification batch runs.
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowManualForm(false)}
+                  className="text-xs font-semibold px-4 py-2.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-200 dark:hover:bg-obsidian-700 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>▲</span>
+                  <span>Collapse Configuration</span>
+                </button>
                 <button
                   type="button"
                   disabled={isSaving}
@@ -1345,6 +1397,44 @@ export function IcpEditor() {
                   {isSaving ? "Saving ICP..." : "Save & Activate ICP"}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Collapsed manual form teaser banner (User Requirement 4) */}
+          {!showManualForm && (
+            <div
+              onClick={() => setShowManualForm(true)}
+              className="glass-panel card-cosmic rounded-3xl p-5 border border-dashed border-cosmic-300 dark:border-obsidian-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:border-lilac-400 dark:hover:border-lilac-400 transition group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 flex items-center justify-center font-bold text-sm border border-lilac-200 dark:border-obsidian-700 group-hover:scale-105 transition">
+                  ⚙️
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-bold text-obsidian dark:text-cosmic-100">
+                      Manual ICP Criteria Configuration
+                    </h4>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cosmic-100 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700">
+                      Collapsed
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 mt-0.5">
+                    Click to expand criteria: 58 industries, geographic regions, employee ranges, HubSpot suppression & Hunter.io discovery.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowManualForm(true);
+                }}
+                className="btn-obsidian px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap self-start sm:self-auto"
+              >
+                <span>▼ Expand Configuration</span>
+              </button>
             </div>
           )}
         </div>

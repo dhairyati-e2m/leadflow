@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 export type UserRole = "org_admin" | "super_admin" | "client_viewer";
-export type NavTab = "leads" | "icp" | "integrations" | "portal" | "admin" | "audit";
+export type NavTab = "leads" | "icp" | "integrations" | "portal" | "admin" | "audit" | "access_requests";
 type ThemeMode = "light" | "dark";
 
 interface NavContextType {
@@ -62,7 +62,7 @@ export function NavProvider({ children }: { children: React.ReactNode }) {
   const setRole = (newRole: UserRole) => {
     setRoleState(newRole);
     localStorage.setItem("leadflow_role", newRole);
-    if (newRole === "client_viewer" && (activeTab === "leads" || activeTab === "integrations" || activeTab === "admin")) {
+    if (newRole === "client_viewer" && (activeTab === "leads" || activeTab === "integrations" || activeTab === "admin" || activeTab === "access_requests")) {
       setActiveTab("portal");
     } else if (newRole === "org_admin" && (activeTab === "admin" || activeTab === "audit" || activeTab === "portal")) {
       setActiveTab("leads");

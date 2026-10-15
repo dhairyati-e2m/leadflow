@@ -986,11 +986,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Organization Access Requests (Pending Team & Client Requests) */}
-          {canManageOrgAccess && activeMembership && (
-            <OrgAccessRequestsCard orgId={activeMembership.org_id} orgName={activeMembership.org_name} />
-          )}
-
           {/* Prospects Pipeline Table */}
           <div className="glass-panel rounded-3xl overflow-hidden border border-blush-200/80 dark:border-obsidian-700 shadow-futuristic">
             {/* Filter Bar */}
@@ -1226,6 +1221,19 @@ export default function DashboardPage() {
 
       {/* 4. Main Tab 2: Providers & Free Quotas */}
       {!isClient && activeTab === "integrations" && <IntegrationSettings />}
+
+      {/* 5. Main Tab 3: Access Requests (Pending Member & Client Requests) */}
+      {!isClient && activeTab === "access_requests" && (
+        <div className="space-y-6">
+          {activeMembership ? (
+            <OrgAccessRequestsCard orgId={activeMembership.org_id} orgName={activeMembership.org_name} />
+          ) : (
+            <div className="glass-panel card-cosmic rounded-3xl p-8 text-center text-xs text-obsidian/60 dark:text-cosmic-400">
+              No active organisation selected. Please select or join an organisation to view access requests.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 5. Main Tab 3: Super Admin Portal & Audit Trail */}
       {role === "super_admin" && (activeTab === "admin" || activeTab === "audit") && (

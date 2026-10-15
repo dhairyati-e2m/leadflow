@@ -19,14 +19,23 @@ export function WelcomeLanding() {
   const [orgName, setOrgName] = useState("");
   const [clientId, setClientId] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errorTab, setErrorTab] = useState<"quick" | "login" | "request_access" | "register" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRequestingAccess, setIsRequestingAccess] = useState(false);
   const [requestSuccessMsg, setRequestSuccessMsg] = useState<string | null>(null);
+
+  const handleTabChange = (newTab: "quick" | "login" | "request_access" | "register") => {
+    setActiveAuthTab(newTab);
+    setErrorMsg(null);
+    setErrorTab(null);
+    setRequestSuccessMsg(null);
+  };
 
   // Quick Demo Login Handler
   const handleQuickRoleLogin = async (targetRole: "org_admin" | "client_viewer" | "super_admin") => {
     setIsSubmitting(true);
     setErrorMsg(null);
+    setErrorTab(null);
     // Pre-emptively set role and tab so the header renders the correct role immediately without lag
     setRole(targetRole);
     if (targetRole === "client_viewer") {
@@ -54,6 +63,7 @@ export function WelcomeLanding() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Authentication failed";
       setErrorMsg(msg);
+      setErrorTab("quick");
     } finally {
       setIsSubmitting(false);
     }
@@ -63,6 +73,7 @@ export function WelcomeLanding() {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMsg(null);
+    setErrorTab(null);
     try {
       const { isSuperAdmin, role } = await login(email, password);
       if (isSuperAdmin) {
@@ -81,6 +92,7 @@ export function WelcomeLanding() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Invalid credentials";
       setErrorMsg(msg);
+      setErrorTab("login");
     } finally {
       setIsSubmitting(false);
     }
@@ -90,6 +102,7 @@ export function WelcomeLanding() {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMsg(null);
+    setErrorTab(null);
     setRequestSuccessMsg(null);
     try {
       await register(email, password, fullName, orgName);
@@ -99,6 +112,7 @@ export function WelcomeLanding() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Registration failed";
       setErrorMsg(msg);
+      setErrorTab("register");
     } finally {
       setIsSubmitting(false);
     }
@@ -107,6 +121,7 @@ export function WelcomeLanding() {
   const handleSendRequestToOrgAdmin = async () => {
     setIsRequestingAccess(true);
     setErrorMsg(null);
+    setErrorTab(null);
     try {
       await registerAndRequestAccess({
         full_name: fullName,
@@ -121,6 +136,7 @@ export function WelcomeLanding() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to submit access request";
       setErrorMsg(msg);
+      setErrorTab("register");
     } finally {
       setIsRequestingAccess(false);
     }
@@ -130,6 +146,7 @@ export function WelcomeLanding() {
     e.preventDefault();
     setIsRequestingAccess(true);
     setErrorMsg(null);
+    setErrorTab(null);
     setRequestSuccessMsg(null);
     try {
       await registerAndRequestAccess({
@@ -145,6 +162,7 @@ export function WelcomeLanding() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to submit access request";
       setErrorMsg(msg);
+      setErrorTab("request_access");
     } finally {
       setIsRequestingAccess(false);
     }
@@ -175,7 +193,7 @@ export function WelcomeLanding() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-cosmic-100 dark:bg-obsidian-800 rounded-2xl border border-cosmic-300 dark:border-obsidian-700 text-xs font-semibold mb-6">
               <button
                 type="button"
-                onClick={() => setActiveAuthTab("quick")}
+                onClick={() => handleTabChange("quick")}
                 className={`py-2 px-2 rounded-xl transition text-center truncate ${
                   activeTab === "quick" ? "btn-obsidian shadow-sm" : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian"
                 }`}
@@ -184,7 +202,7 @@ export function WelcomeLanding() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveAuthTab("login")}
+                onClick={() => handleTabChange("login")}
                 className={`py-2 px-2 rounded-xl transition text-center truncate ${
                   activeTab === "login" ? "btn-obsidian shadow-sm" : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian"
                 }`}
@@ -193,7 +211,7 @@ export function WelcomeLanding() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveAuthTab("request_access")}
+                onClick={() => handleTabChange("request_access")}
                 className={`py-2 px-2 rounded-xl transition text-center truncate ${
                   activeTab === "request_access" ? "btn-obsidian shadow-sm" : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian"
                 }`}
@@ -202,7 +220,7 @@ export function WelcomeLanding() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveAuthTab("register")}
+                onClick={() => handleTabChange("register")}
                 className={`py-2 px-2 rounded-xl transition text-center truncate ${
                   activeTab === "register" ? "btn-obsidian shadow-sm" : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian"
                 }`}
@@ -221,7 +239,7 @@ export function WelcomeLanding() {
               </div>
             )}
 
-            {errorMsg && errorMsg.toLowerCase().includes("already exists") && !requestSuccessMsg ? (
+            {errorMsg && errorTab === activeTab && errorMsg.toLowerCase().includes("already exists") && !requestSuccessMsg ? (
               <div className="mb-5 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 space-y-3 animate-in fade-in">
                 <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 text-xs font-bold">
                   <span>🏢</span>
@@ -246,7 +264,7 @@ export function WelcomeLanding() {
                   )}
                 </button>
               </div>
-            ) : errorMsg && !requestSuccessMsg ? (
+            ) : errorMsg && errorTab === activeTab && !requestSuccessMsg ? (
               <div className="mb-4 p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-900 text-xs font-semibold text-rose-950 dark:text-rose-200">
                 {errorMsg}
               </div>
