@@ -11,6 +11,7 @@ from backend.app.domain.crawler.service import CrawlerService
 from backend.app.domain.scoring_service import ScoringService
 from backend.app.models.entities import AuditLog, Draft, Lead, Score
 from backend.app.providers.resend import ResendProvider
+from backend.app.api.v1.endpoints.integrations import is_provider_enabled_for_org
 from backend.app.repositories.engines import EngineRepository
 from backend.app.repositories.enrichments import EnrichmentRepository
 from backend.app.repositories.leads import LeadRepository
@@ -344,6 +345,13 @@ async def send_lead_outreach(
     lead = await lead_repo.get_by_id(lead_id)
     if not lead:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lead not found")
+
+    # Enforce Signal Engine integration toggle (Requirement 8)
+    if not is_provider_enabled_for_org(ctx.organization, "resend"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Resend email integration is disabled for this organization. Please enable Resend in Signal Engines & Integrations to dispatch outreach.",
+        )
 
     # Send email via Resend
     resend = ResendProvider()

@@ -11,6 +11,7 @@ from backend.app.core.deps import TenantContext, get_tenant_context, require_rol
 from backend.app.domain.ingestion.csv_parser import normalize_domain
 from backend.app.models.entities import Audience, AuditLog, Contact, Lead
 from backend.app.providers.hunter import HunterProvider
+from backend.app.api.v1.endpoints.integrations import is_provider_enabled_for_org
 
 router = APIRouter()
 
@@ -432,6 +433,13 @@ async def discover_companies(
     primary_loc = filters.locations[0] if filters.locations else "Toronto, Canada"
     primary_ind = filters.verticals[0] if filters.verticals else "Healthcare & Medical Devices"
     primary_hc = filters.headcount_ranges[0] if filters.headcount_ranges else "11-50 employees"
+
+    # Enforce Signal Engine integration toggle (Requirement 8)
+    if not is_provider_enabled_for_org(ctx.organization, "hunter"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Hunter.io company discovery is disabled for this organization. Please enable Hunter.io in Signal Engines & Integrations to fetch live companies.",
+        )
 
     hunter = HunterProvider()
     result = await hunter.discover_companies(

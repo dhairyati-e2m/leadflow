@@ -11,11 +11,12 @@ export function WelcomeLanding() {
   const { login, register } = useAuth();
   const { setRole, setActiveTab } = useNav();
 
-  const [activeTab, setActiveAuthTab] = useState<"quick" | "login" | "register">("quick");
+  const [activeTab, setActiveAuthTab] = useState<"quick" | "login" | "request_access" | "register">("quick");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [orgName, setOrgName] = useState("");
+  const [clientId, setClientId] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRequestingAccess, setIsRequestingAccess] = useState(false);
@@ -111,9 +112,34 @@ export function WelcomeLanding() {
         email,
         password,
         org_name: orgName,
+        client_id: clientId || undefined,
       });
       setRequestSuccessMsg(
         `Your request to join "${orgName}" as a Client has been submitted! The Organisation Administrator has been notified to review and approve your access.`
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit access request";
+      setErrorMsg(msg);
+    } finally {
+      setIsRequestingAccess(false);
+    }
+  };
+
+  const handleCreateAccountAndSendRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsRequestingAccess(true);
+    setErrorMsg(null);
+    setRequestSuccessMsg(null);
+    try {
+      await registerAndRequestAccess({
+        full_name: fullName.trim(),
+        email: email.trim(),
+        password,
+        org_name: orgName.trim(),
+        client_id: clientId.trim() || undefined,
+      });
+      setRequestSuccessMsg(
+        `✓ Request sent! Your account has been registered and your request to join "${orgName}" as a Client has been sent to the Organisation Administrator for approval.`
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to submit access request";
@@ -145,20 +171,20 @@ export function WelcomeLanding() {
           {/* Authentication Card */}
           <div className="glass-panel card-cosmic rounded-3xl p-6 sm:p-7 shadow-futuristic border border-blush-200/80 dark:border-obsidian-700">
             {/* Auth Mode Tabs */}
-            <div className="flex items-center space-x-1.5 p-1 bg-cosmic-100 dark:bg-obsidian-800 rounded-2xl border border-cosmic-300 dark:border-obsidian-700 text-xs font-semibold mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-cosmic-100 dark:bg-obsidian-800 rounded-2xl border border-cosmic-300 dark:border-obsidian-700 text-xs font-semibold mb-6">
               <button
                 type="button"
                 onClick={() => setActiveAuthTab("quick")}
-                className={`flex-1 py-2 rounded-xl transition ${
+                className={`py-2 px-2 rounded-xl transition text-center truncate ${
                   activeTab === "quick" ? "btn-obsidian shadow-sm" : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian"
                 }`}
               >
-                ⚡ Quick Role Demo
+                ⚡ Quick Demo
               </button>
               <button
                 type="button"
                 onClick={() => setActiveAuthTab("login")}
-                className={`flex-1 py-2 rounded-xl transition ${
+                className={`py-2 px-2 rounded-xl transition text-center truncate ${
                   activeTab === "login" ? "btn-obsidian shadow-sm" : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian"
                 }`}
               >
@@ -166,8 +192,17 @@ export function WelcomeLanding() {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveAuthTab("request_access")}
+                className={`py-2 px-2 rounded-xl transition text-center truncate ${
+                  activeTab === "request_access" ? "btn-obsidian shadow-sm" : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian"
+                }`}
+              >
+                Create Account
+              </button>
+              <button
+                type="button"
                 onClick={() => setActiveAuthTab("register")}
-                className={`flex-1 py-2 rounded-xl transition ${
+                className={`py-2 px-2 rounded-xl transition text-center truncate ${
                   activeTab === "register" ? "btn-obsidian shadow-sm" : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian"
                 }`}
               >
@@ -323,7 +358,103 @@ export function WelcomeLanding() {
               </form>
             )}
 
-            {/* TAB 3: Create Workspace */}
+            {/* TAB 3: Create Account (Request Client Access to Existing Org - Requirement 4) */}
+            {activeTab === "request_access" && (
+              <form onSubmit={handleCreateAccountAndSendRequest} className="space-y-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 mb-1">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Jane Doe"
+                      className="w-full text-xs p-2.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white/90 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 mb-1">
+                      Organisation to Join
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      placeholder="e.g. LeadFlow Agency"
+                      className="w-full text-xs p-2.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white/90 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 mb-1">
+                      Work Email
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="jane@company.com"
+                      className="w-full text-xs p-2.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white/90 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 mb-1">
+                      Client ID / Reference (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={clientId}
+                      onChange={(e) => setClientId(e.target.value)}
+                      placeholder="e.g. CLI-8942"
+                      className="w-full text-xs p-2.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white/90 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 mb-1">
+                    Password (Min 8 Characters)
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full text-xs p-2.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-white/90 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 focus:outline-none focus:ring-2 focus:ring-lilac-400"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isRequestingAccess}
+                  className="w-full py-2.5 px-4 btn-obsidian font-semibold rounded-xl text-xs transition shadow-sm cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {isRequestingAccess ? (
+                    <>
+                      <span className="inline-block animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                      <span>Submitting Request...</span>
+                    </>
+                  ) : (
+                    <span>Send Request</span>
+                  )}
+                </button>
+
+                <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 text-center mt-2 leading-relaxed">
+                  Upon clicking <strong>Send Request</strong>, your account is registered and forwarded to the Organisation Administrator for review. Once approved, your account is assigned as a <strong>Client</strong>.
+                </p>
+              </form>
+            )}
+
+            {/* TAB 4: Create Workspace */}
             {activeTab === "register" && (
               <form onSubmit={handleRegister} className="space-y-3.5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

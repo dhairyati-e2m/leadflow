@@ -116,6 +116,36 @@ DEFAULT_PROVIDERS_CONFIG = [
 ]
 
 
+def is_provider_enabled_for_org(org: Organization, provider_key: str) -> bool:
+    """
+    Checks whether a specific integration provider is currently enabled for this organization.
+    Enforces master switch and individual provider toggles stored in org.settings.
+    """
+    org_settings = org.settings or {}
+    integrations = org_settings.get("integrations", {})
+    master_switch = integrations.get("master_switch_enabled", True)
+
+    # Local safe scanner is built-in and always enabled
+    if provider_key == "safe_crawler":
+        return True
+
+    # If the master switch is turned off, all external APIs are blocked
+    if not master_switch:
+        return False
+
+    toggles = integrations.get("provider_toggles", {})
+    if provider_key in toggles:
+        return bool(toggles[provider_key])
+
+    # If not explicitly toggled in org settings, default to configured status for hunter/resend
+    for p in DEFAULT_PROVIDERS_CONFIG:
+        if p["key"] == provider_key:
+            default_val = p["is_configured"] if p["key"] in ("hunter", "resend", "google_pagespeed") else p["enabled"]
+            return bool(default_val)
+
+    return False
+
+
 @router.get("", response_model=IntegrationSettingsResponse, summary="Get Organization Integration Settings")
 async def get_integration_settings(
     ctx: TenantContext = Depends(get_tenant_context),
@@ -127,11 +157,12 @@ async def get_integration_settings(
 
     provider_items = []
     for p in DEFAULT_PROVIDERS_CONFIG:
-        # Check if tenant has toggled this provider
-        is_enabled = toggles.get(p["key"], p["enabled"])
-        # If master switch is off, non-local providers are disabled
+        default_val = p["is_configured"] if p["key"] in ("hunter", "resend", "google_pagespeed") else p["enabled"]
+        is_enabled = toggles.get(p["key"], default_val)
         effective_mode = p["mode"]
         if not master_switch and p["key"] != "safe_crawler":
+            effective_mode = "disabled"
+        elif not is_enabled and p["key"] != "safe_crawler":
             effective_mode = "disabled"
 
         provider_items.append(
@@ -143,7 +174,7 @@ async def get_integration_settings(
                 mode=effective_mode,
                 free_quota_description=p["free_quota_description"],
                 is_configured=p["is_configured"],
-                status_label=p["status_label"] if master_switch else "Paused (Master Switch OFF)",
+                status_label=p["status_label"] if (master_switch and is_enabled) else ("Paused (Master Switch OFF)" if not master_switch else "Disabled in Workspace Settings"),
             )
         )
 
@@ -180,7 +211,9 @@ async def update_integration_settings(
 
     curr_settings["integrations"] = curr_integrations
     org.settings = curr_settings
+    ctx.organization.settings = curr_settings
     session.add(org)
     await session.commit()
+    await session.refresh(org)
 
     return await get_integration_settings(ctx=ctx)

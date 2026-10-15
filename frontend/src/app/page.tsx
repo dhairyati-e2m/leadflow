@@ -242,37 +242,35 @@ export default function DashboardPage() {
         if (resp && resp.items && resp.items.length > 0) {
           setLeads((prev) => {
             const dbMap = new Map<string, LeadItem>();
-            prev.forEach((item) => dbMap.set(item.domain.toLowerCase(), item));
-
+            // Place all newly fetched database items at the TOP of the list (Requirement 7)
             resp.items.forEach((item) => {
-              const existing = dbMap.get(item.domain.toLowerCase());
-              if (existing) {
-                dbMap.set(item.domain.toLowerCase(), {
-                  ...existing,
-                  id: item.id || existing.id,
-                  company_name: item.company_name || existing.company_name,
-                  pipeline_state: (item.pipeline_state as any) || existing.pipeline_state,
-                  latest_score: item.latest_score !== undefined && item.latest_score !== null ? item.latest_score : existing.latest_score,
-                  score_band: (item.score_band as any) || existing.score_band,
-                });
-              } else {
-                dbMap.set(item.domain.toLowerCase(), {
-                  id: item.id,
-                  company_name: item.company_name,
-                  domain: item.domain,
-                  industry: item.industry || "General Industry",
-                  location: item.location || "Global",
-                  employee_count: item.employee_count || "10-50",
-                  pipeline_state: (item.pipeline_state as any) || "review",
-                  score_band: (item.score_band as any) || undefined,
-                  latest_score: item.latest_score !== null ? item.latest_score : undefined,
-                  contact: {
-                    name: "Executive Leader",
-                    title: "Decision Maker",
-                    email: `contact@${item.domain}`,
-                    revealed: true,
-                  },
-                });
+              const existing = prev.find((p) => p.domain.toLowerCase() === item.domain.toLowerCase());
+              dbMap.set(item.domain.toLowerCase(), {
+                id: item.id,
+                company_name: item.company_name,
+                domain: item.domain,
+                industry: item.industry || existing?.industry || "General Industry",
+                location: item.location || existing?.location || "Global",
+                employee_count: item.employee_count || existing?.employee_count || "10-50",
+                pipeline_state: (item.pipeline_state as any) || existing?.pipeline_state || "review",
+                score_band: (item.score_band as any) || existing?.score_band || undefined,
+                latest_score: item.latest_score !== undefined && item.latest_score !== null ? item.latest_score : existing?.latest_score,
+                contact: existing?.contact || {
+                  name: "Executive Leader",
+                  title: "Decision Maker",
+                  email: `contact@${item.domain}`,
+                  revealed: true,
+                },
+                latest_enrichment: existing?.latest_enrichment,
+                latest_score_record: existing?.latest_score_record,
+                draft: existing?.draft,
+              });
+            });
+
+            // Append any demo/existing leads that are not in the response
+            prev.forEach((item) => {
+              if (!dbMap.has(item.domain.toLowerCase())) {
+                dbMap.set(item.domain.toLowerCase(), item);
               }
             });
 

@@ -130,16 +130,21 @@ export function Header() {
       : "Org Admin";
 
   return (
-    <header className="sticky top-0 z-50 bg-[#0D0D12] text-cosmic-100 border-b border-obsidian-800 dark:bg-[#0D0D12] dark:text-cosmic-100 dark:border-b dark:border-[#FAF7F2] shadow-md transition-all">
+    <header className={`sticky top-0 z-50 bg-[#0D0D12] text-cosmic-100 shadow-md transition-all ${
+      !user
+        ? "border-b border-obsidian-800"
+        : "border-b border-obsidian-800 dark:border-b dark:border-[#FAF7F2]"
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Brand Logo & Status */}
         <div className="flex items-center space-x-3 sm:space-x-4">
           <Link href="/" className="flex items-center space-x-2.5 group">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white text-obsidian dark:bg-obsidian dark:text-white flex items-center justify-center font-black text-xs sm:text-sm tracking-wider border border-white/20 dark:border-obsidian/20 group-hover:scale-[1.03] transition-transform shadow-sm">
+            {/* LF symbol kept identical in both light and dark modes (Requirement 2) */}
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white text-obsidian flex items-center justify-center font-black text-xs sm:text-sm tracking-wider border border-white/20 group-hover:scale-[1.03] transition-transform shadow-sm">
               LF
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-base text-white dark:text-white tracking-tight">LeadFlow</span>
+              <span className="font-bold text-base text-white tracking-tight">LeadFlow</span>
               {user && (
                 <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider bg-lilac-950/80 text-lilac-300 dark:bg-transparent dark:text-lilac-300 dark:border-lilac-500/50 rounded-full border border-lilac-800/60">
                   Live 22-Signal
@@ -162,74 +167,83 @@ export function Header() {
           )}
         </div>
 
-        {/* Center: Contextual Navigation based on Direct URL - Only visible when logged in */}
+        {/* Center: Contextual Navigation - Instant zero-lag tab indicator (Requirement 1) */}
         <div>
           {!user || resolvedRole !== "org_admin" || pathname === "/portal" || pathname === "/super-admin" ? (
             null
           ) : (
             <div className="flex items-center space-x-1 bg-obsidian-900/90 dark:bg-[#0D0D12] p-1 rounded-2xl border border-obsidian-700 dark:border-[#FAF7F2] text-xs">
-              <Link
-                href="/"
-                onClick={() => setActiveTab("leads")}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
-                  pathname === "/" && activeTab === "leads"
-                    ? "border-2 border-lilac-500 text-white dark:text-white bg-obsidian-800/90 dark:bg-obsidian-800 shadow-sm"
-                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-cosmic-300/80 dark:hover:text-white hover:bg-obsidian-800/60 dark:hover:bg-obsidian-800/60"
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("leads");
+                  if (pathname !== "/") router.push("/");
+                }}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === "leads" && pathname !== "/portal" && pathname !== "/super-admin"
+                    ? "border-2 border-lilac-500 text-white bg-obsidian-800/90 shadow-sm"
+                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white hover:bg-obsidian-800/60"
                 }`}
               >
                 <span>Lead Pipeline</span>
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                    pathname === "/" && activeTab === "leads"
-                      ? "bg-lilac-500/20 text-lilac-300 dark:text-lilac-300 border border-lilac-500/40"
-                      : "bg-obsidian-800 text-cosmic-300 dark:bg-obsidian-800 dark:text-cosmic-300 border border-obsidian-700 dark:border-obsidian-700"
+                    activeTab === "leads" && pathname !== "/portal" && pathname !== "/super-admin"
+                      ? "bg-lilac-500/20 text-lilac-300 border border-lilac-500/40"
+                      : "bg-obsidian-800 text-cosmic-300 border border-obsidian-700"
                   }`}
                 >
                   {leadsCount}
                 </span>
-              </Link>
+              </button>
 
-              <Link
-                href="/icp"
-                onClick={() => setActiveTab("icp")}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
-                  pathname === "/icp" || (pathname === "/" && activeTab === "icp")
-                    ? "border-2 border-lilac-500 text-white dark:text-white bg-obsidian-800/90 dark:bg-obsidian-800 shadow-sm"
-                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-cosmic-300/80 dark:hover:text-white hover:bg-obsidian-800/60 dark:hover:bg-obsidian-800/60"
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("icp");
+                  if (pathname !== "/") router.push("/");
+                }}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === "icp" && pathname !== "/portal" && pathname !== "/super-admin"
+                    ? "border-2 border-lilac-500 text-white bg-obsidian-800/90 shadow-sm"
+                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white hover:bg-obsidian-800/60"
                 }`}
               >
                 <span>Audiences (ICP)</span>
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                    pathname === "/icp" || (pathname === "/" && activeTab === "icp")
+                    activeTab === "icp" && pathname !== "/portal" && pathname !== "/super-admin"
                       ? "bg-emerald-400 text-obsidian-950 font-bold"
-                      : "bg-obsidian-800 text-cosmic-300 dark:bg-obsidian-800 dark:text-cosmic-300 border border-obsidian-700 dark:border-obsidian-700"
+                      : "bg-obsidian-800 text-cosmic-300 border border-obsidian-700"
                   }`}
                 >
                   Builder
                 </span>
-              </Link>
+              </button>
 
-              <Link
-                href="/"
-                onClick={() => setActiveTab("integrations")}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
-                  pathname === "/" && activeTab === "integrations"
-                    ? "border-2 border-lilac-500 text-white dark:text-white bg-obsidian-800/90 dark:bg-obsidian-800 shadow-sm"
-                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-cosmic-300/80 dark:hover:text-white hover:bg-obsidian-800/60 dark:hover:bg-obsidian-800/60"
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("integrations");
+                  if (pathname !== "/") router.push("/");
+                }}
+                className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === "integrations" && pathname !== "/portal" && pathname !== "/super-admin"
+                    ? "border-2 border-lilac-500 text-white bg-obsidian-800/90 shadow-sm"
+                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white hover:bg-obsidian-800/60"
                 }`}
               >
                 <span>Signal Engines</span>
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                    pathname === "/" && activeTab === "integrations"
-                      ? "bg-lilac-500/20 text-lilac-300 dark:text-lilac-300 border border-lilac-500/40"
-                      : "bg-obsidian-800 text-cosmic-300 dark:bg-obsidian-800 dark:text-cosmic-300 border border-obsidian-700 dark:border-obsidian-700"
+                    activeTab === "integrations" && pathname !== "/portal" && pathname !== "/super-admin"
+                      ? "bg-lilac-500/20 text-lilac-300 border border-lilac-500/40"
+                      : "bg-obsidian-800 text-cosmic-300 border border-obsidian-700"
                   }`}
                 >
                   22 Signals
                 </span>
-              </Link>
+              </button>
             </div>
           )}
         </div>
@@ -470,13 +484,13 @@ export function Header() {
             <div className="flex items-center space-x-2">
               <Link
                 href="/login"
-                className="text-xs font-semibold px-3 py-1.5 rounded-xl text-cosmic-200 hover:text-white dark:text-obsidian/75 dark:hover:text-obsidian hover:bg-obsidian-800 dark:hover:bg-cosmic-200 transition"
+                className="text-xs font-semibold px-3 py-1.5 rounded-xl text-cosmic-200 hover:text-white dark:text-white dark:hover:text-white hover:bg-obsidian-800 dark:hover:bg-obsidian-800 transition"
               >
                 Sign In
               </Link>
               <Link
                 href="/register"
-                className="bg-white text-obsidian hover:bg-cosmic-100 dark:bg-obsidian dark:text-white dark:hover:bg-obsidian-800 text-xs font-bold px-3.5 py-1.5 rounded-xl transition shadow-sm"
+                className="bg-white text-obsidian hover:bg-cosmic-100 dark:bg-white dark:text-obsidian dark:hover:bg-cosmic-100 text-xs font-bold px-3.5 py-1.5 rounded-xl transition shadow-sm"
               >
                 Create Workspace
               </Link>
