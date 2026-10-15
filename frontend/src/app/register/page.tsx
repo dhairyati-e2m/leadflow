@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { registerAndRequestAccess } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,10 +15,16 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRequestingAccess, setIsRequestingAccess] = useState(false);
+  const [requestSuccessMessage, setRequestSuccessMessage] = useState<string | null>(null);
+
+  const isDuplicateOrg =
+    errorMessage?.toLowerCase().includes("already exists") || false;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    setRequestSuccessMessage(null);
 
     if (password.length < 8) {
       setErrorMessage("Password must be at least 8 characters long.");
@@ -37,6 +44,27 @@ export default function RegisterPage() {
     }
   };
 
+  const handleSendRequest = async () => {
+    setIsRequestingAccess(true);
+    setErrorMessage(null);
+    try {
+      await registerAndRequestAccess({
+        full_name: fullName,
+        email,
+        password,
+        org_name: orgName,
+      });
+      setRequestSuccessMessage(
+        `Your request to join "${orgName}" as a Client has been submitted! The Organisation Administrator has been notified to review and approve your access.`
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit access request";
+      setErrorMessage(msg);
+    } finally {
+      setIsRequestingAccess(false);
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto my-12 p-8 sm:p-9 glass-panel dark:bg-obsidian-900/95 rounded-3xl shadow-futuristic border border-blush-200/80 dark:border-obsidian-700">
       <div className="text-center mb-8">
@@ -49,7 +77,50 @@ export default function RegisterPage() {
         </p>
       </div>
 
-      {errorMessage && (
+      {requestSuccessMessage && (
+        <div className="mb-6 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-950 dark:text-emerald-200 space-y-3">
+          <div className="flex items-center gap-2 font-bold">
+            <span>✓</span>
+            <span>Request Submitted Successfully</span>
+          </div>
+          <p className="leading-relaxed">{requestSuccessMessage}</p>
+          <Link
+            href="/login"
+            className="inline-block w-full py-2 px-3 text-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-sm"
+          >
+            Go to Sign In
+          </Link>
+        </div>
+      )}
+
+      {isDuplicateOrg && !requestSuccessMessage && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 space-y-3 animate-in fade-in">
+          <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 text-xs font-bold">
+            <span>🏢</span>
+            <span>Organisation Already Exists</span>
+          </div>
+          <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+            An organisation named <strong>"{orgName}"</strong> is already registered. You can submit an access request directly to its administrator to join as a <strong>Client</strong>.
+          </p>
+          <button
+            type="button"
+            disabled={isRequestingAccess}
+            onClick={handleSendRequest}
+            className="w-full py-2.5 px-4 rounded-xl bg-lilac-600 hover:bg-lilac-700 text-white font-bold text-xs transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
+          >
+            {isRequestingAccess ? (
+              <>
+                <span className="inline-block animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                <span>Sending Request...</span>
+              </>
+            ) : (
+              <span>Send Request to Join as Client</span>
+            )}
+          </button>
+        </div>
+      )}
+
+      {errorMessage && !isDuplicateOrg && !requestSuccessMessage && (
         <div className="mb-6 p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-900/80 text-xs font-medium text-rose-950 dark:text-rose-200">
           {errorMessage}
         </div>

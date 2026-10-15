@@ -812,5 +812,43 @@ export async function rejectWorkspaceRequest(requestId: string, rejectionReason?
   return res.json();
 }
 
+export async function registerAndRequestAccess(data: {
+  full_name: string;
+  email: string;
+  password: string;
+  org_name: string;
+  client_id?: string;
+  note?: string;
+}): Promise<AccessRequestItem> {
+  const res = await fetch(`${API_BASE}/orgs/access-requests/register-and-request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to submit access request" }));
+    throw new Error(err.detail || "Failed to submit access request");
+  }
+  return res.json();
+}
+
+export async function createAdminOrg(data: {
+  name: string;
+  admin_email: string;
+  admin_full_name?: string;
+  monthly_lead_quota?: number;
+}): Promise<AdminOrgItem> {
+  const res = await authenticatedFetch(`${API_BASE}/admin/orgs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to create organisation" }));
+    throw new Error(err.detail || "Failed to create organisation");
+  }
+  return res.json();
+}
+
 
 

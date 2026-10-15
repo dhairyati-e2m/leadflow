@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useNav } from "@/lib/nav-context";
+import { registerAndRequestAccess } from "@/lib/api";
 
 export function WelcomeLanding() {
   const router = useRouter();
@@ -17,6 +18,8 @@ export function WelcomeLanding() {
   const [orgName, setOrgName] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRequestingAccess, setIsRequestingAccess] = useState(false);
+  const [requestSuccessMsg, setRequestSuccessMsg] = useState<string | null>(null);
 
   // Quick Demo Login Handler
   const handleQuickRoleLogin = async (targetRole: "org_admin" | "client_viewer" | "super_admin") => {
@@ -85,6 +88,7 @@ export function WelcomeLanding() {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMsg(null);
+    setRequestSuccessMsg(null);
     try {
       await register(email, password, fullName, orgName);
       setRole("org_admin");
@@ -95,6 +99,27 @@ export function WelcomeLanding() {
       setErrorMsg(msg);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSendRequestToOrgAdmin = async () => {
+    setIsRequestingAccess(true);
+    setErrorMsg(null);
+    try {
+      await registerAndRequestAccess({
+        full_name: fullName,
+        email,
+        password,
+        org_name: orgName,
+      });
+      setRequestSuccessMsg(
+        `Your request to join "${orgName}" as a Client has been submitted! The Organisation Administrator has been notified to review and approve your access.`
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit access request";
+      setErrorMsg(msg);
+    } finally {
+      setIsRequestingAccess(false);
     }
   };
 
@@ -150,11 +175,46 @@ export function WelcomeLanding() {
               </button>
             </div>
 
-            {errorMsg && (
+            {requestSuccessMsg && (
+              <div className="mb-5 p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-950 dark:text-emerald-200 space-y-2">
+                <div className="flex items-center gap-2 font-bold">
+                  <span>✓</span>
+                  <span>Request Submitted</span>
+                </div>
+                <p className="leading-relaxed">{requestSuccessMsg}</p>
+              </div>
+            )}
+
+            {errorMsg && errorMsg.toLowerCase().includes("already exists") && !requestSuccessMsg ? (
+              <div className="mb-5 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 space-y-3 animate-in fade-in">
+                <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 text-xs font-bold">
+                  <span>🏢</span>
+                  <span>Organisation Already Exists</span>
+                </div>
+                <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
+                  An organisation named <strong>"{orgName}"</strong> is already registered. Would you like to submit an access request to its administrator to join as a <strong>Client</strong>?
+                </p>
+                <button
+                  type="button"
+                  disabled={isRequestingAccess}
+                  onClick={handleSendRequestToOrgAdmin}
+                  className="w-full py-2.5 px-4 rounded-xl bg-lilac-600 hover:bg-lilac-700 text-white font-bold text-xs transition shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {isRequestingAccess ? (
+                    <>
+                      <span className="inline-block animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full"></span>
+                      <span>Sending Request...</span>
+                    </>
+                  ) : (
+                    <span>Send Request to Join as Client</span>
+                  )}
+                </button>
+              </div>
+            ) : errorMsg && !requestSuccessMsg ? (
               <div className="mb-4 p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-900 text-xs font-semibold text-rose-950 dark:text-rose-200">
                 {errorMsg}
               </div>
-            )}
+            ) : null}
 
             {/* TAB 1: Quick Role Login (Immediate Access for Testing) */}
             {activeTab === "quick" && (

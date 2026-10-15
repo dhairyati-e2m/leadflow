@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
+import { Roboto_Flex } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { Header } from "@/components/Header";
+
+const robotoFlex = Roboto_Flex({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-roboto-flex",
+});
 
 export const metadata: Metadata = {
   title: "LeadFlow — Autonomous B2B Lead Qualification & CRM Engine",
@@ -14,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen cosmic-mesh text-obsidian antialiased selection:bg-lilac-200 selection:text-obsidian">
+    <html lang="en" className={robotoFlex.variable}>
+      <body className={`${robotoFlex.className} min-h-screen cosmic-mesh text-obsidian antialiased selection:bg-lilac-200 selection:text-obsidian`}>
         <Providers>
           <Header />
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

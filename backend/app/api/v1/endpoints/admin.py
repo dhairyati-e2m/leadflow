@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import re
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, EmailStr, Field
@@ -8,8 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.core.config import settings
 from backend.app.core.database import get_db_session, set_rls_tenant_context
 from backend.app.core.deps import TenantContext, get_current_user, get_tenant_context
-from backend.app.core.security import revoke_user_sessions
+from backend.app.core.security import hash_password, revoke_user_sessions
 from backend.app.models.entities import AuditLog, Lead, Membership, Organization, User
+from backend.app.services.notifications import create_and_send_notification
 
 router = APIRouter()
 
@@ -103,6 +105,123 @@ async def admin_list_orgs(
         )
 
     return response
+
+
+class CreateAdminOrgRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=255)
+    admin_email: EmailStr
+    admin_full_name: Optional[str] = None
+    monthly_lead_quota: Optional[int] = Field(100, ge=10, le=50000)
+
+
+@router.post("/orgs", response_model=AdminOrgOut, status_code=status.HTTP_201_CREATED, summary="Create Organisation & Designate Org Admin (Super Admin)")
+async def admin_create_org(
+    data: CreateAdminOrgRequest,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db_session),
+) -> AdminOrgOut:
+    if not user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super Admin permissions required to provision organizations",
+        )
+
+    norm_name = re.sub(r"\s+", " ", data.name.strip().lower())
+    existing_org = (
+        await session.execute(select(Organization).where(Organization.normalized_name == norm_name))
+    ).scalars().first()
+    if existing_org:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"An organisation with the name '{data.name.strip()}' already exists.",
+        )
+
+    base_slug = re.sub(r"[^a-z0-9]+", "-", data.name.strip().lower()).strip("-") or "org"
+    slug = base_slug
+    counter = 1
+    while True:
+        slug_check = await session.execute(select(Organization).where(Organization.slug == slug))
+        if not slug_check.scalars().first():
+            break
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    new_org = Organization(
+        name=data.name.strip(),
+        normalized_name=norm_name,
+        slug=slug,
+        is_active=True,
+        settings={
+            "monthly_lead_quota": data.monthly_lead_quota or 100,
+            "operator_enabled": True,
+        },
+    )
+    session.add(new_org)
+    await session.flush()
+
+    admin_email_clean = data.admin_email.lower().strip()
+    admin_user = (
+        await session.execute(select(User).where(User.email == admin_email_clean))
+    ).scalars().first()
+
+    if not admin_user:
+        admin_user = User(
+            email=admin_email_clean,
+            hashed_password=hash_password("password123"),
+            full_name=data.admin_full_name.strip() if data.admin_full_name else "Organisation Administrator",
+            is_active=True,
+        )
+        session.add(admin_user)
+        await session.flush()
+
+    membership = Membership(
+        org_id=new_org.id,
+        user_id=admin_user.id,
+        role="owner",
+    )
+    session.add(membership)
+
+    await set_rls_tenant_context(session, new_org.id)
+    audit = AuditLog(
+        org_id=new_org.id,
+        user_id=user.id,
+        action="super_admin_create_org",
+        entity_type="organization",
+        entity_id=new_org.id,
+        details={
+            "org_name": new_org.name,
+            "slug": new_org.slug,
+            "admin_email": admin_email_clean,
+            "monthly_lead_quota": data.monthly_lead_quota or 100,
+        },
+    )
+    session.add(audit)
+
+    await create_and_send_notification(
+        session=session,
+        recipient_id=admin_user.id,
+        org_id=new_org.id,
+        type="org_provisioned",
+        title=f"Organisation {new_org.name} Provisioned",
+        message=f"You have been designated as Organisation Administrator for {new_org.name} by Super Admin.",
+        link="/",
+        metadata_json={"org_id": new_org.id, "role": "owner"},
+    )
+
+    await session.commit()
+    await session.refresh(new_org)
+
+    return AdminOrgOut(
+        id=new_org.id,
+        name=new_org.name,
+        slug=new_org.slug,
+        is_active=new_org.is_active,
+        operator_enabled=True,
+        monthly_lead_quota=data.monthly_lead_quota or 100,
+        user_count=1,
+        lead_count=0,
+        created_at=new_org.created_at.isoformat() if new_org.created_at else None,
+    )
 
 
 @router.patch("/orgs/{org_id}", response_model=AdminOrgOut, summary="Manage Organization Lifecycle & Quota (Super Admin)")

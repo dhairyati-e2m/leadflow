@@ -141,7 +141,7 @@ export function Header() {
             <div className="flex items-center gap-2">
               <span className="font-bold text-base text-white dark:text-white tracking-tight">LeadFlow</span>
               {user && (
-                <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider bg-lilac-950/80 text-lilac-300 dark:bg-lilac-100 dark:text-lilac-800 dark:border-lilac-300 rounded-full border border-lilac-800/60">
+                <span className="hidden sm:inline-block px-2 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wider bg-lilac-950/80 text-lilac-300 dark:bg-transparent dark:text-lilac-300 dark:border-lilac-500/50 rounded-full border border-lilac-800/60">
                   Live 22-Signal
                 </span>
               )}
@@ -167,22 +167,22 @@ export function Header() {
           {!user || resolvedRole !== "org_admin" || pathname === "/portal" || pathname === "/super-admin" ? (
             null
           ) : (
-            <div className="flex items-center space-x-1 bg-obsidian-900/90 dark:bg-cosmic-200/90 p-1 rounded-2xl border border-obsidian-700 dark:border-cosmic-300 text-xs">
+            <div className="flex items-center space-x-1 bg-obsidian-900/90 dark:bg-[#0D0D12] p-1 rounded-2xl border border-obsidian-700 dark:border-[#FAF7F2] text-xs">
               <Link
                 href="/"
                 onClick={() => setActiveTab("leads")}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
                   pathname === "/" && activeTab === "leads"
-                    ? "border-2 border-lilac-500 text-white dark:text-obsidian bg-obsidian-800/90 dark:bg-cosmic-100 shadow-sm"
-                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-obsidian/75 dark:hover:text-obsidian hover:bg-obsidian-800/60 dark:hover:bg-cosmic-300/60"
+                    ? "border-2 border-lilac-500 text-white dark:text-white bg-obsidian-800/90 dark:bg-obsidian-800 shadow-sm"
+                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-cosmic-300/80 dark:hover:text-white hover:bg-obsidian-800/60 dark:hover:bg-obsidian-800/60"
                 }`}
               >
                 <span>Lead Pipeline</span>
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                     pathname === "/" && activeTab === "leads"
-                      ? "bg-lilac-500/20 text-lilac-300 dark:text-lilac-700 border border-lilac-500/40"
-                      : "bg-obsidian-800 text-cosmic-300 dark:bg-cosmic-100 dark:text-obsidian-700 border border-obsidian-700 dark:border-cosmic-300"
+                      ? "bg-lilac-500/20 text-lilac-300 dark:text-lilac-300 border border-lilac-500/40"
+                      : "bg-obsidian-800 text-cosmic-300 dark:bg-obsidian-800 dark:text-cosmic-300 border border-obsidian-700 dark:border-obsidian-700"
                   }`}
                 >
                   {leadsCount}
@@ -194,8 +194,8 @@ export function Header() {
                 onClick={() => setActiveTab("icp")}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
                   pathname === "/icp" || (pathname === "/" && activeTab === "icp")
-                    ? "border-2 border-lilac-500 text-white dark:text-obsidian bg-obsidian-800/90 dark:bg-cosmic-100 shadow-sm"
-                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-obsidian/75 dark:hover:text-obsidian hover:bg-obsidian-800/60 dark:hover:bg-cosmic-300/60"
+                    ? "border-2 border-lilac-500 text-white dark:text-white bg-obsidian-800/90 dark:bg-obsidian-800 shadow-sm"
+                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-cosmic-300/80 dark:hover:text-white hover:bg-obsidian-800/60 dark:hover:bg-obsidian-800/60"
                 }`}
               >
                 <span>Audiences (ICP)</span>
@@ -203,7 +203,7 @@ export function Header() {
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                     pathname === "/icp" || (pathname === "/" && activeTab === "icp")
                       ? "bg-emerald-400 text-obsidian-950 font-bold"
-                      : "bg-obsidian-800 text-cosmic-300 dark:bg-cosmic-100 dark:text-obsidian-700 border border-obsidian-700 dark:border-cosmic-300"
+                      : "bg-obsidian-800 text-cosmic-300 dark:bg-obsidian-800 dark:text-cosmic-300 border border-obsidian-700 dark:border-obsidian-700"
                   }`}
                 >
                   Builder
@@ -215,16 +215,16 @@ export function Header() {
                 onClick={() => setActiveTab("integrations")}
                 className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 ${
                   pathname === "/" && activeTab === "integrations"
-                    ? "border-2 border-lilac-500 text-white dark:text-obsidian bg-obsidian-800/90 dark:bg-cosmic-100 shadow-sm"
-                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-obsidian/75 dark:hover:text-obsidian hover:bg-obsidian-800/60 dark:hover:bg-cosmic-300/60"
+                    ? "border-2 border-lilac-500 text-white dark:text-white bg-obsidian-800/90 dark:bg-obsidian-800 shadow-sm"
+                    : "border-2 border-transparent text-cosmic-300/80 hover:text-white dark:text-cosmic-300/80 dark:hover:text-white hover:bg-obsidian-800/60 dark:hover:bg-obsidian-800/60"
                 }`}
               >
                 <span>Signal Engines</span>
                 <span
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
                     pathname === "/" && activeTab === "integrations"
-                      ? "bg-lilac-500/20 text-lilac-300 dark:text-lilac-700 border border-lilac-500/40"
-                      : "bg-obsidian-800 text-cosmic-300 dark:bg-cosmic-100 dark:text-obsidian-700 border border-obsidian-700 dark:border-cosmic-300"
+                      ? "bg-lilac-500/20 text-lilac-300 dark:text-lilac-300 border border-lilac-500/40"
+                      : "bg-obsidian-800 text-cosmic-300 dark:bg-obsidian-800 dark:text-cosmic-300 border border-obsidian-700 dark:border-obsidian-700"
                   }`}
                 >
                   22 Signals
@@ -412,20 +412,22 @@ export function Header() {
                     </div>
                   )}
 
-                  {/* Request Organisation Access Option */}
-                  <div className="pt-1 px-1 border-t border-obsidian-800 dark:border-cosmic-200">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        setShowAccessModal(true);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-xl text-cosmic-300 hover:bg-obsidian-800 dark:text-obsidian/80 dark:hover:bg-cosmic-200 font-semibold flex items-center gap-2 transition cursor-pointer"
-                    >
-                      <span className="text-xs">🏢</span>
-                      <span>Request Org Access</span>
-                    </button>
-                  </div>
+                  {/* Request Organisation Access Option: Not shown for Super Admin */}
+                  {!user.is_superuser && role !== "super_admin" && (
+                    <div className="pt-1 px-1 border-t border-obsidian-800 dark:border-cosmic-200">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          setShowAccessModal(true);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-cosmic-300 hover:bg-obsidian-800 dark:text-obsidian/80 dark:hover:bg-cosmic-200 font-semibold flex items-center gap-2 transition cursor-pointer"
+                      >
+                        <span className="text-xs">🏢</span>
+                        <span>Request Org Access</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Org Admin Role Transfer Option */}
                   {(activeMembership?.role === "owner" || activeMembership?.role === "admin") && (

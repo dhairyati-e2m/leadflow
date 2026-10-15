@@ -217,20 +217,12 @@ export function OrgAccessRequestsCard({ orgId, orgName }: OrgAccessRequestsCardP
                 ) : (
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                     <div className="flex items-center gap-2">
-                      <label className="text-[11px] font-mono uppercase font-bold text-obsidian/60 dark:text-cosmic-400">
-                        Grant Role:
-                      </label>
-                      <select
-                        value={selectedRole[req.id] || "client_viewer"}
-                        onChange={(e) =>
-                          setSelectedRole((prev) => ({ ...prev, [req.id]: e.target.value }))
-                        }
-                        className="px-2.5 py-1 text-xs rounded-lg bg-cosmic-100 dark:bg-obsidian-800 border border-cosmic-300 dark:border-obsidian-700 text-obsidian dark:text-cosmic-100 font-semibold focus:outline-none"
-                      >
-                        <option value="client_viewer">Client Viewer (Read-only)</option>
-                        <option value="analyst">Analyst</option>
-                        <option value="reviewer">Reviewer</option>
-                      </select>
+                      <span className="text-[11px] font-mono uppercase font-bold text-obsidian/60 dark:text-cosmic-400">
+                        Granted Role:
+                      </span>
+                      <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-lg bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700">
+                        Client Viewer (Read-only)
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-2">

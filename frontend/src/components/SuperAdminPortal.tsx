@@ -9,6 +9,7 @@ import {
   WorkspaceRequestItem,
   fetchAdminOrgs,
   updateAdminOrg,
+  createAdminOrg,
   fetchAuditLogs,
   fetchOrgAdmins,
   assignOrgAdmin,
@@ -32,6 +33,15 @@ export function SuperAdminPortal() {
   const [actioningRequestId, setActioningRequestId] = useState<string | null>(null);
   const [rejectReasonInput, setRejectReasonInput] = useState<Record<string, string>>({});
   const [rejectingRequestId, setRejectingRequestId] = useState<string | null>(null);
+
+  // Add Organisation Modal State
+  const [showCreateOrgModal, setShowCreateOrgModal] = useState<boolean>(false);
+  const [createOrgName, setCreateOrgName] = useState<string>("");
+  const [createOrgEmail, setCreateOrgEmail] = useState<string>("");
+  const [createOrgAdminName, setCreateOrgAdminName] = useState<string>("");
+  const [createOrgQuota, setCreateOrgQuota] = useState<number>(100);
+  const [isCreatingOrg, setIsCreatingOrg] = useState<boolean>(false);
+  const [createOrgError, setCreateOrgError] = useState<string | null>(null);
 
   // Admin Management State
   const [admins, setAdmins] = useState<OrgAdminUser[]>([]);
@@ -109,6 +119,33 @@ export function SuperAdminPortal() {
       setAssignError(msg);
     } finally {
       setIsAssigning(false);
+    }
+  };
+
+  const handleCreateOrgSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createOrgName.trim() || !createOrgEmail.trim()) return;
+    setIsCreatingOrg(true);
+    setCreateOrgError(null);
+    try {
+      const created = await createAdminOrg({
+        name: createOrgName.trim(),
+        admin_email: createOrgEmail.trim(),
+        admin_full_name: createOrgAdminName.trim() || undefined,
+        monthly_lead_quota: createOrgQuota,
+      });
+      setOrgs((prev) => [created, ...prev]);
+      showNotification(`Organisation "${created.name}" provisioned and assigned to admin "${createOrgEmail.trim()}".`);
+      setShowCreateOrgModal(false);
+      setCreateOrgName("");
+      setCreateOrgEmail("");
+      setCreateOrgAdminName("");
+      setCreateOrgQuota(100);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create organisation";
+      setCreateOrgError(msg);
+    } finally {
+      setIsCreatingOrg(false);
     }
   };
 
@@ -358,6 +395,17 @@ export function SuperAdminPortal() {
                 Suspend/reactivate organizations, toggle operator pipeline runs, and tune monthly discovery allotments.
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCreateOrgError(null);
+                setShowCreateOrgModal(true);
+              }}
+              className="btn-obsidian px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <span className="text-sm font-bold">+</span>
+              <span>Add Organisation</span>
+            </button>
           </div>
 
           <div className="overflow-x-auto">
@@ -1010,6 +1058,132 @@ export function SuperAdminPortal() {
                 Close Details
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: Super Admin Add Organisation & Assign Admin */}
+      {showCreateOrgModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-obsidian-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="relative w-full max-w-lg p-6 sm:p-7 rounded-3xl bg-[#0D0D12] dark:bg-[#FAF7F2] border border-obsidian-700 dark:border-cosmic-300 shadow-2xl text-cosmic-100 dark:text-obsidian max-h-[90vh] overflow-y-auto">
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setShowCreateOrgModal(false)}
+              className="absolute top-4 right-4 p-1 rounded-xl text-cosmic-400 dark:text-obsidian/50 hover:bg-obsidian-800 dark:hover:bg-cosmic-200 transition cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-2xl bg-lilac-950/80 text-lilac-400 dark:bg-lilac-100 dark:text-lilac-800 flex items-center justify-center font-bold text-lg border border-lilac-800/60 dark:border-lilac-300">
+                🏢
+              </div>
+              <div>
+                <h2 className="text-lg font-bold tracking-tight text-white dark:text-obsidian">
+                  Add Organisation to Platform
+                </h2>
+                <p className="text-xs text-cosmic-400 dark:text-obsidian/60">
+                  Provision a new tenant boundary and designate its primary Organisation Administrator.
+                </p>
+              </div>
+            </div>
+
+            {createOrgError && (
+              <div className="mb-4 p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-900/80 text-xs text-rose-950 dark:text-rose-200 font-medium">
+                {createOrgError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateOrgSubmit} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-cosmic-400 dark:text-obsidian/60 mb-1">
+                  Tenant Organisation Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={createOrgName}
+                  onChange={(e) => setCreateOrgName(e.target.value)}
+                  placeholder="e.g. Acme Health Systems"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-obsidian-800 dark:bg-white border border-obsidian-700 dark:border-cosmic-300 text-white dark:text-obsidian focus:outline-none focus:ring-2 focus:ring-lilac-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-cosmic-400 dark:text-obsidian/60 mb-1">
+                  Organisation Admin Email <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={createOrgEmail}
+                  onChange={(e) => setCreateOrgEmail(e.target.value)}
+                  placeholder="e.g. admin@acmehealth.com"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-obsidian-800 dark:bg-white border border-obsidian-700 dark:border-cosmic-300 text-white dark:text-obsidian focus:outline-none focus:ring-2 focus:ring-lilac-500"
+                />
+                <p className="text-[10px] text-cosmic-500 dark:text-obsidian/50 mt-1">
+                  If this user already has an account, they will be assigned as Owner. If new, an account will be created.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-cosmic-400 dark:text-obsidian/60 mb-1">
+                  Admin Full Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={createOrgAdminName}
+                  onChange={(e) => setCreateOrgAdminName(e.target.value)}
+                  placeholder="e.g. Dr. Sarah Jenkins"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-obsidian-800 dark:bg-white border border-obsidian-700 dark:border-cosmic-300 text-white dark:text-obsidian focus:outline-none focus:ring-2 focus:ring-lilac-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-cosmic-400 dark:text-obsidian/60 mb-1">
+                  Monthly Lead Discovery Quota
+                </label>
+                <input
+                  type="number"
+                  min={10}
+                  max={50000}
+                  value={createOrgQuota}
+                  onChange={(e) => setCreateOrgQuota(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-obsidian-800 dark:bg-white border border-obsidian-700 dark:border-cosmic-300 text-white dark:text-obsidian focus:outline-none focus:ring-2 focus:ring-lilac-500"
+                />
+                <p className="text-[10px] text-cosmic-500 dark:text-obsidian/50 mt-1">
+                  Initial monthly lead limit enforced for this tenant boundary.
+                </p>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-obsidian-800 dark:border-cosmic-200">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateOrgModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-cosmic-400 dark:text-obsidian/60 hover:bg-obsidian-800 dark:hover:bg-cosmic-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCreatingOrg || !createOrgName.trim() || !createOrgEmail.trim()}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-lilac-600 hover:bg-lilac-700 text-white disabled:opacity-50 transition cursor-pointer shadow-md flex items-center gap-1.5"
+                >
+                  {isCreatingOrg ? (
+                    <>
+                      <span className="inline-block animate-spin h-3 w-3 border-2 border-white border-t-transparent rounded-full"></span>
+                      <span>Provisioning...</span>
+                    </>
+                  ) : (
+                    <span>Create Organisation & Assign Admin</span>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -136,3 +136,64 @@ async def test_super_admin_org_admin_management_lifecycle():
         )
         assert remove_last_res.status_code == 400
         assert "last administrator" in remove_last_res.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_super_admin_create_org_and_assign_admin():
+    """Validates Super Admin creating a brand-new organization and assigning the org admin email."""
+    session_factory = get_session_factory()
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        unique_suffix = uuid.uuid4().hex[:6]
+
+        # 1. Create a Super Admin account
+        super_email = f"super_{unique_suffix}@leadflow.io"
+        await create_test_superuser(session_factory, super_email, "SuperAdmin123!")
+
+        login_res = await client.post(
+            "/v1/auth/login",
+            json={"email": super_email, "password": "SuperAdmin123!"},
+        )
+        assert login_res.status_code == 200
+        super_headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
+
+        # 2. Super Admin provisions a new organisation and assigns an admin email
+        new_org_name = f"Apex Medical Technologies {unique_suffix}"
+        admin_email = f"sarah_{unique_suffix}@apexmedical.com"
+        create_res = await client.post(
+            "/v1/admin/orgs",
+            headers=super_headers,
+            json={
+                "name": new_org_name,
+                "admin_email": admin_email,
+                "admin_full_name": "Dr. Sarah Apex",
+                "monthly_lead_quota": 250,
+            },
+        )
+        assert create_res.status_code == 201, create_res.text
+        created_org = create_res.json()
+        assert created_org["name"] == new_org_name
+        assert created_org["monthly_lead_quota"] == 250
+        assert created_org["user_count"] == 1
+        org_id = created_org["id"]
+
+        # 3. Verify duplicate organisation is blocked with 409
+        dup_res = await client.post(
+            "/v1/admin/orgs",
+            headers=super_headers,
+            json={
+                "name": new_org_name,
+                "admin_email": f"other_{unique_suffix}@apex.com",
+            },
+        )
+        assert dup_res.status_code == 409
+        assert "already exists" in dup_res.json()["detail"].lower()
+
+        # 4. Verify the newly assigned Org Admin is listed as owner of the org
+        admins_res = await client.get(f"/v1/admin/orgs/{org_id}/admins", headers=super_headers)
+        assert admins_res.status_code == 200
+        admins_data = admins_res.json()
+        assert len(admins_data) == 1
+        assert admins_data[0]["email"] == admin_email
+        assert admins_data[0]["role"] == "owner"

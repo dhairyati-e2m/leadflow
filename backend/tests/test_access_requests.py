@@ -210,3 +210,86 @@ async def test_access_request_rejection_flow():
         # 4. User receives rejection notification
         user_notifs = await client.get("/v1/notifications", headers=user_headers)
         assert any("declined" in n["title"].lower() or "not approved" in n["message"].lower() for n in user_notifs.json()["items"])
+
+
+@pytest.mark.asyncio
+async def test_register_and_request_access_only_client_role():
+    """Verifies that a user requesting access for an existing org during signup is only entered as client_viewer upon approval."""
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        suffix = uuid.uuid4().hex[:6]
+        org_name = f"Existing Enterprise {suffix}"
+
+        # 1. Register Existing Org Admin
+        admin_res = await client.post(
+            "/v1/auth/register",
+            json={
+                "email": f"admin_{suffix}@enterprise.com",
+                "password": "Password123!",
+                "full_name": "Org Admin User",
+                "org_name": org_name,
+            },
+        )
+        assert admin_res.status_code == 201
+        org_id = admin_res.json()["org_id"]
+        admin_token = admin_res.json()["access_token"]
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+        # 2. New User attempts signup for same org and submits access request
+        new_email = f"newuser_{suffix}@clientfirm.com"
+        req_res = await client.post(
+            "/v1/orgs/access-requests/register-and-request",
+            json={
+                "email": new_email,
+                "password": "ClientPassword123!",
+                "full_name": "New Client Requester",
+                "org_name": org_name,
+                "client_id": "CLIENT-PORTAL-001",
+                "note": "Requesting client portal review access",
+            },
+        )
+        assert req_res.status_code == 201, req_res.text
+        req_data = req_res.json()
+        assert req_data["org_id"] == org_id
+        assert req_data["status"] == "pending"
+        request_id = req_data["id"]
+
+        # 3. Org Admin receives pending request in list
+        list_res = await client.get(f"/v1/orgs/access-requests/{org_id}", headers=admin_headers)
+        assert list_res.status_code == 200
+        reqs = list_res.json()
+        assert any(r["id"] == request_id for r in reqs)
+
+        # 4. Org Admin approves request (even if someone sends another role, it MUST be client_viewer)
+        approve_res = await client.post(
+            f"/v1/orgs/access-requests/{org_id}/{request_id}/approve",
+            headers=admin_headers,
+            json={"role": "admin"},  # attempted privilege escalation
+        )
+        assert approve_res.status_code == 200
+        assert approve_res.json()["status"] == "approved"
+
+        # 5. User logs in with their credentials and verifies they are ONLY entered as client_viewer
+        login_res = await client.post(
+            "/v1/auth/login",
+            json={
+                "email": new_email,
+                "password": "ClientPassword123!",
+            },
+        )
+        assert login_res.status_code == 200
+        login_data = login_res.json()
+        assert login_data["role"] == "client_viewer"
+        assert login_data["org_id"] == org_id
+
+        # 6. Verify /v1/auth/me confirms single membership with client_viewer role
+        me_res = await client.get(
+            "/v1/auth/me",
+            headers={"Authorization": f"Bearer {login_data['access_token']}"},
+        )
+        assert me_res.status_code == 200
+        user_info = me_res.json()
+        assert len(user_info["memberships"]) == 1
+        assert user_info["memberships"][0]["org_id"] == org_id
+        assert user_info["memberships"][0]["role"] == "client_viewer"

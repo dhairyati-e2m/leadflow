@@ -9,6 +9,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-roboto-flex)", "Roboto Flex", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+      },
       colors: {
         // Deep obsidian black for details, high-contrast text, sharp badges & buttons
         obsidian: {
