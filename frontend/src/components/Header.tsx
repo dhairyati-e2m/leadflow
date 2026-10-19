@@ -16,7 +16,7 @@ import {
 
 export function Header() {
   const { user, activeMembership, switchOrganization, logout } = useAuth();
-  const { role, activeTab, setActiveTab, setRole, leadsCount, theme, toggleTheme } = useNav();
+  const { role, activeTab, setActiveTab, setRole, theme, toggleTheme } = useNav();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showAccessModal, setShowAccessModal] = useState(false);
@@ -175,22 +175,13 @@ export function Header() {
                   setActiveTab("leads");
                   if (pathname !== "/") router.push("/");
                 }}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center cursor-pointer ${
                   activeTab === "leads" && pathname !== "/portal" && pathname !== "/super-admin"
                     ? "border-2 border-lilac-500 text-white bg-obsidian-800/90 shadow-sm"
                     : "border-2 border-transparent text-cosmic-300/80 hover:text-white hover:bg-obsidian-800/60"
                 }`}
               >
                 <span>Lead Pipeline</span>
-                <span
-                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                    activeTab === "leads" && pathname !== "/portal" && pathname !== "/super-admin"
-                      ? "bg-lilac-500/20 text-lilac-300 border border-lilac-500/40"
-                      : "bg-obsidian-800 text-cosmic-300 border border-obsidian-700"
-                  }`}
-                >
-                  {leadsCount}
-                </span>
               </button>
 
               <button
@@ -199,22 +190,13 @@ export function Header() {
                   setActiveTab("icp");
                   if (pathname !== "/") router.push("/");
                 }}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center cursor-pointer ${
                   activeTab === "icp" && pathname !== "/portal" && pathname !== "/super-admin"
                     ? "border-2 border-lilac-500 text-white bg-obsidian-800/90 shadow-sm"
                     : "border-2 border-transparent text-cosmic-300/80 hover:text-white hover:bg-obsidian-800/60"
                 }`}
               >
                 <span>Audiences (ICP)</span>
-                <span
-                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                    activeTab === "icp" && pathname !== "/portal" && pathname !== "/super-admin"
-                      ? "bg-emerald-400 text-obsidian-950 font-bold"
-                      : "bg-obsidian-800 text-cosmic-300 border border-obsidian-700"
-                  }`}
-                >
-                  Builder
-                </span>
               </button>
 
               <button
@@ -223,22 +205,13 @@ export function Header() {
                   setActiveTab("integrations");
                   if (pathname !== "/") router.push("/");
                 }}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center cursor-pointer ${
                   activeTab === "integrations" && pathname !== "/portal" && pathname !== "/super-admin"
                     ? "border-2 border-lilac-500 text-white bg-obsidian-800/90 shadow-sm"
                     : "border-2 border-transparent text-cosmic-300/80 hover:text-white hover:bg-obsidian-800/60"
                 }`}
               >
                 <span>Signal Engines</span>
-                <span
-                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                    activeTab === "integrations" && pathname !== "/portal" && pathname !== "/super-admin"
-                      ? "bg-lilac-500/20 text-lilac-300 border border-lilac-500/40"
-                      : "bg-obsidian-800 text-cosmic-300 border border-obsidian-700"
-                  }`}
-                >
-                  22 Signals
-                </span>
               </button>
 
               <button
@@ -247,22 +220,13 @@ export function Header() {
                   setActiveTab("access_requests");
                   if (pathname !== "/") router.push("/");
                 }}
-                className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                className={`px-3.5 py-1.5 rounded-xl font-semibold transition flex items-center cursor-pointer ${
                   activeTab === "access_requests" && pathname !== "/portal" && pathname !== "/super-admin"
                     ? "border-2 border-lilac-500 text-white bg-obsidian-800/90 shadow-sm"
                     : "border-2 border-transparent text-cosmic-300/80 hover:text-white hover:bg-obsidian-800/60"
                 }`}
               >
                 <span>Access Request</span>
-                <span
-                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full ${
-                    activeTab === "access_requests" && pathname !== "/portal" && pathname !== "/super-admin"
-                      ? "bg-lilac-500/20 text-lilac-300 border border-lilac-500/40"
-                      : "bg-obsidian-800 text-cosmic-300 border border-obsidian-700"
-                  }`}
-                >
-                  Review
-                </span>
               </button>
             </div>
           )}

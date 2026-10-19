@@ -143,7 +143,7 @@ export default function RegisterPage() {
 
         <div>
           <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 mb-1">
-            Tenant Organization Name
+            Organisation Name
           </label>
           <input
             type="text"

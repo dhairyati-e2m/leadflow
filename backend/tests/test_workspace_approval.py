@@ -208,3 +208,70 @@ async def test_workspace_duplicate_name_warning_and_rejection():
         # 8. User receives rejection notification
         notifs = await client.get("/v1/notifications", headers=user_headers)
         assert any("declined" in n["title"].lower() or "not approved" in n["message"].lower() for n in notifs.json()["items"])
+
+
+@pytest.mark.asyncio
+async def test_workspace_register_and_request_gating():
+    """Validates that registering a workspace request leaves account pending and blocks access until Super Admin approves."""
+    session_factory = get_session_factory()
+    transport = ASGITransport(app=app)
+
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        suffix = uuid.uuid4().hex[:6]
+
+        # 1. Super Admin exists
+        sa_email = f"sa_gate_{suffix}@leadflow.io"
+        await create_test_superuser(session_factory, sa_email, "SuperPass123!")
+        sa_login = await client.post(
+            "/v1/auth/login",
+            json={"email": sa_email, "password": "SuperPass123!"},
+        )
+        assert sa_login.status_code == 200
+        sa_token = sa_login.json()["access_token"]
+        sa_headers = {"Authorization": f"Bearer {sa_token}"}
+
+        # 2. User registers and requests workspace creation (Unauthenticated)
+        applicant_email = f"lead_{suffix}@startup.com"
+        applicant_pass = "Password123!"
+        proposed_name = f"Venture Labs {suffix}"
+
+        reg_ws = await client.post(
+            "/v1/workspaces/requests/register-and-request",
+            json={
+                "full_name": "Applicant Leader",
+                "email": applicant_email,
+                "password": applicant_pass,
+                "org_name": proposed_name,
+            },
+        )
+        assert reg_ws.status_code == 201, reg_ws.text
+        data = reg_ws.json()
+        assert data["status"] == "pending"
+        assert data["proposed_name"] == proposed_name
+        req_id = data["id"]
+
+        # 3. User attempts to login before approval -> blocked with 403 and 24hr notice
+        pre_login = await client.post(
+            "/v1/auth/login",
+            json={"email": applicant_email, "password": applicant_pass},
+        )
+        assert pre_login.status_code == 403
+        assert "super admin" in pre_login.json()["detail"].lower()
+        assert "24" in pre_login.json()["detail"]
+
+        # 4. Super Admin approves the workspace creation request
+        approve_res = await client.post(
+            f"/v1/workspaces/requests/admin/{req_id}/approve",
+            headers=sa_headers,
+        )
+        assert approve_res.status_code == 200
+        assert approve_res.json()["status"] == "approved"
+
+        # 5. After approval, user can now log in successfully
+        post_login = await client.post(
+            "/v1/auth/login",
+            json={"email": applicant_email, "password": applicant_pass},
+        )
+        assert post_login.status_code == 200
+        assert post_login.json()["role"] == "owner"
+        assert post_login.json()["access_token"] is not None

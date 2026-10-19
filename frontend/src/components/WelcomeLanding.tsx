@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useNav } from "@/lib/nav-context";
-import { registerAndRequestAccess } from "@/lib/api";
+import { registerAndRequestAccess, registerAndRequestWorkspace } from "@/lib/api";
 
 export function WelcomeLanding() {
   const router = useRouter();
@@ -105,12 +105,18 @@ export function WelcomeLanding() {
     setErrorTab(null);
     setRequestSuccessMsg(null);
     try {
-      await register(email, password, fullName, orgName);
-      setRole("org_admin");
-      setActiveTab("leads");
-      router.push("/");
+      await registerAndRequestWorkspace({
+        full_name: fullName.trim(),
+        email: email.trim(),
+        password,
+        org_name: orgName.trim(),
+      });
+      setRequestSuccessMsg(
+        `✓ Request Submitted! The Super Admin will be requested for your org creation and request will be approved in next 24hrs. Until and unless the Super Admin approves the account request, access to your workspace is not granted.`
+      );
+      setPassword("");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Registration failed";
+      const msg = err instanceof Error ? err.message : "Workspace creation request failed";
       setErrorMsg(msg);
       setErrorTab("register");
     } finally {
@@ -131,8 +137,9 @@ export function WelcomeLanding() {
         client_id: clientId || undefined,
       });
       setRequestSuccessMsg(
-        `Your request to join "${orgName}" as a Client has been submitted! The Organisation Administrator has been notified to review and approve your access.`
+        `✓ Request Sent! Organisation Admin has been requested and your request will be reviewed and approved in next 24 hrs. Until and unless the Org Admin approves the account request, access to that organisation is not granted.`
       );
+      setPassword("");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to submit access request";
       setErrorMsg(msg);
@@ -157,8 +164,9 @@ export function WelcomeLanding() {
         client_id: clientId.trim() || undefined,
       });
       setRequestSuccessMsg(
-        `✓ Request sent! Your account has been registered and your request to join "${orgName}" as a Client has been sent to the Organisation Administrator for approval.`
+        `✓ Request Sent! Organisation Admin has been requested and your request will be reviewed and approved in next 24 hrs. Until and unless the Org Admin approves the account request, access to that organisation is not granted.`
       );
+      setPassword("");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to submit access request";
       setErrorMsg(msg);
@@ -476,7 +484,7 @@ export function WelcomeLanding() {
                 </button>
 
                 <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 text-center mt-2 leading-relaxed">
-                  Upon clicking <strong>Send Request</strong>, your account is registered and forwarded to the Organisation Administrator for review. Once approved, your account is assigned as a <strong>Client</strong>.
+                  The Organisation Admin has been requested and your request will be reviewed and approved in next 24 hrs. Until and unless the Org Admin approves the account request, access to that organisation is not granted. Once approved, your role is assigned as <strong>Client</strong>.
                 </p>
               </form>
             )}
@@ -500,7 +508,7 @@ export function WelcomeLanding() {
                   </div>
                   <div>
                     <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-obsidian/60 dark:text-cosmic-400 mb-1">
-                      Organization Name
+                      Organisation Name
                     </label>
                     <input
                       type="text"
@@ -544,10 +552,10 @@ export function WelcomeLanding() {
                   disabled={isSubmitting}
                   className="w-full py-2.5 px-4 btn-obsidian font-semibold rounded-xl text-xs transition shadow-sm cursor-pointer disabled:opacity-60"
                 >
-                  {isSubmitting ? "Creating Workspace..." : "Create Organization & Enter"}
+                  {isSubmitting ? "Submitting Workspace Request..." : "Request Workspace Creation"}
                 </button>
                 <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 text-center mt-2 leading-relaxed">
-                  Need to join an existing organization instead? Sign in and use <strong>Request Access</strong> to submit a pending membership request.
+                  The Super Admin will be requested for your org creation and request will be approved in next 24hrs. Until and unless the Super Admin approves the account request, do not create workspace or give access to it to anyone.
                 </p>
               </form>
             )}

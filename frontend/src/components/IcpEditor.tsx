@@ -756,18 +756,14 @@ export function IcpEditor() {
                 <h2 className="text-xl font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
                   Ideal Customer Profile (ICP)
                 </h2>
-                {/* User Requirement 1 & 4: Explicit collapsible button right beside heading */}
+                {/* Collapsible toggle button right beside heading */}
                 <button
                   type="button"
                   onClick={() => setShowManualForm(!showManualForm)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition border flex items-center gap-1.5 cursor-pointer shadow-sm ${
-                    showManualForm
-                      ? "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-900/60 hover:bg-rose-100 dark:hover:bg-rose-900/60"
-                      : "btn-obsidian"
-                  }`}
-                  title={showManualForm ? "Collapse manual configuration form" : "Expand manual configuration form"}
+                  className="btn-obsidian px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="Add manually"
                 >
-                  <span>{showManualForm ? "▲ Collapse Manual Form" : "▼ + Add Manually / Expand"}</span>
+                  <span>+ Add Manually</span>
                 </button>
               </div>
 
@@ -848,14 +844,6 @@ export function IcpEditor() {
             <div className="glass-panel card-cosmic rounded-3xl p-7 border border-blush-200/80 dark:border-obsidian-700 space-y-7 animate-in fade-in slide-in-from-top-3 duration-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-cosmic-200 dark:border-obsidian-800 gap-3">
                 <div className="flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setShowManualForm(false)}
-                    className="w-7 h-7 rounded-lg bg-cosmic-100 dark:bg-obsidian-800 hover:bg-cosmic-200 dark:hover:bg-obsidian-700 text-obsidian dark:text-cosmic-200 flex items-center justify-center font-bold text-xs transition cursor-pointer border border-cosmic-300 dark:border-obsidian-700"
-                    title="Collapse manual configuration"
-                  >
-                    ▲
-                  </button>
                   <div>
                     <h3 className="text-base font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
                       Manual ICP Criteria Configuration
@@ -866,14 +854,6 @@ export function IcpEditor() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowManualForm(false)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-200 dark:hover:bg-obsidian-700 transition flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span>▲</span>
-                    <span>Collapse Form</span>
-                  </button>
                   <button
                     type="button"
                     onClick={handleClearProfileAndPrompt}
@@ -1379,15 +1359,7 @@ export function IcpEditor() {
               </div>
 
               {/* Action Footer */}
-              <div className="pt-4 border-t border-cosmic-200 dark:border-obsidian-800 flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setShowManualForm(false)}
-                  className="text-xs font-semibold px-4 py-2.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-200 dark:hover:bg-obsidian-700 transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>▲</span>
-                  <span>Collapse Configuration</span>
-                </button>
+              <div className="pt-4 border-t border-cosmic-200 dark:border-obsidian-800 flex items-center justify-end">
                 <button
                   type="button"
                   disabled={isSaving}
@@ -1400,7 +1372,7 @@ export function IcpEditor() {
             </div>
           )}
 
-          {/* Collapsed manual form teaser banner (User Requirement 4) */}
+          {/* Manual form teaser banner */}
           {!showManualForm && (
             <div
               onClick={() => setShowManualForm(true)}
@@ -1415,12 +1387,9 @@ export function IcpEditor() {
                     <h4 className="text-xs font-bold text-obsidian dark:text-cosmic-100">
                       Manual ICP Criteria Configuration
                     </h4>
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-cosmic-100 dark:bg-obsidian-800 text-obsidian/70 dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700">
-                      Collapsed
-                    </span>
                   </div>
                   <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 mt-0.5">
-                    Click to expand criteria: 58 industries, geographic regions, employee ranges, HubSpot suppression & Hunter.io discovery.
+                    Click to add criteria: 58 industries, geographic regions, employee ranges, HubSpot suppression & Hunter.io discovery.
                   </p>
                 </div>
               </div>
@@ -1433,7 +1402,7 @@ export function IcpEditor() {
                 }}
                 className="btn-obsidian px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer whitespace-nowrap self-start sm:self-auto"
               >
-                <span>▼ Expand Configuration</span>
+                <span>+ Add Manually</span>
               </button>
             </div>
           )}

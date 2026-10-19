@@ -12,6 +12,7 @@ import {
   createAdminOrg,
   fetchAuditLogs,
   fetchOrgAdmins,
+  fetchOrgMembersForAdmin,
   assignOrgAdmin,
   removeOrgAdmin,
   fetchAdminWorkspaceRequests,
@@ -59,6 +60,11 @@ export function SuperAdminPortal() {
   const [isAssigning, setIsAssigning] = useState<boolean>(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
+  // Organization Details Modal State (User Requirement 8)
+  const [modalTab, setModalTab] = useState<"admins" | "clients">("admins");
+  const [orgClients, setOrgClients] = useState<OrgAdminUser[]>([]);
+  const [loadingOrgClients, setLoadingOrgClients] = useState<boolean>(false);
+
   const selectedOrg = orgs.find((o) => o.id === selectedOrgId) || null;
   const selectedTransferOrg = orgs.find((o) => o.id === transferOrgId) || (orgs.length > 0 ? orgs[0] : null);
 
@@ -94,14 +100,22 @@ export function SuperAdminPortal() {
   useEffect(() => {
     if (selectedOrgId) {
       setLoadingAdmins(true);
+      setLoadingOrgClients(true);
       setAssignError(null);
       setAssignEmail("");
+      setModalTab("admins");
       fetchOrgAdmins(selectedOrgId)
         .then(setAdmins)
         .catch(() => setAdmins([]))
         .finally(() => setLoadingAdmins(false));
+
+      fetchOrgMembersForAdmin(selectedOrgId)
+        .then(setOrgClients)
+        .catch(() => setOrgClients([]))
+        .finally(() => setLoadingOrgClients(false));
     } else {
       setAdmins([]);
+      setOrgClients([]);
       setAssignError(null);
     }
   }, [selectedOrgId]);
@@ -1169,8 +1183,43 @@ export function SuperAdminPortal() {
               </div>
             </div>
 
-            {/* Organisation Administrators Management Section (Feature 2) */}
-            <div className="card-nested p-5 rounded-2xl border border-cosmic-200 dark:border-obsidian-700 mb-5 space-y-4">
+            {/* Modal Subtabs: Administrators & Controls vs Clients (User Requirement 8) */}
+            <div className="flex items-center gap-2 border-b border-cosmic-200 dark:border-obsidian-800 pb-3 mb-5">
+              <button
+                type="button"
+                onClick={() => setModalTab("admins")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  modalTab === "admins"
+                    ? "btn-obsidian shadow-sm"
+                    : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian hover:bg-cosmic-100 dark:hover:bg-obsidian-800"
+                }`}
+              >
+                <span>Administrators & Controls</span>
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-obsidian-800 dark:bg-cosmic-200 text-white dark:text-obsidian">
+                  {admins.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalTab("clients")}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                  modalTab === "clients"
+                    ? "btn-obsidian shadow-sm"
+                    : "text-obsidian/70 dark:text-cosmic-300 hover:text-obsidian hover:bg-cosmic-100 dark:hover:bg-obsidian-800"
+                }`}
+              >
+                <span>👥 Clients</span>
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-lilac-100 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700">
+                  {orgClients.length}
+                </span>
+              </button>
+            </div>
+
+            {modalTab === "admins" && (
+              <>
+                {/* Organisation Administrators Management Section (Feature 2) */}
+                <div className="card-nested p-5 rounded-2xl border border-cosmic-200 dark:border-obsidian-700 mb-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-cosmic-200/80 dark:border-obsidian-800">
                 <div>
                   <div className="flex items-center gap-2">
@@ -1361,6 +1410,120 @@ export function SuperAdminPortal() {
                 <span className="font-mono text-[10px] text-obsidian/50 dark:text-cosmic-400">Isolated Tenant Boundary</span>
               </div>
             </div>
+              </>
+            )}
+
+            {/* VIEW B (User Requirement 8): Organisation Clients & Users Tab */}
+            {modalTab === "clients" && (
+              <div className="card-nested p-5 rounded-2xl border border-cosmic-200 dark:border-obsidian-700 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-cosmic-200/80 dark:border-obsidian-800">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <h4 className="text-sm font-bold text-obsidian dark:text-cosmic-100 tracking-tight">
+                        Organisation Clients & Users
+                      </h4>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-obsidian-800 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-obsidian-700">
+                        {orgClients.length} Enrolled
+                      </span>
+                    </div>
+                    <p className="text-xs text-obsidian/60 dark:text-cosmic-400 mt-0.5">
+                      List of all users, clients, and team members with their registered emails under <strong>{selectedOrg.name}</strong>.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedOrgId) {
+                        setLoadingOrgClients(true);
+                        fetchOrgMembersForAdmin(selectedOrgId)
+                          .then(setOrgClients)
+                          .catch(() => setOrgClients([]))
+                          .finally(() => setLoadingOrgClients(false));
+                      }
+                    }}
+                    disabled={loadingOrgClients}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-cosmic-300 dark:border-obsidian-700 bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-200 hover:bg-cosmic-200 transition cursor-pointer self-start sm:self-auto"
+                  >
+                    {loadingOrgClients ? "Refreshing..." : "↻ Refresh List"}
+                  </button>
+                </div>
+
+                {loadingOrgClients ? (
+                  <div className="py-8 text-center text-xs text-obsidian/50 dark:text-cosmic-400">
+                    <span className="inline-block animate-spin h-4 w-4 border-2 border-obsidian dark:border-white border-t-transparent rounded-full mr-2"></span>
+                    Loading clients and users...
+                  </div>
+                ) : orgClients.length === 0 ? (
+                  <div className="py-6 px-4 text-center text-xs text-obsidian/60 dark:text-cosmic-400 bg-cosmic-100/50 dark:bg-obsidian-900/50 rounded-xl border border-cosmic-200 dark:border-obsidian-800">
+                    No clients or users registered under this organisation yet.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-cosmic-200/80 dark:border-obsidian-800 rounded-xl bg-white/40 dark:bg-obsidian-950/40">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-cosmic-100/80 dark:bg-obsidian-800 text-obsidian/60 dark:text-cosmic-400 uppercase font-mono text-[10px] border-b border-cosmic-200 dark:border-obsidian-700">
+                        <tr>
+                          <th className="py-2.5 px-4 font-semibold">User</th>
+                          <th className="py-2.5 px-4 font-semibold">Work Email</th>
+                          <th className="py-2.5 px-3 font-semibold text-center">Role</th>
+                          <th className="py-2.5 px-3 font-semibold text-center">Account Status</th>
+                          <th className="py-2.5 px-4 font-semibold text-right">Joined</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-cosmic-200/80 dark:divide-obsidian-800">
+                        {orgClients.map((u) => {
+                          const isClient = u.role === "client_viewer" || u.role.toLowerCase().includes("client");
+                          return (
+                            <tr key={u.user_id} className="hover:bg-cosmic-100/50 dark:hover:bg-obsidian-800/50 transition">
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-7 h-7 rounded-lg bg-obsidian text-white dark:bg-cosmic-100 dark:text-obsidian flex items-center justify-center font-bold text-xs uppercase flex-shrink-0">
+                                    {u.full_name?.charAt(0) || u.email.charAt(0)}
+                                  </div>
+                                  <div className="font-bold text-obsidian dark:text-cosmic-100">
+                                    {u.full_name || "LeadFlow User"}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 font-mono text-obsidian/90 dark:text-cosmic-100 text-xs font-semibold">
+                                {u.email}
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                <span
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase ${
+                                    isClient
+                                      ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                                      : u.role === "owner" || u.role === "admin"
+                                      ? "bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+                                      : "bg-cosmic-200 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-300 border border-cosmic-300 dark:border-obsidian-700"
+                                  }`}
+                                >
+                                  {isClient ? "Client" : u.role}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                                    u.is_active !== false
+                                      ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+                                      : "bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300"
+                                  }`}
+                                >
+                                  {u.is_active !== false ? "Active" : "Disabled"}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right font-mono text-[11px] text-obsidian/60 dark:text-cosmic-400">
+                                {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Modal Footer */}
             <div className="mt-6 pt-4 border-t border-cosmic-200 dark:border-obsidian-800 flex items-center justify-between">
@@ -1428,7 +1591,7 @@ export function SuperAdminPortal() {
             <form onSubmit={handleCreateOrgSubmit} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-wider font-bold text-cosmic-400 dark:text-obsidian/60 mb-1">
-                  Tenant Organisation Name <span className="text-rose-500">*</span>
+                  Organisation Name <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"

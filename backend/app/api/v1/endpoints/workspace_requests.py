@@ -2,12 +2,13 @@ from datetime import datetime, timezone
 import re
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.database import get_db_session, set_rls_tenant_context
 from backend.app.core.deps import get_current_user
+from backend.app.core.security import hash_password, verify_password
 from backend.app.models.entities import (
     Audience,
     AuditLog,
@@ -36,6 +37,14 @@ def generate_slug(name: str) -> str:
 
 class SubmitWorkspaceRequest(BaseModel):
     proposed_name: str = Field(..., min_length=2, max_length=255)
+    intended_use: Optional[str] = Field(None, max_length=1000)
+
+
+class RegisterAndRequestWorkspace(BaseModel):
+    full_name: str = Field(..., min_length=2, max_length=255)
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+    org_name: str = Field(..., min_length=2, max_length=255)
     intended_use: Optional[str] = Field(None, max_length=1000)
 
 
@@ -103,6 +112,126 @@ async def submit_workspace_request(
     await session.flush()
 
     # 4. Notify Super Admins
+    superusers = (
+        await session.execute(select(User).where(User.is_superuser == True, User.is_active == True))
+    ).scalars().all()
+
+    now_utc = datetime.now(timezone.utc)
+    date_str = now_utc.strftime("%Y-%m-%d %H:%M UTC")
+
+    for su in superusers:
+        await create_and_send_notification(
+            session=session,
+            recipient_id=su.id,
+            type="workspace_request",
+            title=f"New Workspace Request: {ws_req.proposed_name}",
+            message=(
+                f"User {user.full_name} ({user.email}) requested creation of workspace '{ws_req.proposed_name}'.\n"
+                f"Submitted: {date_str}"
+            ),
+            link="/super-admin",
+            metadata_json={
+                "request_id": ws_req.id,
+                "requester_id": user.id,
+                "proposed_name": ws_req.proposed_name,
+            },
+        )
+
+    await session.commit()
+    await session.refresh(ws_req)
+
+    return WorkspaceRequestOut(
+        id=ws_req.id,
+        user_id=user.id,
+        user_email=user.email,
+        user_full_name=user.full_name,
+        proposed_name=ws_req.proposed_name,
+        normalized_name=ws_req.normalized_name,
+        status=ws_req.status,
+        created_at=ws_req.created_at.isoformat() if ws_req.created_at else "",
+    )
+
+
+@router.post("/register-and-request", response_model=WorkspaceRequestOut, status_code=status.HTTP_201_CREATED, summary="Register User and Submit Workspace Creation Request (Requires Super Admin Approval)")
+async def register_and_request_workspace(
+    data: RegisterAndRequestWorkspace,
+    session: AsyncSession = Depends(get_db_session),
+) -> WorkspaceRequestOut:
+    norm_name = normalize_org_name(data.org_name)
+
+    # 1. Check if active organisation already exists
+    existing_org = (
+        await session.execute(select(Organization).where(Organization.normalized_name == norm_name))
+    ).scalars().first()
+    if existing_org:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An organisation with these details already exists. If you belong to this organisation, contact its administrator or request access.",
+        )
+
+    # 2. Check for duplicate pending request across the platform
+    existing_pending = (
+        await session.execute(
+            select(WorkspaceRequest).where(
+                WorkspaceRequest.normalized_name == norm_name,
+                WorkspaceRequest.status == "pending",
+            )
+        )
+    ).scalars().first()
+    if existing_pending:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A workspace creation request with this name is already pending Super Admin approval.",
+        )
+
+    # 3. Look up or register user
+    user_email_clean = data.email.lower().strip()
+    user_stmt = select(User).where(User.email == user_email_clean)
+    user = (await session.execute(user_stmt)).scalars().first()
+
+    if not user:
+        user = User(
+            email=user_email_clean,
+            hashed_password=hash_password(data.password),
+            full_name=data.full_name.strip(),
+            is_active=True,
+        )
+        session.add(user)
+        await session.flush()
+    else:
+        if not verify_password(data.password, user.hashed_password):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="An account with this email already exists. Please verify your password to submit this workspace request.",
+            )
+
+    # 4. Check if user already submitted pending workspace request
+    user_pending = (
+        await session.execute(
+            select(WorkspaceRequest).where(
+                WorkspaceRequest.user_id == user.id,
+                WorkspaceRequest.normalized_name == norm_name,
+                WorkspaceRequest.status == "pending",
+            )
+        )
+    ).scalars().first()
+    if user_pending:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You already have a pending workspace request for this organisation name. Please await Super Admin review.",
+        )
+
+    # 5. Create pending workspace request (Strictly pending: no Organization or Membership created yet)
+    ws_req = WorkspaceRequest(
+        user_id=user.id,
+        proposed_name=data.org_name.strip(),
+        normalized_name=norm_name,
+        status="pending",
+    )
+    session.add(ws_req)
+    await session.flush()
+
+    # 6. Notify Super Admins
     superusers = (
         await session.execute(select(User).where(User.is_superuser == True, User.is_active == True))
     ).scalars().all()

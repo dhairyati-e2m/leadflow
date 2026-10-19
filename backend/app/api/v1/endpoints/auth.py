@@ -24,7 +24,14 @@ from backend.app.core.security import (
     revoke_token,
     verify_password,
 )
-from backend.app.models.entities import AuditLog, Membership, Organization, User
+from backend.app.models.entities import (
+    AccessRequest,
+    AuditLog,
+    Membership,
+    Organization,
+    User,
+    WorkspaceRequest,
+)
 from backend.app.providers.resend import ResendProvider
 
 router = APIRouter()
@@ -237,6 +244,27 @@ async def login(
                 org_id=default_org_id,
                 role="super_admin",
             )
+
+        # Check pending workspace request (User Requirement 5)
+        pending_ws = (await session.execute(
+            select(WorkspaceRequest).where(WorkspaceRequest.user_id == user.id, WorkspaceRequest.status == "pending")
+        )).scalars().first()
+        if pending_ws:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"The Super Admin will be requested for your org creation and request will be approved in next 24hrs. Until and unless the Super Admin approves the account request, access to workspace '{pending_ws.proposed_name}' is not granted.",
+            )
+
+        # Check pending access request (User Requirement 6)
+        pending_access = (await session.execute(
+            select(AccessRequest).where(AccessRequest.user_id == user.id, AccessRequest.status == "pending")
+        )).scalars().first()
+        if pending_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Organisation admin has been requested and your request will be reviewed and approved in next 24 hrs. Until and unless the Org Admin approves the account request, access to that organisation is not granted.",
+            )
+
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User has no organization memberships.")
 
     # Select target organization

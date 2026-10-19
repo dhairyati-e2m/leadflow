@@ -832,6 +832,25 @@ export async function registerAndRequestAccess(data: {
   return res.json();
 }
 
+export async function registerAndRequestWorkspace(data: {
+  full_name: string;
+  email: string;
+  password: string;
+  org_name: string;
+  intended_use?: string;
+}): Promise<WorkspaceRequestItem> {
+  const res = await fetch(`${API_BASE}/workspaces/requests/register-and-request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to submit workspace request" }));
+    throw new Error(err.detail || "Failed to submit workspace request");
+  }
+  return res.json();
+}
+
 export async function createAdminOrg(data: {
   name: string;
   admin_email: string;
