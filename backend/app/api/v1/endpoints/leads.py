@@ -361,11 +361,12 @@ async def send_lead_outreach(
         body_text=data.body,
     )
 
-    if result.status == "error":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result.error_message)
+    if result.status in ("error", "fallback") and not result.data.get("delivered"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result.error_message or "Resend delivery failed.")
 
-    delivered = result.data.get("delivered", True)
+    delivered = bool(result.data.get("delivered", True))
     msg_id = result.data.get("id")
+    routed_to = result.data.get("sandbox_routed_to")
 
     # Update lead state to approved
     lead.pipeline_state = "approved"
@@ -396,10 +397,15 @@ async def send_lead_outreach(
             "provider": "resend",
             "message_id": msg_id,
             "delivered": delivered,
+            "sandbox_routed_to": routed_to,
         },
     )
     session.add(audit)
     await session.commit()
+
+    dispatch_message = f"Outreach email dispatched successfully to {data.to_email} via Resend."
+    if routed_to:
+        dispatch_message = f"Outreach email routed to verified developer account ({routed_to}) via Resend Sandbox."
 
     return SendOutreachResponse(
         lead_id=lead.id,
@@ -409,6 +415,6 @@ async def send_lead_outreach(
         provider="resend",
         provider_message_id=msg_id,
         pipeline_state=lead.pipeline_state,
-        message=f"Outreach email dispatched successfully to {data.to_email} via Resend.",
+        message=dispatch_message,
     )
 

@@ -29,6 +29,32 @@ const DEFAULT_FILTERS: AudienceFilters = {
   negative_keywords: [],
 };
 
+export function normalizeAudienceFilters(rawFilters: any): AudienceFilters {
+  let parsed = rawFilters;
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      parsed = {};
+    }
+  }
+  if (!parsed || typeof parsed !== "object") {
+    parsed = {};
+  }
+  return {
+    verticals: Array.isArray(parsed.verticals) ? parsed.verticals : [],
+    vertical_match: parsed.vertical_match === "and" ? "and" : "or",
+    locations: Array.isArray(parsed.locations) ? parsed.locations : [],
+    location_match: parsed.location_match === "and" ? "and" : "or",
+    headcount_ranges: Array.isArray(parsed.headcount_ranges) ? parsed.headcount_ranges : [],
+    exclude_locations: Array.isArray(parsed.exclude_locations) ? parsed.exclude_locations : [],
+    exclude_verticals: Array.isArray(parsed.exclude_verticals) ? parsed.exclude_verticals : [],
+    exclude_domains: Array.isArray(parsed.exclude_domains) ? parsed.exclude_domains : [],
+    exclude_existing_crm: typeof parsed.exclude_existing_crm === "boolean" ? parsed.exclude_existing_crm : true,
+    negative_keywords: Array.isArray(parsed.negative_keywords) ? parsed.negative_keywords : [],
+  };
+}
+
 export const HUNTER_INDUSTRIES: string[] = [
   "Information Technology & Services",
   "Computer Software",
@@ -259,7 +285,11 @@ export function IcpEditor() {
         ]);
         if (catData) setCatalog(catData);
         if (audData && audData.length > 0) {
-          setAudiences(audData);
+          const sanitized = audData.map((a) => ({
+            ...a,
+            filters: normalizeAudienceFilters(a.filters),
+          }));
+          setAudiences(sanitized);
         }
 
         // Restore half-filled draft from localStorage if available (User Requirement 5)
@@ -272,7 +302,7 @@ export function IcpEditor() {
               if (draft && typeof draft === "object") {
                 if (draft.name !== undefined) setName(draft.name);
                 if (draft.description !== undefined) setDescription(draft.description);
-                if (draft.filters) setFilters(draft.filters);
+                if (draft.filters) setFilters(normalizeAudienceFilters(draft.filters));
                 if (draft.briefText !== undefined) setBriefText(draft.briefText);
                 if (draft.isDefault !== undefined) setIsDefault(draft.isDefault);
                 if (draft.showManualForm !== undefined) setShowManualForm(draft.showManualForm);
@@ -291,7 +321,7 @@ export function IcpEditor() {
           setSelectedAudienceId(active.id);
           setName(active.name);
           setDescription(active.description || "");
-          setFilters(active.filters);
+          setFilters(normalizeAudienceFilters(active.filters));
           setIsDefault(active.is_default);
         }
       } catch (err: unknown) {
@@ -312,7 +342,7 @@ export function IcpEditor() {
     setSelectedAudienceId(aud.id);
     setName(aud.name);
     setDescription(aud.description || "");
-    setFilters(aud.filters);
+    setFilters(normalizeAudienceFilters(aud.filters));
     setIsDefault(aud.is_default);
     setAiRationale(null);
     setPoolDepth(null);
@@ -382,7 +412,7 @@ export function IcpEditor() {
     setIsProposing(true);
     try {
       const res = await aiProposeIcp(briefText);
-      setFilters(res.filters);
+      setFilters(normalizeAudienceFilters(res.filters));
       setName(res.suggested_name);
       setAiRationale(res.rationale);
       setPoolDepth(res.estimated_pool_depth);
@@ -406,8 +436,12 @@ export function IcpEditor() {
           filters,
           is_default: isDefault,
         });
-        setAudiences((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-        showNotification(`ICP "${updated.name}" updated and saved successfully.`);
+        const safeUpdated = {
+          ...updated,
+          filters: normalizeAudienceFilters(updated.filters),
+        };
+        setAudiences((prev) => prev.map((a) => (a.id === safeUpdated.id ? safeUpdated : a)));
+        showNotification(`ICP "${safeUpdated.name}" updated and saved successfully.`);
       } else {
         const created = await createAudience({
           name,
@@ -415,9 +449,13 @@ export function IcpEditor() {
           filters,
           is_default: isDefault,
         });
-        setAudiences((prev) => [created, ...prev]);
-        setSelectedAudienceId(created.id);
-        showNotification(`ICP "${created.name}" created and saved successfully.`);
+        const safeCreated = {
+          ...created,
+          filters: normalizeAudienceFilters(created.filters),
+        };
+        setAudiences((prev) => [safeCreated, ...prev]);
+        setSelectedAudienceId(safeCreated.id);
+        showNotification(`ICP "${safeCreated.name}" created and saved successfully.`);
       }
       if (typeof window !== "undefined") {
         try {
@@ -670,75 +708,84 @@ export function IcpEditor() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-                {audiences.map((aud) => (
-                  <div
-                    key={aud.id}
-                    className="card-nested rounded-2xl p-5 border border-cosmic-200 dark:border-obsidian-700 space-y-3.5 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-sm text-obsidian dark:text-cosmic-100 tracking-tight">
-                          {aud.name}
-                        </h3>
-                        {aud.is_default && (
-                          <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                            Active Default
+                {audiences.map((aud) => {
+                  const audFilters = normalizeAudienceFilters(aud.filters);
+                  return (
+                    <div
+                      key={aud.id}
+                      className="card-nested rounded-2xl p-5 border border-cosmic-200 dark:border-obsidian-700 space-y-3.5 flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-bold text-sm text-obsidian dark:text-cosmic-100 tracking-tight">
+                            {aud.name}
+                          </h3>
+                          {aud.is_default && (
+                            <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                              Active Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-obsidian/70 dark:text-cosmic-300 mt-1 leading-relaxed">
+                          {aud.description || "No description provided."}
+                        </p>
+                      </div>
+
+                      <div className="space-y-2 text-xs">
+                        <div>
+                          <span className="text-[10px] font-mono uppercase font-bold text-obsidian/50 dark:text-cosmic-400 block mb-1">
+                            Target Verticals ({audFilters.verticals.length})
                           </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-obsidian/70 dark:text-cosmic-300 mt-1 leading-relaxed">
-                        {aud.description || "No description provided."}
-                      </p>
-                    </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {audFilters.verticals.map((v) => (
+                              <span
+                                key={v}
+                                className="text-[10px] px-2 py-0.5 rounded-md bg-cosmic-100/90 dark:bg-obsidian-800 text-obsidian/80 dark:text-cosmic-200 border border-cosmic-200 dark:border-obsidian-700"
+                              >
+                                {v}
+                              </span>
+                            ))}
+                            {audFilters.verticals.length === 0 && (
+                              <span className="text-[10px] text-obsidian/40 dark:text-cosmic-400 italic">All industries</span>
+                            )}
+                          </div>
+                        </div>
 
-                    <div className="space-y-2 text-xs">
-                      <div>
-                        <span className="text-[10px] font-mono uppercase font-bold text-obsidian/50 dark:text-cosmic-400 block mb-1">
-                          Target Verticals ({aud.filters.verticals.length})
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {aud.filters.verticals.map((v) => (
-                            <span
-                              key={v}
-                              className="text-[10px] px-2 py-0.5 rounded-md bg-cosmic-100/90 dark:bg-obsidian-800 text-obsidian/80 dark:text-cosmic-200 border border-cosmic-200 dark:border-obsidian-700"
-                            >
-                              {v}
-                            </span>
-                          ))}
+                        <div>
+                          <span className="text-[10px] font-mono uppercase font-bold text-obsidian/50 dark:text-cosmic-400 block mb-1">
+                            Geographies & Metros ({audFilters.locations.length})
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {audFilters.locations.map((loc) => (
+                              <span
+                                key={loc}
+                                className="text-[10px] px-2 py-0.5 rounded-md bg-lilac-50 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700"
+                              >
+                                {loc}
+                              </span>
+                            ))}
+                            {audFilters.locations.length === 0 && (
+                              <span className="text-[10px] text-obsidian/40 dark:text-cosmic-400 italic">All geographies</span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      <div>
-                        <span className="text-[10px] font-mono uppercase font-bold text-obsidian/50 dark:text-cosmic-400 block mb-1">
-                          Geographies & Metros ({aud.filters.locations.length})
+                      <div className="pt-3 border-t border-cosmic-200 dark:border-obsidian-800 flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-obsidian/50 dark:text-cosmic-400">
+                          {audFilters.headcount_ranges.length > 0 ? audFilters.headcount_ranges.join(", ") : "All company sizes"}
                         </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {aud.filters.locations.map((loc) => (
-                            <span
-                              key={loc}
-                              className="text-[10px] px-2 py-0.5 rounded-md bg-lilac-50 dark:bg-obsidian-800 text-lilac-800 dark:text-lilac-300 border border-lilac-200 dark:border-obsidian-700"
-                            >
-                              {loc}
-                            </span>
-                          ))}
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectAudience(aud)}
+                          className="btn-obsidian px-3 py-1.5 rounded-xl text-xs font-semibold"
+                        >
+                          Edit in Builder →
+                        </button>
                       </div>
                     </div>
-
-                    <div className="pt-3 border-t border-cosmic-200 dark:border-obsidian-800 flex items-center justify-between">
-                      <span className="text-[10px] font-mono text-obsidian/50 dark:text-cosmic-400">
-                        {aud.filters.headcount_ranges.join(", ")}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleSelectAudience(aud)}
-                        className="btn-obsidian px-3 py-1.5 rounded-xl text-xs font-semibold"
-                      >
-                        Edit in Builder →
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -917,13 +964,13 @@ export function IcpEditor() {
                       Search and select from 58 standardized Hunter.io industry sectors.
                     </p>
                   </div>
-                  {filters.verticals.length > 0 && (
+                  {(filters?.verticals || []).length > 0 && (
                     <button
                       type="button"
                       onClick={() => setFilters((p) => ({ ...p, verticals: [] }))}
                       className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
                     >
-                      Clear Industries ({filters.verticals.length})
+                      Clear Industries ({(filters?.verticals || []).length})
                     </button>
                   )}
                 </div>
@@ -964,7 +1011,7 @@ export function IcpEditor() {
                         </div>
                       ) : (
                         filteredIndustries.map((ind) => {
-                          const isAdded = filters.verticals.includes(ind);
+                          const isAdded = (filters?.verticals || []).includes(ind);
                           return (
                             <button
                               key={ind}
@@ -988,7 +1035,7 @@ export function IcpEditor() {
 
                 {/* Selected Industry Chips */}
                 <div className="flex flex-wrap gap-2 pt-1">
-                  {filters.verticals.map((v) => (
+                  {(filters?.verticals || []).map((v) => (
                     <span
                       key={v}
                       className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 border border-cosmic-300 dark:border-obsidian-700 flex items-center gap-2"
@@ -1004,7 +1051,7 @@ export function IcpEditor() {
                       </button>
                     </span>
                   ))}
-                  {filters.verticals.length === 0 && (
+                  {(filters?.verticals || []).length === 0 && (
                     <span className="text-xs text-obsidian/40 dark:text-cosmic-400 italic">
                       No industries selected yet. Search above to add target sectors.
                     </span>
@@ -1023,13 +1070,13 @@ export function IcpEditor() {
                       Search and select countries and major metropolitan hubs supported by Hunter.io.
                     </p>
                   </div>
-                  {filters.locations.length > 0 && (
+                  {(filters?.locations || []).length > 0 && (
                     <button
                       type="button"
                       onClick={() => setFilters((p) => ({ ...p, locations: [] }))}
                       className="text-[10px] font-semibold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
                     >
-                      Clear Locations ({filters.locations.length})
+                      Clear Locations ({(filters?.locations || []).length})
                     </button>
                   )}
                 </div>
@@ -1071,7 +1118,7 @@ export function IcpEditor() {
                         </div>
                       ) : (
                         filteredLocations.map((loc) => {
-                          const isAdded = filters.locations.includes(loc);
+                          const isAdded = (filters?.locations || []).includes(loc);
                           return (
                             <button
                               key={loc}
@@ -1095,7 +1142,7 @@ export function IcpEditor() {
 
                 {/* Selected Locations Chips */}
                 <div className="flex flex-wrap gap-2 pt-1">
-                  {filters.locations.map((loc) => (
+                  {(filters?.locations || []).map((loc) => (
                     <span
                       key={loc}
                       className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-cosmic-100 dark:bg-obsidian-800 text-obsidian dark:text-cosmic-100 border border-cosmic-300 dark:border-obsidian-700 flex items-center gap-2"
@@ -1111,7 +1158,7 @@ export function IcpEditor() {
                       </button>
                     </span>
                   ))}
-                  {filters.locations.length === 0 && (
+                  {(filters?.locations || []).length === 0 && (
                     <span className="text-xs text-obsidian/40 dark:text-cosmic-400 italic">
                       No locations selected yet. Search above to add target regions.
                     </span>
@@ -1126,7 +1173,7 @@ export function IcpEditor() {
                 </h4>
                 <div className="flex flex-wrap gap-2">
                   {headcountList.map((tier) => {
-                    const isSelected = filters.headcount_ranges.includes(tier);
+                    const isSelected = (filters?.headcount_ranges || []).includes(tier);
                     return (
                       <button
                         key={tier}
@@ -1188,7 +1235,7 @@ export function IcpEditor() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {filters.negative_keywords.map((kw) => (
+                  {(filters?.negative_keywords || []).map((kw) => (
                     <span
                       key={kw}
                       className="px-2.5 py-1 rounded-xl text-xs font-mono font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 flex items-center gap-1.5"
@@ -1220,7 +1267,7 @@ export function IcpEditor() {
                       </span>
                     </div>
                     <p className="text-xs text-obsidian/60 dark:text-cosmic-400 mt-1">
-                      Query Hunter.io Discover with active filters ({filters.verticals[0] || "All"} &bull; {filters.locations[0] || "All"} &bull; {filters.headcount_ranges[0] || "All"}).
+                      Query Hunter.io Discover with active filters ({filters?.verticals?.[0] || "All"} &bull; {filters?.locations?.[0] || "All"} &bull; {filters?.headcount_ranges?.[0] || "All"}).
                     </p>
                   </div>
 

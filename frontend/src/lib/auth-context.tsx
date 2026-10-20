@@ -47,8 +47,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const profile = await apiGetMe();
         setUser(profile);
-        if (!storedOrg && profile.memberships.length > 0) {
-          setActiveOrgId(profile.memberships[0].org_id);
+        const validOrgIds = profile.memberships.map((m) => m.org_id);
+        if (storedOrg && validOrgIds.includes(storedOrg)) {
+          setActiveOrgId(storedOrg);
+        } else if (profile.memberships.length > 0) {
+          const fallbackOrg = profile.memberships[0].org_id;
+          setActiveOrgId(fallbackOrg);
+          if (typeof window !== "undefined") {
+            localStorage.setItem("leadflow_active_org", fallbackOrg);
+          }
+        } else {
+          setActiveOrgId(null);
         }
       } catch {
         // Access token might be expired or revoked; attempt refresh
@@ -59,6 +68,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setActiveOrgId(rotated.org_id);
             const profile = await apiGetMe();
             setUser(profile);
+            const validOrgIds = profile.memberships.map((m) => m.org_id);
+            if (!validOrgIds.includes(rotated.org_id) && profile.memberships.length > 0) {
+              const fallbackOrg = profile.memberships[0].org_id;
+              setActiveOrgId(fallbackOrg);
+              if (typeof window !== "undefined") {
+                localStorage.setItem("leadflow_active_org", fallbackOrg);
+              }
+            }
           } catch {
             setAuthToken(null);
             setUser(null);

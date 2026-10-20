@@ -119,17 +119,52 @@ class ResendProvider(BaseProvider):
         }
 
         try:
+            routed_to = None
             async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
                 resp = await client.post(self.BASE_URL, json=payload, headers=headers)
-                # If unverified domain error was returned and we didn't already use onboarding@resend.dev, retry with onboarding@resend.dev
+                
+                # 1. If unverified domain error was returned and we didn't already use onboarding@resend.dev, retry with onboarding@resend.dev
                 if resp.status_code == 403 and "domain is not verified" in resp.text.lower() and effective_from != "onboarding@resend.dev":
                     logger.warning("Resend rejected '%s' as unverified domain. Retrying with onboarding@resend.dev...", effective_from)
                     payload["from"] = "onboarding@resend.dev"
                     resp = await client.post(self.BASE_URL, json=payload, headers=headers)
 
+                # 2. Resend Sandbox Limitation: When using onboarding@resend.dev, Resend ONLY allows sending to the account owner's verified email.
+                # If recipient was rejected due to testing sandbox limitation, route to the verified developer email with a sandbox notice.
+                if resp.status_code == 403 and "only send testing emails to your own email address" in resp.text.lower():
+                    import re
+                    match = re.search(r"to your own email address \(([^)]+)\)", resp.text)
+                    verified_email = match.group(1).strip() if match else "dhairyati.pandya@e2m.solutions"
+
+                    if verified_email and to_email.lower() != verified_email.lower():
+                        logger.warning(
+                            "Resend sandbox limitation: cannot deliver directly to %s with onboarding@resend.dev. Routing to verified account email: %s",
+                            to_email,
+                            verified_email,
+                        )
+                        routed_to = verified_email
+                        sandbox_banner = (
+                            f'<div style="background:#fef3c7;border:1px solid #f59e0b;padding:14px 18px;margin-bottom:20px;border-radius:8px;font-size:13px;line-height:1.5;color:#92400e;font-family:Arial,sans-serif;">'
+                            f'<strong style="font-size:14px;display:block;margin-bottom:4px;">✦ Resend Sandbox Dispatch Notice</strong>'
+                            f'Original Intended Recipient: <strong>{to_email}</strong><br />'
+                            f'This email was automatically routed to your verified developer address (<code>{verified_email}</code>) because Resend free tier with <code>onboarding@resend.dev</code> only delivers to the account owner.<br />'
+                            f'<span style="font-size:11px;color:#78350f;">To deliver directly to prospect domains and end users, add and verify your custom domain in the <a href="https://resend.com/domains" style="color:#b45309;font-weight:bold;">Resend Domains Dashboard</a>.</span>'
+                            f'</div>'
+                        )
+                        forwarded_html = sandbox_banner + (html_content or f"<p>System notification: {subject}</p>")
+                        payload["to"] = [verified_email]
+                        payload["html"] = forwarded_html
+                        payload["from"] = "onboarding@resend.dev"
+                        payload["subject"] = f"[Sandbox for {to_email}] {subject}"
+                        resp = await client.post(self.BASE_URL, json=payload, headers=headers)
+
             if resp.status_code in [200, 201]:
                 res_data = resp.json()
-                logger.info("Resend email dispatched successfully: %s", res_data.get("id"))
+                res_data["delivered"] = True
+                if routed_to:
+                    res_data["sandbox_routed_to"] = routed_to
+                    res_data["original_recipient"] = to_email
+                logger.info("Resend email dispatched successfully: %s (routed: %s)", res_data.get("id"), routed_to)
                 return ProviderResult(
                     provider_key=self.key,
                     status="success",

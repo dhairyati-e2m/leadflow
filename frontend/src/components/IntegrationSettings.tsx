@@ -4,6 +4,10 @@ import React, { useEffect, useState } from "react";
 import {
   fetchIntegrationSettings,
   updateIntegrationSettings,
+  fetchHubSpotStatus,
+  getHubSpotAuthorizeUrl,
+  disconnectHubSpot,
+  HubSpotStatusResponse,
   ProviderControlItem,
   IntegrationSettingsResponse,
 } from "@/lib/api";
@@ -314,6 +318,8 @@ export function IntegrationSettings() {
   const [loading, setLoading] = useState<boolean>(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [activeSignalFilter, setActiveSignalFilter] = useState<"all" | "website" | "marketing">("all");
+  const [hubspotStatus, setHubspotStatus] = useState<HubSpotStatusResponse | null>(null);
+  const [isHubSpotActionLoading, setIsHubSpotActionLoading] = useState<boolean>(false);
 
   // Signal weights state
   const [weights, setWeights] = useState<Record<string, number>>(() => {
@@ -335,14 +341,25 @@ export function IntegrationSettings() {
     async function loadSettings() {
       try {
         setLoading(true);
-        const data: IntegrationSettingsResponse = await fetchIntegrationSettings();
+        const [data, hsData] = await Promise.all([
+          fetchIntegrationSettings().catch((e) => {
+            console.info("Using default provider configuration:", e);
+            return null;
+          }),
+          fetchHubSpotStatus().catch((e) => {
+            console.info("HubSpot status fetch failed:", e);
+            return null;
+          }),
+        ]);
+
         if (isMounted) {
-          setMasterEnabled(data.master_switch_enabled);
-          setProviders(data.providers);
-        }
-      } catch (err: unknown) {
-        if (isMounted) {
-          console.info("Using default provider configuration:", err);
+          if (data) {
+            setMasterEnabled(data.master_switch_enabled);
+            setProviders(data.providers);
+          }
+          if (hsData) {
+            setHubspotStatus(hsData);
+          }
         }
       } finally {
         if (isMounted) {
@@ -352,6 +369,24 @@ export function IntegrationSettings() {
     }
 
     loadSettings();
+
+    // Check for callback query params in browser URL
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("hubspot_connected") === "true") {
+        const portal = params.get("portal_id");
+        showNotification(
+          portal
+            ? `HubSpot CRM connected successfully (Portal ID: ${portal})!`
+            : "HubSpot CRM connected successfully!"
+        );
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (params.get("hubspot_error")) {
+        showNotification(`HubSpot OAuth Error: ${params.get("hubspot_error")}`);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
     return () => {
       isMounted = false;
     };
@@ -362,6 +397,41 @@ export function IntegrationSettings() {
     setTimeout(() => {
       setNotification((curr) => (curr === msg ? null : curr));
     }, 4500);
+  };
+
+  const handleConnectHubSpot = async () => {
+    if (!user) {
+      showNotification("Please sign in to connect HubSpot.");
+      return;
+    }
+    try {
+      setIsHubSpotActionLoading(true);
+      const res = await getHubSpotAuthorizeUrl();
+      if (res.authorization_url) {
+        window.location.href = res.authorization_url;
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to initiate HubSpot connection";
+      showNotification(errorMsg);
+    } finally {
+      setIsHubSpotActionLoading(false);
+    }
+  };
+
+  const handleDisconnectHubSpot = async () => {
+    if (!user) return;
+    try {
+      setIsHubSpotActionLoading(true);
+      await disconnectHubSpot();
+      const updated = await fetchHubSpotStatus();
+      setHubspotStatus(updated);
+      showNotification("HubSpot CRM disconnected successfully.");
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to disconnect HubSpot";
+      showNotification(errorMsg);
+    } finally {
+      setIsHubSpotActionLoading(false);
+    }
   };
 
   const handleToggleMaster = async () => {
@@ -567,12 +637,22 @@ export function IntegrationSettings() {
                       className={`text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider border ${
                         isPolicyBlocked
                           ? "bg-sky-50 dark:bg-obsidian-900 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800"
+                          : p.key === "hubspot" && hubspotStatus?.connected
+                          ? "bg-emerald-50 dark:bg-obsidian-900 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                           : p.enabled && masterEnabled
                           ? "bg-emerald-50 dark:bg-obsidian-900 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
                           : "bg-amber-50 dark:bg-obsidian-900 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
                       }`}
                     >
-                      {isPolicyBlocked ? "Policy Locked" : p.enabled && masterEnabled ? "Active" : "Disabled"}
+                      {isPolicyBlocked
+                        ? "Policy Locked"
+                        : p.key === "hubspot"
+                        ? hubspotStatus?.connected
+                          ? "Connected"
+                          : "Disconnected"
+                        : p.enabled && masterEnabled
+                        ? "Active"
+                        : "Disabled"}
                     </span>
                   </div>
 
@@ -580,14 +660,37 @@ export function IntegrationSettings() {
                   <h4 className="font-bold text-sm text-obsidian dark:text-cosmic-100 mb-1.5 tracking-tight">{p.name}</h4>
 
                   {/* Free Quota Allowance Badge (Deep obsidian in dark mode) */}
-                  <div className="p-3 bg-cosmic-100/80 dark:bg-obsidian-800/80 border border-cosmic-200/90 dark:border-obsidian-700 rounded-2xl text-xs space-y-1 mb-3.5">
-                    <div className="text-[9px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
-                      Free Allowance:
+                  {p.key === "hubspot" && hubspotStatus?.connected ? (
+                    <div className="p-3 bg-emerald-50/70 dark:bg-obsidian-800/80 border border-emerald-200/90 dark:border-obsidian-700 rounded-2xl text-xs space-y-1.5 mb-3.5">
+                      <div className="text-[9px] font-mono uppercase tracking-wider text-emerald-800 dark:text-emerald-300 font-bold flex items-center justify-between">
+                        <span>Connected Portal:</span>
+                        <span className="font-mono">{hubspotStatus.portal_id || "Active"}</span>
+                      </div>
+                      {hubspotStatus.hub_domain && (
+                        <div className="text-[11px] text-obsidian/80 dark:text-cosmic-200 truncate">
+                          {hubspotStatus.hub_domain}
+                        </div>
+                      )}
+                      <div className="text-[10px] text-obsidian/60 dark:text-cosmic-400">
+                        Last Sync: {hubspotStatus.last_sync_at ? new Date(hubspotStatus.last_sync_at).toLocaleString() : "None yet"}
+                      </div>
                     </div>
-                    <div className="text-obsidian/90 dark:text-cosmic-200 font-medium leading-snug">{p.free_quota_description}</div>
-                  </div>
+                  ) : (
+                    <div className="p-3 bg-cosmic-100/80 dark:bg-obsidian-800/80 border border-cosmic-200/90 dark:border-obsidian-700 rounded-2xl text-xs space-y-1 mb-3.5">
+                      <div className="text-[9px] font-mono uppercase tracking-wider text-obsidian/50 dark:text-cosmic-400 font-bold">
+                        Free Allowance:
+                      </div>
+                      <div className="text-obsidian/90 dark:text-cosmic-200 font-medium leading-snug">{p.free_quota_description}</div>
+                    </div>
+                  )}
 
-                  <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 mb-4 leading-normal">{p.status_label}</p>
+                  <p className="text-[11px] text-obsidian/60 dark:text-cosmic-400 mb-4 leading-normal">
+                    {p.key === "hubspot"
+                      ? hubspotStatus?.connected
+                        ? "OAuth 2.0 active. Approved leads sync directly to contacts & companies."
+                        : "Connect your HubSpot account via OAuth 2.0 to push approved leads."
+                      : p.status_label}
+                  </p>
 
                   {/* Interactive Weight Tuning Control (Item 4) */}
                   <div className="p-2.5 rounded-xl bg-cosmic-50/70 dark:bg-obsidian-800/60 border border-cosmic-200 dark:border-obsidian-700 flex items-center justify-between mb-4">
@@ -619,42 +722,77 @@ export function IntegrationSettings() {
                 </div>
 
                 {/* Action Button & Toggle */}
-                <div className="pt-3 border-t border-cosmic-200 dark:border-obsidian-800 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-obsidian/80 dark:text-cosmic-300">
-                    {isNative ? "Built-in Engine" : isPolicyBlocked ? "Paid API Blocked" : "Enable Integration"}
-                  </span>
+                <div className="pt-3 border-t border-cosmic-200 dark:border-obsidian-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-obsidian/80 dark:text-cosmic-300">
+                      {isNative ? "Built-in Engine" : isPolicyBlocked ? "Paid API Blocked" : "Enable Integration"}
+                    </span>
 
-                  {isNative ? (
-                    <span className="text-xs font-bold text-obsidian dark:text-cosmic-100 flex items-center gap-1.5 font-mono">
-                      <span className="w-2 h-2 rounded-full bg-lilac-500"></span> Always Active
-                    </span>
-                  ) : isPolicyBlocked ? (
-                    <span className="text-xs font-mono font-bold text-obsidian/50 dark:text-cosmic-400 flex items-center gap-1">
-                      🔒 Protected
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={isSaving || !masterEnabled}
-                      onClick={() => handleToggleProvider(p.key, p.enabled)}
-                      className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        !masterEnabled
-                          ? "bg-cosmic-300 dark:bg-obsidian-800 cursor-not-allowed opacity-50"
-                          : p.enabled
-                          ? "bg-obsidian dark:bg-lilac-600"
-                          : "bg-cosmic-300 dark:bg-obsidian-800"
-                      }`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
-                          p.enabled && masterEnabled
-                            ? "translate-x-5 bg-lilac-300 dark:bg-obsidian-950"
-                            : "translate-x-0 bg-cosmic-50 dark:bg-cosmic-300"
+                    {isNative ? (
+                      <span className="text-xs font-bold text-obsidian dark:text-cosmic-100 flex items-center gap-1.5 font-mono">
+                        <span className="w-2 h-2 rounded-full bg-lilac-500"></span> Always Active
+                      </span>
+                    ) : isPolicyBlocked ? (
+                      <span className="text-xs font-mono font-bold text-obsidian/50 dark:text-cosmic-400 flex items-center gap-1">
+                        🔒 Protected
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={isSaving || !masterEnabled}
+                        onClick={() => handleToggleProvider(p.key, p.enabled)}
+                        className={`relative inline-flex h-5 w-10 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          !masterEnabled
+                            ? "bg-cosmic-300 dark:bg-obsidian-800 cursor-not-allowed opacity-50"
+                            : p.enabled
+                            ? "bg-obsidian dark:bg-lilac-600"
+                            : "bg-cosmic-300 dark:bg-obsidian-800"
                         }`}
-                      />
-                    </button>
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-sm ring-0 transition duration-200 ease-in-out ${
+                            p.enabled && masterEnabled
+                              ? "translate-x-5 bg-lilac-300 dark:bg-obsidian-950"
+                              : "translate-x-0 bg-cosmic-50 dark:bg-cosmic-300"
+                          }`}
+                        />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* HubSpot OAuth Lifecycle Action Button */}
+                  {p.key === "hubspot" && (
+                    <div className="pt-1">
+                      {hubspotStatus?.connected ? (
+                        <button
+                          type="button"
+                          disabled={isHubSpotActionLoading}
+                          onClick={handleDisconnectHubSpot}
+                          className="w-full py-1.5 px-3 rounded-xl text-xs font-semibold border border-rose-300 dark:border-rose-900/80 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition flex items-center justify-center gap-1.5"
+                        >
+                          {isHubSpotActionLoading ? "Disconnecting..." : "Disconnect HubSpot Account"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={isHubSpotActionLoading || !masterEnabled}
+                          onClick={handleConnectHubSpot}
+                          className="btn-obsidian w-full py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm"
+                        >
+                          {isHubSpotActionLoading ? (
+                            <span>Connecting to HubSpot...</span>
+                          ) : (
+                            <>
+                              <span className="text-sm">⚡</span>
+                              <span>Connect HubSpot Account</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
+
               </div>
             );
           })}

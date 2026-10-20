@@ -106,6 +106,26 @@ class AIProposeResponse(BaseModel):
     suggested_name: str
 
 
+def sanitize_filters(raw_filters: Any) -> Dict[str, Any]:
+    """Guarantees complete AudienceFilters dict with all expected fields populated."""
+    defaults = AudienceFilters().model_dump()
+    if not raw_filters:
+        return defaults
+    if isinstance(raw_filters, str):
+        import json
+        try:
+            raw_filters = json.loads(raw_filters)
+        except Exception:
+            return defaults
+    if isinstance(raw_filters, dict):
+        try:
+            return AudienceFilters(**raw_filters).model_dump()
+        except Exception:
+            defaults.update(raw_filters)
+            return defaults
+    return defaults
+
+
 @router.get("/filter-catalog", summary="Get Canonical Filter Catalog (Section 8.1)")
 def get_filter_catalog() -> Dict[str, Any]:
     """Single source of truth for UI, AI propose, and payload mapping"""
@@ -145,7 +165,7 @@ async def list_audiences(
             org_id=a.org_id,
             name=a.name,
             description=a.description,
-            filters=a.filters,
+            filters=sanitize_filters(a.filters),
             is_default=a.is_default,
             created_at=a.created_at.isoformat() if a.created_at else None,
             updated_at=a.updated_at.isoformat() if a.updated_at else None,
@@ -170,7 +190,7 @@ async def get_audience(
         org_id=audience.org_id,
         name=audience.name,
         description=audience.description,
-        filters=audience.filters,
+        filters=sanitize_filters(audience.filters),
         is_default=audience.is_default,
         created_at=audience.created_at.isoformat() if audience.created_at else None,
         updated_at=audience.updated_at.isoformat() if audience.updated_at else None,
@@ -217,7 +237,7 @@ async def create_audience(
         org_id=audience.org_id,
         name=audience.name,
         description=audience.description,
-        filters=audience.filters,
+        filters=sanitize_filters(audience.filters),
         is_default=audience.is_default,
         created_at=audience.created_at.isoformat() if audience.created_at else None,
         updated_at=audience.updated_at.isoformat() if audience.updated_at else None,
@@ -274,7 +294,7 @@ async def update_audience(
         org_id=audience.org_id,
         name=audience.name,
         description=audience.description,
-        filters=audience.filters,
+        filters=sanitize_filters(audience.filters),
         is_default=audience.is_default,
         created_at=audience.created_at.isoformat() if audience.created_at else None,
         updated_at=audience.updated_at.isoformat() if audience.updated_at else None,

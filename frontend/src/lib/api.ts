@@ -1025,6 +1025,75 @@ export async function fetchLeads(params?: {
   return res.json();
 }
 
+export interface HubSpotStatusResponse {
+  connected: boolean;
+  status: "connected" | "disconnected" | "error";
+  mode: "mock" | "live" | "disabled";
+  portal_id?: string | null;
+  hub_domain?: string | null;
+  last_sync_at?: string | null;
+  expires_at?: number | null;
+}
+
+export interface HubSpotAuthorizeResponse {
+  authorization_url: string;
+  state: string;
+}
+
+export interface HubSpotDisconnectResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface HubSpotSyncResponse {
+  lead_id: string;
+  pipeline_state: string;
+  remote_company_id?: string | null;
+  remote_contact_id?: string | null;
+  sync_status: string;
+  message: string;
+}
+
+export async function fetchHubSpotStatus(): Promise<HubSpotStatusResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/settings/integrations/hubspot/status`, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error("Failed to fetch HubSpot connection status");
+  }
+  return res.json();
+}
+
+export async function getHubSpotAuthorizeUrl(): Promise<HubSpotAuthorizeResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/settings/integrations/hubspot/authorize`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to generate HubSpot authorization URL" }));
+    throw new Error(err.detail || "Failed to generate HubSpot authorization URL");
+  }
+  return res.json();
+}
+
+export async function disconnectHubSpot(): Promise<HubSpotDisconnectResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/settings/integrations/hubspot/disconnect`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to disconnect HubSpot" }));
+    throw new Error(err.detail || "Failed to disconnect HubSpot");
+  }
+  return res.json();
+}
+
+export async function syncLeadToHubSpot(leadId: string): Promise<HubSpotSyncResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/settings/integrations/hubspot/sync/${leadId}`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to sync lead to HubSpot CRM" }));
+    throw new Error(err.detail || "Failed to sync lead to HubSpot CRM");
+  }
+  return res.json();
+}
+
+
 
 
 

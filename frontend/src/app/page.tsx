@@ -9,7 +9,7 @@ import { WelcomeLanding } from "@/components/WelcomeLanding";
 import { OrgAccessRequestsCard } from "@/components/OrgAccessRequestsCard";
 import { useAuth } from "@/lib/auth-context";
 import { useNav } from "@/lib/nav-context";
-import { sendLeadOutreach, fetchLeads, scoreLeadApi } from "@/lib/api";
+import { sendLeadOutreach, fetchLeads, scoreLeadApi, syncLeadToHubSpot } from "@/lib/api";
 
 interface SignalExplanation {
   signal_key: string;
@@ -110,109 +110,7 @@ const DEMO_SIGNALS_EXPLANATION: SignalExplanation[] = [
   { signal_key: "low_review_rating", name: "Third-Party Review Ratings", category: "marketing", available: true, normalized_score: 80.0, weight: 0.8, weighted_contribution: 64.0, summary: "Independent customer review ratings verified." },
 ];
 
-const INITIAL_DEMO_LEADS: LeadItem[] = [
-  {
-    id: "lead-01",
-    company_name: "Apex Global Logistics",
-    domain: "apexlogisticstech.com",
-    industry: "Logistics & Supply Chain",
-    location: "Chicago, IL",
-    employee_count: "100-250",
-    pipeline_state: "review",
-    score_band: "review",
-    latest_score: 68.0,
-    contact: {
-      name: "Marcus Vance",
-      title: "VP of Digital Operations",
-      email: "m.vance@apexlogisticstech.com",
-      phone: "+1 (312) 555-0198",
-      linkedin_url: "https://linkedin.com/in/marcus-vance-logistics",
-      revealed: false,
-    },
-    latest_enrichment: {
-      status: "success",
-      provider: "safe_crawler",
-      evidence: {
-        title: "Apex Global Logistics — Global Freight & Fleet",
-        meta_description: "End-to-end multi-modal transportation logistics.",
-        load_time_ms: 1820.0,
-        ssl_valid: true,
-        detected_tech: ["WordPress 6.2", "jQuery 3.6"],
-        ctas_found: ["Request Quote", "Contact Team"],
-        pagespeed_score: 62,
-      },
-    },
-  },
-  {
-    id: "lead-02",
-    company_name: "Nexura Cloud Systems",
-    domain: "nexuracloud.io",
-    industry: "Cloud Infrastructure",
-    location: "Austin, TX",
-    employee_count: "50-100",
-    pipeline_state: "qualified",
-    score_band: "qualified",
-    latest_score: 88.5,
-    contact: {
-      name: "Sarah Jenkins",
-      title: "Chief Technology Officer",
-      email: "sarah.jenkins@nexuracloud.io",
-      phone: "+1 (512) 555-0144",
-      linkedin_url: "https://linkedin.com/in/sarah-jenkins-cloud",
-      revealed: true,
-    },
-    draft: {
-      subject: "Quick thought on Nexura's multi-region failover & web performance",
-      body: "Hi Sarah,\n\nNoticed Nexura's recent expansion into multi-region Kubernetes clusters—congrats on the growth.\n\nWhile auditing your tech stack, I saw you're running Next.js with strong Core Web Vitals (92/100), but your CTA conversion paths could capture significantly more enterprise demo volume. We recently helped a comparable cloud platform double their demo conversions.\n\nOpen to a brief 10-minute exchange this Thursday?\n\nBest,\nLeadFlow Strategy Team",
-      tone: "consultative",
-      model: "openrouter/anthropic/claude-3.5-sonnet",
-      cost_usd: 0.018,
-      approved: false,
-    },
-    latest_enrichment: {
-      status: "success",
-      provider: "safe_crawler",
-      evidence: {
-        title: "Nexura Cloud — Multi-Region Kubernetes Orchestration",
-        meta_description: "Automate multi-cloud infrastructure with enterprise security and automated failover.",
-        load_time_ms: 820.5,
-        ssl_valid: true,
-        detected_tech: ["Next.js", "Vercel", "Google Analytics 4"],
-        ctas_found: ["Book Demo", "Start 14-Day Free Trial", "Contact Sales"],
-        pagespeed_score: 92,
-      },
-    },
-    latest_score_record: {
-      id: "score-02",
-      final_score: 88.5,
-      qualification_band: "qualified",
-      website_group_score: 87.2,
-      marketing_group_score: 79.8,
-      ideal_client_bonus_applied: true,
-      signal_breakdown: {
-        explanations: DEMO_SIGNALS_EXPLANATION,
-        website_group: { score: 87.2, coverage_pct: 100.0 },
-        marketing_group: { score: 79.8, coverage_pct: 100.0 },
-        ideal_client_bonus_points: 10.0,
-      },
-    },
-  },
-  {
-    id: "lead-03",
-    company_name: "Legacy Hardware Wholesale",
-    domain: "legacywholesale1984.com",
-    industry: "Industrial Equipment",
-    location: "Cleveland, OH",
-    employee_count: "25-50",
-    pipeline_state: "sourced",
-    contact: {
-      name: "Arthur Pendelton",
-      title: "Managing Director",
-      email: "arthur@legacywholesale1984.com",
-      revealed: false,
-    },
-  },
-];
+const INITIAL_DEMO_LEADS: LeadItem[] = [];
 
 interface ActiveRunInfo {
   run_id: string;
@@ -239,7 +137,7 @@ export default function DashboardPage() {
     async function loadBackendLeads() {
       try {
         const resp = await fetchLeads();
-        if (resp && resp.items && resp.items.length > 0) {
+        if (resp && resp.items) {
           setLeads((prev) => {
             const dbMap = new Map<string, LeadItem>();
             // Place all newly fetched database items at the TOP of the list (Requirement 7)
@@ -265,13 +163,6 @@ export default function DashboardPage() {
                 latest_score_record: existing?.latest_score_record,
                 draft: existing?.draft,
               });
-            });
-
-            // Append any demo/existing leads that are not in the response
-            prev.forEach((item) => {
-              if (!dbMap.has(item.domain.toLowerCase())) {
-                dbMap.set(item.domain.toLowerCase(), item);
-              }
             });
 
             return Array.from(dbMap.values());
@@ -302,11 +193,30 @@ export default function DashboardPage() {
   const [activeRun, setActiveRun] = useState<ActiveRunInfo | null>(null);
   const [isBatchRunning, setIsBatchRunning] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isSyncingLeadId, setIsSyncingLeadId] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("hubspot_connected") === "true") {
+        const portal = params.get("portal_id");
+        showToast(
+          portal
+            ? `HubSpot CRM successfully connected (Portal ID: ${portal})!`
+            : "HubSpot CRM successfully connected!"
+        );
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (params.get("hubspot_error")) {
+        showToast(`HubSpot Connection Error: ${params.get("hubspot_error")}`);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
 
   // Funnel Stage Counts (Handbook Section 5.3)
   const funnelCounts = {
@@ -629,18 +539,27 @@ export default function DashboardPage() {
   };
 
   // Handbook 6.1: Sync to HubSpot CRM
-  const handleSyncToHubSpot = (leadId: string) => {
-    setLeads((prev) =>
-      prev.map((l) => {
-        if (l.id !== leadId) return l;
-        return {
-          ...l,
-          pipeline_state: "synced",
-          hubspot_synced: true,
-        };
-      })
-    );
-    showToast("Contact and draft synced to HubSpot CRM");
+  const handleSyncToHubSpot = async (leadId: string) => {
+    try {
+      setIsSyncingLeadId(leadId);
+      const res = await syncLeadToHubSpot(leadId);
+      setLeads((prev) =>
+        prev.map((l) => {
+          if (l.id !== leadId) return l;
+          return {
+            ...l,
+            pipeline_state: "synced",
+            hubspot_synced: true,
+          };
+        })
+      );
+      showToast(res.message || "Contact and company synced to HubSpot CRM");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to sync to HubSpot CRM";
+      showToast(`HubSpot Sync Failed: ${msg}`);
+    } finally {
+      setIsSyncingLeadId(null);
+    }
   };
 
   const handleStartBatchRun = () => {
@@ -1192,13 +1111,21 @@ export default function DashboardPage() {
                               </button>
                             )}
 
-                            {/* HubSpot CRM Sync (Only after draft approved) */}
-                            {isDrafted && !isSynced && (
+                            {/* HubSpot CRM Sync (Approved or drafted leads) */}
+                            {(isApproved || isDrafted) && !isSynced && (
                               <button
+                                disabled={isSyncingLeadId === lead.id}
                                 onClick={() => handleSyncToHubSpot(lead.id)}
-                                className="px-3 py-1 text-xs font-bold rounded-xl bg-lilac-200 hover:bg-lilac-300 dark:bg-obsidian-800 dark:hover:bg-obsidian-700 text-lilac-800 dark:text-cosmic-100 border border-lilac-300 dark:border-obsidian-700 transition"
+                                className="px-3 py-1 text-xs font-bold rounded-xl bg-lilac-200 hover:bg-lilac-300 dark:bg-obsidian-800 dark:hover:bg-obsidian-700 text-lilac-800 dark:text-cosmic-100 border border-lilac-300 dark:border-obsidian-700 transition flex items-center gap-1.5 disabled:opacity-60"
                               >
-                                Sync CRM
+                                {isSyncingLeadId === lead.id ? (
+                                  <>
+                                    <span className="animate-spin h-3 w-3 border-2 border-lilac-800 dark:border-cosmic-100 border-t-transparent rounded-full" />
+                                    <span>Syncing...</span>
+                                  </>
+                                ) : (
+                                  <span>Sync CRM</span>
+                                )}
                               </button>
                             )}
 

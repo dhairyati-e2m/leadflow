@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     GOOGLE_PAGESPEED_API_KEY: Optional[str] = None
     PROVIDER_HUBSPOT_MODE: Literal["mock", "live", "disabled"] = "disabled"
     HUBSPOT_ACCESS_TOKEN: Optional[str] = None
+    HUBSPOT_CLIENT_ID: Optional[str] = None
+    HUBSPOT_CLIENT_SECRET: Optional[str] = None
+    HUBSPOT_REDIRECT_URI: str = "http://localhost:8000/v1/settings/integrations/hubspot/callback"
+    CRM_ENCRYPTION_KEY: Optional[str] = None
 
     # Safe Crawler Boundaries
     CRAWLER_MAX_CONCURRENT: int = 5

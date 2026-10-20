@@ -110,8 +110,8 @@ DEFAULT_PROVIDERS_CONFIG = [
         "enabled": False,
         "mode": settings.PROVIDER_HUBSPOT_MODE,
         "free_quota_description": "Free Developer Test Account (100 req / 10s)",
-        "is_configured": bool(settings.HUBSPOT_ACCESS_TOKEN),
-        "status_label": "Configured" if settings.HUBSPOT_ACCESS_TOKEN else "Awaiting developer authorization",
+        "is_configured": bool((settings.HUBSPOT_CLIENT_ID and settings.HUBSPOT_CLIENT_SECRET) or settings.HUBSPOT_ACCESS_TOKEN),
+        "status_label": "Configured & Ready" if ((settings.HUBSPOT_CLIENT_ID and settings.HUBSPOT_CLIENT_SECRET) or settings.HUBSPOT_ACCESS_TOKEN) else "Awaiting developer app credentials",
     },
 ]
 
