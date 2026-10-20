@@ -15,6 +15,7 @@ import {
   DiscoveredCompany,
 } from "@/lib/api";
 import { useNav } from "@/lib/nav-context";
+import { useAuth } from "@/lib/auth-context";
 
 const DEFAULT_FILTERS: AudienceFilters = {
   verticals: ["B2B SaaS & Enterprise Software"],
@@ -246,9 +247,11 @@ export function IcpEditor() {
   const [movedCompanyDomains, setMovedCompanyDomains] = useState<Set<string>>(new Set());
   const [movingDomain, setMovingDomain] = useState<string | null>(null);
 
-  const DRAFT_KEY = "leadflow_draft_icp";
+  const { activeMembership } = useAuth();
+  const orgId = activeMembership?.org_id || "default";
+  const DRAFT_KEY = `leadflow_draft_icp_${orgId}`;
 
-  // Auto-save half-filled ICP details to localStorage (User Requirement 5)
+  // Auto-save half-filled ICP details to localStorage scoped per organization
   useEffect(() => {
     if (typeof window === "undefined") return;
     const hasData =
@@ -274,7 +277,7 @@ export function IcpEditor() {
         // ignore quota / private window errors
       }
     }
-  }, [name, description, filters, briefText, isDefault, showManualForm, selectedAudienceId]);
+  }, [name, description, filters, briefText, isDefault, showManualForm, selectedAudienceId, DRAFT_KEY]);
 
   useEffect(() => {
     async function loadData() {
@@ -290,46 +293,42 @@ export function IcpEditor() {
             filters: normalizeAudienceFilters(a.filters),
           }));
           setAudiences(sanitized);
-        }
 
-        // Restore half-filled draft from localStorage if available (User Requirement 5)
-        let restoredFromDraft = false;
-        if (typeof window !== "undefined") {
-          try {
-            const rawDraft = localStorage.getItem(DRAFT_KEY);
-            if (rawDraft) {
-              const draft = JSON.parse(rawDraft);
-              if (draft && typeof draft === "object") {
-                if (draft.name !== undefined) setName(draft.name);
-                if (draft.description !== undefined) setDescription(draft.description);
-                if (draft.filters) setFilters(normalizeAudienceFilters(draft.filters));
-                if (draft.briefText !== undefined) setBriefText(draft.briefText);
-                if (draft.isDefault !== undefined) setIsDefault(draft.isDefault);
-                if (draft.showManualForm !== undefined) setShowManualForm(draft.showManualForm);
-                if (draft.selectedAudienceId) setSelectedAudienceId(draft.selectedAudienceId);
-                restoredFromDraft = true;
-              }
-            }
-          } catch (e) {
-            console.warn("Failed to restore draft:", e);
-          }
-        }
-
-        // Only default to first audience if no draft was restored
-        if (!restoredFromDraft && audData && audData.length > 0) {
-          const active = audData.find((a) => a.is_default) || audData[0];
+          // ALWAYS prioritize and load the database-persisted audience for this organization
+          const active = audData.find((a) => a.id === selectedAudienceId) || audData.find((a) => a.is_default) || audData[0];
           setSelectedAudienceId(active.id);
           setName(active.name);
           setDescription(active.description || "");
           setFilters(normalizeAudienceFilters(active.filters));
           setIsDefault(active.is_default);
+        } else {
+          // If no saved audiences in DB yet, restore half-filled draft from localStorage if available
+          if (typeof window !== "undefined") {
+            try {
+              const rawDraft = localStorage.getItem(DRAFT_KEY);
+              if (rawDraft) {
+                const draft = JSON.parse(rawDraft);
+                if (draft && typeof draft === "object") {
+                  if (draft.name !== undefined) setName(draft.name);
+                  if (draft.description !== undefined) setDescription(draft.description);
+                  if (draft.filters) setFilters(normalizeAudienceFilters(draft.filters));
+                  if (draft.briefText !== undefined) setBriefText(draft.briefText);
+                  if (draft.isDefault !== undefined) setIsDefault(draft.isDefault);
+                  if (draft.showManualForm !== undefined) setShowManualForm(draft.showManualForm);
+                  if (draft.selectedAudienceId) setSelectedAudienceId(draft.selectedAudienceId);
+                }
+              }
+            } catch (e) {
+              console.warn("Failed to restore draft:", e);
+            }
+          }
         }
       } catch (err: unknown) {
         console.error("Failed to initialize ICP editor:", err);
       }
     }
     loadData();
-  }, []);
+  }, [activeMembership?.org_id, DRAFT_KEY]);
 
   const showNotification = (msg: string) => {
     setNotification(msg);

@@ -1,10 +1,14 @@
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.app.api.v1.api import api_router
 from backend.app.core.config import settings
 from backend.app.workers.arq_pool import close_arq_redis_pool
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -23,8 +27,14 @@ def create_application() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS configuration allowing frontend origin
-    origins = [settings.FRONTEND_URL, "http://127.0.0.1:3000"]
+    # CORS configuration allowing all frontend local variations
+    origins = list(set([
+        settings.FRONTEND_URL,
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ]))
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
@@ -32,6 +42,14 @@ def create_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        logger.exception(f"Unhandled exception on {request.method} {request.url.path}: {exc}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal server error: {str(exc)}"},
+        )
 
     # Mount versioned API router
     app.include_router(api_router, prefix="/v1")

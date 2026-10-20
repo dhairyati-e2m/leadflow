@@ -1,10 +1,14 @@
 import logging
 import time
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 import httpx
 
 from backend.app.core.config import settings
 from backend.app.providers.base import BaseProvider, ProviderResult
+from backend.app.providers.hubspot_mapping import (
+    fetch_portal_industry_options,
+    validate_sync_payload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -226,6 +230,26 @@ class HubSpotProvider(BaseProvider):
         updated_creds = {**credentials, **refreshed}
         return refreshed["access_token"], updated_creds
 
+    def _format_hubspot_error(self, resp: httpx.Response) -> str:
+        """Parses HubSpot error JSON into a clean, actionable message with redacted tokens."""
+        try:
+            data = resp.json()
+            main_msg = data.get("message") or "HubSpot API error"
+            corr_id = data.get("correlationId")
+            sub_errors = data.get("errors", [])
+            sub_msgs = []
+            for e in sub_errors:
+                if isinstance(e, dict):
+                    prop = e.get("in", "")
+                    msg = e.get("message", "")
+                    sub_msgs.append(f"{prop}: {msg}" if prop else msg)
+            combined = f"{main_msg}. Details: {'; '.join(sub_msgs)}" if sub_msgs else main_msg
+            if corr_id:
+                combined += f" (Correlation ID: {corr_id})"
+            return combined
+        except Exception:
+            return resp.text[:300]
+
     async def search_company_by_domain(self, domain: str, access_token: str) -> Optional[str]:
         """
         Searches HubSpot for an existing company matching the given domain.
@@ -265,33 +289,35 @@ class HubSpotProvider(BaseProvider):
         self,
         company_data: Dict[str, Any],
         access_token: str,
+        allowed_industries: Optional[Set[str]] = None,
     ) -> str:
         """
-        Creates or updates a company in HubSpot CRM.
-        Returns remote company ID.
+        Creates or updates a company in HubSpot CRM with strict pre-validation.
+        Guarantees that:
+        - industry is safely mapped or omitted
+        - employee_count is sent as integer only if exact, or omitted with warning if range
+        - duplicate companies are merged by domain
         """
-        domain = company_data.get("domain", "").strip()
-        name = company_data.get("name") or company_data.get("company_name") or domain
+        if allowed_industries is None:
+            allowed_industries = await fetch_portal_industry_options(access_token)
+
+        validation = validate_sync_payload(
+            company_data=company_data,
+            contact_data=None,
+            allowed_industries=allowed_industries,
+        )
+        if validation["has_blocking_errors"]:
+            raise ValueError(f"Company validation failed: {'; '.join(validation['errors'])}")
+
+        props = validation["company_payload"]
+        domain = props.get("domain") or company_data.get("domain", "").strip()
 
         existing_id = None
         if domain:
             existing_id = await self.search_company_by_domain(domain, access_token)
 
-        props: Dict[str, Any] = {
-            "name": name,
-        }
-        if domain:
-            props["domain"] = domain
-        if company_data.get("industry"):
-            props["industry"] = company_data["industry"]
-        if company_data.get("city") or company_data.get("location"):
-            props["city"] = company_data.get("city") or company_data.get("location")
-        if company_data.get("numberofemployees") or company_data.get("employee_count"):
-            props["numberofemployees"] = str(company_data.get("numberofemployees") or company_data.get("employee_count"))
-
         async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
             if existing_id:
-                # Update existing company
                 resp = await client.patch(
                     f"{HUBSPOT_CRM_BASE_URL}/companies/{existing_id}",
                     json={"properties": props},
@@ -300,7 +326,6 @@ class HubSpotProvider(BaseProvider):
                 if resp.status_code in (200, 201):
                     return existing_id
             else:
-                # Create new company
                 resp = await client.post(
                     f"{HUBSPOT_CRM_BASE_URL}/companies",
                     json={"properties": props},
@@ -309,7 +334,8 @@ class HubSpotProvider(BaseProvider):
                 if resp.status_code in (200, 201):
                     return str(resp.json().get("id"))
 
-        raise ValueError(f"Failed to upsert company in HubSpot ({resp.status_code}): {resp.text}")
+        err_msg = self._format_hubspot_error(resp)
+        raise ValueError(f"Failed to upsert company in HubSpot ({resp.status_code}): {err_msg}")
 
     async def search_contact_by_email(self, email: str, access_token: str) -> Optional[str]:
         """
@@ -361,7 +387,7 @@ class HubSpotProvider(BaseProvider):
         existing_id = await self.search_contact_by_email(email, access_token)
 
         props: Dict[str, Any] = {
-            "email": email,
+            "email": email.lower(),
         }
         if contact_data.get("firstname"):
             props["firstname"] = contact_data["firstname"]
@@ -397,7 +423,8 @@ class HubSpotProvider(BaseProvider):
                 if resp.status_code in (200, 201):
                     return str(resp.json().get("id"))
 
-        raise ValueError(f"Failed to upsert contact in HubSpot ({resp.status_code}): {resp.text}")
+        err_msg = self._format_hubspot_error(resp)
+        raise ValueError(f"Failed to upsert contact in HubSpot ({resp.status_code}): {err_msg}")
 
     async def associate_contact_to_company(
         self,
@@ -426,26 +453,39 @@ class HubSpotProvider(BaseProvider):
         """
         High-level sync:
         1. Ensures valid access token (refreshes if needed).
-        2. Upserts company in HubSpot.
-        3. Upserts contact in HubSpot if provided.
-        4. Associates contact to company if both exist.
-        Returns dictionary with remote IDs and status.
+        2. Pre-validates company and contact data.
+        3. Upserts company in HubSpot (if fails, halts immediately).
+        4. Upserts contact in HubSpot if provided.
+        5. Associates contact to company if both exist.
+        Returns comprehensive status dictionary with remote IDs and validation breakdown.
         """
         effective_mode = mode or self.mode
         if effective_mode == "disabled":
             raise ValueError("HubSpot CRM integration is disabled.")
 
+        # Pre-validate payload
+        validation = validate_sync_payload(
+            company_data=company_data,
+            contact_data=contact_data,
+        )
+        if validation["has_blocking_errors"]:
+            raise ValueError(f"Pre-sync validation failed: {'; '.join(validation['errors'])}")
+
         if effective_mode == "mock":
             # Return deterministic mock payload without making external calls
             mock_ts = int(time.time())
             remote_comp_id = f"mock-comp-{mock_ts}"
-            remote_contact_id = f"mock-contact-{mock_ts}" if contact_data else None
+            remote_contact_id = f"mock-contact-{mock_ts}" if (contact_data and contact_data.get("email")) else None
             return {
                 "status": "synced",
                 "mode": "mock",
+                "company_status": "synced",
+                "contact_status": "synced" if remote_contact_id else "omitted",
                 "remote_company_id": remote_comp_id,
                 "remote_contact_id": remote_contact_id,
                 "associated": bool(remote_contact_id),
+                "warnings": validation["warnings"],
+                "field_validations": validation["field_validations"],
                 "refreshed_credentials": None,
                 "response_payload": {
                     "company_id": remote_comp_id,
@@ -453,39 +493,78 @@ class HubSpotProvider(BaseProvider):
                     "provider": "hubspot",
                     "mode": "mock",
                     "timestamp": mock_ts,
+                    "warnings": validation["warnings"],
                 },
             }
 
         # Live mode execution
         access_token, updated_creds = await self.ensure_valid_access_token(credentials)
+        allowed_industries = await fetch_portal_industry_options(access_token)
 
-        remote_company_id = await self.upsert_company(company_data, access_token)
+        # 1. Company Upsert (Critical: must succeed before attempting contact)
+        company_status = "pending"
+        remote_company_id = None
+        try:
+            remote_company_id = await self.upsert_company(
+                company_data=company_data,
+                access_token=access_token,
+                allowed_industries=allowed_industries,
+            )
+            company_status = "synced"
+        except Exception as e:
+            company_status = "failed"
+            logger.error(f"HubSpot company upsert failed: {e}")
+            raise ValueError(f"Company sync failed: {str(e)}")
 
+        # 2. Contact Upsert (Optional, dependent on company success)
         remote_contact_id = None
+        contact_status = "none"
         associated = False
-        if contact_data and contact_data.get("email"):
-            remote_contact_id = await self.upsert_contact(contact_data, access_token)
-            if remote_company_id and remote_contact_id:
-                try:
-                    associated = await self.associate_contact_to_company(
-                        remote_contact_id, remote_company_id, access_token
-                    )
-                except Exception as e:
-                    logger.warning(f"HubSpot contact association failed: {e}")
+        contact_error = None
+
+        if contact_data and contact_data.get("email") and "@" in str(contact_data["email"]):
+            contact_status = "pending"
+            try:
+                remote_contact_id = await self.upsert_contact(contact_data, access_token)
+                contact_status = "synced"
+                if remote_company_id and remote_contact_id:
+                    try:
+                        associated = await self.associate_contact_to_company(
+                            remote_contact_id, remote_company_id, access_token
+                        )
+                    except Exception as e:
+                        logger.warning(f"HubSpot contact association failed: {e}")
+            except Exception as e:
+                contact_status = "failed"
+                contact_error = str(e)
+                logger.warning(f"HubSpot contact sync failed after company succeeded: {e}")
+
+        # Final overall status
+        if contact_status == "failed":
+            final_status = "partially_synced"
+        else:
+            final_status = "synced"
 
         return {
-            "status": "synced",
+            "status": final_status,
             "mode": "live",
+            "company_status": company_status,
+            "contact_status": contact_status,
             "remote_company_id": remote_company_id,
             "remote_contact_id": remote_contact_id,
             "associated": associated,
+            "warnings": validation["warnings"] + ([f"Contact sync warning: {contact_error}"] if contact_error else []),
+            "field_validations": validation["field_validations"],
             "refreshed_credentials": updated_creds,
             "response_payload": {
                 "company_id": remote_company_id,
                 "contact_id": remote_contact_id,
+                "company_status": company_status,
+                "contact_status": contact_status,
                 "associated": associated,
                 "provider": "hubspot",
                 "mode": "live",
+                "warnings": validation["warnings"],
             },
         }
 

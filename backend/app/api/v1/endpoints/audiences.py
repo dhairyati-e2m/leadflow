@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
+from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.database import get_db_session
@@ -262,6 +263,7 @@ async def update_audience(
         audience.description = data.description
     if data.filters is not None:
         audience.filters = data.filters.model_dump()
+        flag_modified(audience, "filters")
     if data.is_default is True:
         # Demote existing defaults
         prev_defaults = await session.execute(

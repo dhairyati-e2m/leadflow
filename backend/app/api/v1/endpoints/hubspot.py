@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import urllib.parse
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
-from sqlalchemy import select
+from pydantic import BaseModel, Field
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.config import settings
@@ -17,8 +17,12 @@ from backend.app.core.encryption import (
     generate_oauth_state,
     validate_oauth_state,
 )
-from backend.app.models.entities import AuditLog, Contact, CRMConnection, CRMSync, Lead
+from backend.app.models.entities import AuditLog, Contact, CRMConnection, CRMSync, Lead, User
 from backend.app.providers.hubspot import HubSpotProvider
+from backend.app.providers.hubspot_mapping import (
+    fetch_portal_industry_options,
+    validate_sync_payload,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,13 +49,67 @@ class HubSpotDisconnectResponse(BaseModel):
     message: str
 
 
+class FieldValidationItem(BaseModel):
+    field: str
+    leadflow_value: Optional[Any] = None
+    hubspot_property: str
+    hubspot_value: Optional[Any] = None
+    status: str  # 'ready', 'mapped', 'omitted_warning', 'omitted', 'error'
+    is_blocking: bool = False
+    message: str
+
+
+class HubSpotPreviewResponse(BaseModel):
+    lead_id: str
+    company_name: str
+    domain: str
+    operation: str  # 'create' | 'update'
+    existing_remote_company_id: Optional[str] = None
+    is_valid: bool
+    has_blocking_errors: bool
+    field_validations: List[FieldValidationItem] = []
+    warnings: List[str] = []
+    errors: List[str] = []
+
+
 class HubSpotSyncResponse(BaseModel):
     lead_id: str
     pipeline_state: str
     remote_company_id: Optional[str] = None
     remote_contact_id: Optional[str] = None
+    company_status: str = "synced"
+    contact_status: str = "none"
     sync_status: str
     message: str
+    warnings: List[str] = []
+    field_validations: List[FieldValidationItem] = []
+    correlation_id: Optional[str] = None
+
+
+class HubSpotSyncHistoryItem(BaseModel):
+    id: str
+    lead_id: str
+    company_name: Optional[str] = None
+    domain: Optional[str] = None
+    provider: str = "hubspot"
+    remote_company_id: Optional[str] = None
+    remote_contact_id: Optional[str] = None
+    sync_status: str
+    created_at: str
+    initiated_by_user: Optional[str] = None
+    company_status: Optional[str] = None
+    contact_status: Optional[str] = None
+    warnings: List[str] = []
+    omitted_fields: List[str] = []
+    error_message: Optional[str] = None
+    correlation_id: Optional[str] = None
+    retry_eligible: bool = False
+    retry_reason: Optional[str] = None
+
+
+class HubSpotSyncHistoryResponse(BaseModel):
+    items: List[HubSpotSyncHistoryItem]
+    total: int
 
 
 @router.get(
@@ -287,6 +345,198 @@ async def disconnect_hubspot(
     )
 
 
+@router.get(
+    "/preview/{lead_id}",
+    response_model=HubSpotPreviewResponse,
+    summary="Get Pre-Sync Validation and Field Preview for Lead",
+)
+async def preview_hubspot_sync(
+    lead_id: str,
+    ctx: TenantContext = Depends(require_role(["owner", "admin", "analyst"])),
+    session: AsyncSession = Depends(get_db_session),
+) -> HubSpotPreviewResponse:
+    """
+    Validates company and contact fields before writing to HubSpot.
+    Separates blocking errors from non-blocking warnings, and checks
+    whether the company will be created new or updated in HubSpot.
+    """
+    # 1. Fetch lead with tenant boundary check
+    lead_stmt = select(Lead).where(Lead.id == lead_id, Lead.org_id == ctx.org_id)
+    lead_res = await session.execute(lead_stmt)
+    lead = lead_res.scalars().first()
+    if not lead:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Lead {lead_id} not found in this organization.",
+        )
+
+    # 2. Enforce approval gating
+    if lead.pipeline_state not in ("approved", "drafted"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Only approved leads can be previewed or synced to HubSpot CRM. Current pipeline state: '{lead.pipeline_state}'.",
+        )
+
+    # 3. Fetch tenant CRM Connection
+    conn_stmt = select(CRMConnection).where(CRMConnection.org_id == ctx.org_id)
+    conn_res = await session.execute(conn_stmt)
+    conn = conn_res.scalars().first()
+
+    if not conn or conn.status != "connected" or not conn.encrypted_credentials:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="HubSpot CRM is not connected for this organization. Please connect HubSpot in Workspace Settings first.",
+        )
+
+    # 4. Decrypt credentials & fetch allowed industries
+    try:
+        credentials = decrypt_credentials(conn.encrypted_credentials)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to decrypt stored CRM credentials: {str(exc)}",
+        )
+
+    access_token = credentials.get("access_token")
+    allowed_industries = None
+    if conn.mode == "live" and access_token:
+        try:
+            portal_id = credentials.get("portal_id")
+            allowed_industries = await fetch_portal_industry_options(access_token, portal_id)
+        except Exception as e:
+            logger.warning(f"Failed to fetch portal industry options in preview: {e}")
+
+    # 5. Fetch associated contact if available
+    contact_stmt = (
+        select(Contact)
+        .where(Contact.lead_id == lead.id, Contact.org_id == ctx.org_id)
+        .order_by(Contact.is_revealed.desc(), Contact.created_at.desc())
+    )
+    contact_res = await session.execute(contact_stmt)
+    contact = contact_res.scalars().first()
+
+    contact_dict = None
+    if contact and contact.email:
+        contact_dict = {
+            "email": contact.email,
+            "full_name": contact.full_name,
+            "title": contact.title,
+            "phone": contact.phone,
+            "company_name": lead.company_name,
+        }
+
+    company_data = {
+        "company_name": lead.company_name,
+        "domain": lead.domain,
+        "industry": lead.industry,
+        "location": lead.location,
+        "employee_count": lead.employee_count,
+    }
+
+    validation = validate_sync_payload(
+        company_data=company_data,
+        contact_data=contact_dict,
+        allowed_industries=allowed_industries,
+    )
+
+    # 6. Check existing company in HubSpot
+    operation = "create"
+    existing_id = None
+    if conn.mode == "live" and access_token and lead.domain:
+        provider = HubSpotProvider(mode="live")
+        try:
+            existing_id = await provider.search_company_by_domain(lead.domain, access_token)
+            if existing_id:
+                operation = "update"
+        except Exception as e:
+            logger.warning(f"Error checking existing company in HubSpot: {e}")
+
+    return HubSpotPreviewResponse(
+        lead_id=lead.id,
+        company_name=lead.company_name,
+        domain=lead.domain,
+        operation=operation,
+        existing_remote_company_id=existing_id,
+        is_valid=validation["is_valid"],
+        has_blocking_errors=validation["has_blocking_errors"],
+        field_validations=[FieldValidationItem(**fv) for fv in validation["field_validations"]],
+        warnings=validation["warnings"],
+        errors=validation["errors"],
+    )
+
+
+@router.get(
+    "/history",
+    response_model=HubSpotSyncHistoryResponse,
+    summary="List Organization HubSpot Sync History",
+)
+async def get_hubspot_sync_history(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    ctx: TenantContext = Depends(require_role(["owner", "admin", "analyst"])),
+    session: AsyncSession = Depends(get_db_session),
+) -> HubSpotSyncHistoryResponse:
+    """
+    Returns persisted CRM sync history for the tenant organization,
+    enforcing PostgreSQL Row-Level Security and tenant isolation.
+    """
+    # 1. Total count
+    count_stmt = select(func.count(CRMSync.id)).where(CRMSync.org_id == ctx.org_id, CRMSync.provider == "hubspot")
+    total = (await session.execute(count_stmt)).scalar() or 0
+
+    # 2. Paginated rows with lead info
+    stmt = (
+        select(CRMSync, Lead.company_name, Lead.domain)
+        .outerjoin(Lead, CRMSync.lead_id == Lead.id)
+        .where(CRMSync.org_id == ctx.org_id, CRMSync.provider == "hubspot")
+        .order_by(CRMSync.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    res = await session.execute(stmt)
+    rows = res.all()
+
+    items = []
+    for crm_sync, comp_name, domain in rows:
+        payload = crm_sync.response_payload or {}
+        warnings = payload.get("warnings", [])
+        omitted = payload.get("omitted_fields", [])
+        error_msg = payload.get("error_message")
+        corr_id = payload.get("correlation_id")
+        comp_status = payload.get("company_status", crm_sync.sync_status)
+        contact_status = payload.get("contact_status", "none")
+
+        retry_eligible = crm_sync.sync_status in ("failed", "partially_synced")
+        retry_reason = None
+        if retry_eligible:
+            retry_reason = "Sync issue can be corrected and retried safely."
+
+        items.append(
+            HubSpotSyncHistoryItem(
+                id=crm_sync.id,
+                lead_id=crm_sync.lead_id,
+                company_name=comp_name or payload.get("company_name"),
+                domain=domain or payload.get("domain"),
+                provider="hubspot",
+                remote_company_id=crm_sync.remote_company_id,
+                remote_contact_id=crm_sync.remote_contact_id,
+                sync_status=crm_sync.sync_status,
+                created_at=crm_sync.created_at.isoformat() if crm_sync.created_at else "",
+                initiated_by_user=payload.get("initiated_by_user"),
+                company_status=comp_status,
+                contact_status=contact_status,
+                warnings=warnings,
+                omitted_fields=omitted,
+                error_message=error_msg,
+                correlation_id=corr_id,
+                retry_eligible=retry_eligible,
+                retry_reason=retry_reason,
+            )
+        )
+
+    return HubSpotSyncHistoryResponse(items=items, total=total)
+
+
 @router.post(
     "/sync/{lead_id}",
     response_model=HubSpotSyncResponse,
@@ -300,7 +550,7 @@ async def sync_lead_to_hubspot(
     """
     Synchronizes an approved lead to the tenant's connected HubSpot account.
     Enforces tenant isolation, lead qualification approval status,
-    and records CRM sync history.
+    safe idempotency, and records comprehensive sync history.
     """
     # 1. Fetch lead with tenant boundary check
     lead_stmt = select(Lead).where(Lead.id == lead_id, Lead.org_id == ctx.org_id)
@@ -358,44 +608,71 @@ async def sync_lead_to_hubspot(
             "company_name": lead.company_name,
         }
 
-    # 6. Execute sync via HubSpotProvider
+    company_data = {
+        "company_name": lead.company_name,
+        "domain": lead.domain,
+        "industry": lead.industry,
+        "location": lead.location,
+        "employee_count": lead.employee_count,
+    }
+
+    # 6. Execute sync via HubSpotProvider with error recovery
     provider = HubSpotProvider(mode=conn.mode)
     try:
         sync_result = await provider.sync_lead(
-            company_data={
-                "company_name": lead.company_name,
-                "domain": lead.domain,
-                "industry": lead.industry,
-                "location": lead.location,
-                "employee_count": lead.employee_count,
-            },
+            company_data=company_data,
             contact_data=contact_dict,
             credentials=credentials,
             mode=conn.mode,
         )
     except Exception as exc:
         logger.error(f"HubSpot sync failed for lead {lead.id}: {exc}")
+        # Persist the failure in CRMSync so users see the accurate history
+        failed_sync_log = CRMSync(
+            org_id=ctx.org_id,
+            lead_id=lead.id,
+            provider="hubspot",
+            remote_company_id=None,
+            remote_contact_id=None,
+            sync_status="failed",
+            response_payload={
+                "error_message": str(exc),
+                "company_name": lead.company_name,
+                "domain": lead.domain,
+                "initiated_by_user": ctx.user.email,
+                "failed_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        session.add(failed_sync_log)
+        await session.commit()
+
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
+            status_code=status.HTTP_400_BAD_REQUEST if "validation" in str(exc).lower() else status.HTTP_502_BAD_GATEWAY,
             detail=f"HubSpot CRM sync failed: {str(exc)}",
         )
 
-    # 7. If credentials were refreshed during sync, update encrypted storage
+    # 7. Update encrypted storage if refreshed
     refreshed_creds = sync_result.get("refreshed_credentials")
     if refreshed_creds:
         conn.encrypted_credentials = encrypt_credentials(refreshed_creds)
 
     conn.last_sync_at = datetime.now(timezone.utc)
 
-    # 8. Record CRMSync log
+    # 8. Record successful or partially synced CRMSync log
+    overall_status = sync_result.get("status", "synced")
+    response_payload = sync_result.get("response_payload", {})
+    response_payload["initiated_by_user"] = ctx.user.email
+    response_payload["company_name"] = lead.company_name
+    response_payload["domain"] = lead.domain
+
     crm_sync_log = CRMSync(
         org_id=ctx.org_id,
         lead_id=lead.id,
         provider="hubspot",
         remote_company_id=sync_result.get("remote_company_id"),
         remote_contact_id=sync_result.get("remote_contact_id"),
-        sync_status="synced",
-        response_payload=sync_result.get("response_payload", {}),
+        sync_status=overall_status,
+        response_payload=response_payload,
     )
     session.add(crm_sync_log)
 
@@ -412,17 +689,30 @@ async def sync_lead_to_hubspot(
         details={
             "remote_company_id": sync_result.get("remote_company_id"),
             "remote_contact_id": sync_result.get("remote_contact_id"),
+            "sync_status": overall_status,
             "mode": conn.mode,
         },
     )
     session.add(audit)
     await session.commit()
 
+    field_vals = [
+        FieldValidationItem(**fv) for fv in sync_result.get("field_validations", [])
+    ]
+
+    msg = f"Lead '{lead.company_name}' synchronized successfully to HubSpot CRM."
+    if overall_status == "partially_synced":
+        msg = f"Company '{lead.company_name}' synced to HubSpot, but contact sync was skipped or encountered an issue."
+
     return HubSpotSyncResponse(
         lead_id=lead.id,
         pipeline_state=lead.pipeline_state,
         remote_company_id=sync_result.get("remote_company_id"),
         remote_contact_id=sync_result.get("remote_contact_id"),
-        sync_status="synced",
-        message=f"Lead '{lead.company_name}' synchronized successfully to HubSpot CRM.",
+        company_status=sync_result.get("company_status", "synced"),
+        contact_status=sync_result.get("contact_status", "none"),
+        sync_status=overall_status,
+        message=msg,
+        warnings=sync_result.get("warnings", []),
+        field_validations=field_vals,
     )

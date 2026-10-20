@@ -20,14 +20,22 @@ class LeadRepository(TenantScopedRepository[Lead]):
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def get_by_id_with_relations(self, lead_id: str) -> Optional[Lead]:
+    async def get_by_id(self, lead_id: str) -> Optional[Lead]:
         stmt = (
             select(Lead)
-            .options(selectinload(Lead.enrichments), selectinload(Lead.scores))
+            .options(
+                selectinload(Lead.contacts),
+                selectinload(Lead.enrichments),
+                selectinload(Lead.scores),
+                selectinload(Lead.drafts),
+            )
             .where(Lead.id == lead_id, Lead.org_id == self.org_id)
         )
         result = await self.session.execute(stmt)
         return result.scalars().first()
+
+    async def get_by_id_with_relations(self, lead_id: str) -> Optional[Lead]:
+        return await self.get_by_id(lead_id)
 
     async def bulk_create_leads(
         self,
@@ -113,6 +121,12 @@ class LeadRepository(TenantScopedRepository[Lead]):
         # Fetch items for page
         items_stmt = (
             select(Lead)
+            .options(
+                selectinload(Lead.contacts),
+                selectinload(Lead.enrichments),
+                selectinload(Lead.scores),
+                selectinload(Lead.drafts),
+            )
             .where(*filters)
             .order_by(Lead.created_at.desc())
             .limit(limit)

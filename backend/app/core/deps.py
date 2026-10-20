@@ -181,6 +181,10 @@ async def get_tenant_context(
 def require_role(allowed_roles: List[str]) -> Callable:
     """Dependency factory checking that active tenant membership matches required roles."""
     async def role_checker(ctx: TenantContext = Depends(get_tenant_context)) -> TenantContext:
+        if getattr(ctx.user, "is_superuser", False) or ctx.role == "super_admin":
+            return ctx
+        if ctx.role == "org_admin" and ("admin" in allowed_roles or "owner" in allowed_roles):
+            return ctx
         if ctx.role not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

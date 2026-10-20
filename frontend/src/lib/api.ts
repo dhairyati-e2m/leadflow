@@ -984,6 +984,15 @@ export async function scoreLeadApi(leadId: string): Promise<any> {
   return res.json();
 }
 
+export interface LeadContactSummary {
+  name: string;
+  title?: string;
+  email: string;
+  phone?: string;
+  linkedin_url?: string;
+  revealed: boolean;
+}
+
 export interface LeadOutItem {
   id: string;
   org_id: string;
@@ -995,6 +1004,24 @@ export interface LeadOutItem {
   pipeline_state: "sourced" | "review" | "qualified" | "approved" | "drafted" | "synced" | "rejected" | "disqualified";
   score_band?: "qualified" | "review" | "disqualified";
   latest_score?: number;
+  contact?: LeadContactSummary;
+  latest_enrichment?: {
+    id: string;
+    provider: string;
+    status: string;
+    crawled_url: string;
+    observed_at?: string;
+    evidence: any;
+  };
+  latest_score_record?: any;
+  draft?: {
+    subject: string;
+    body: string;
+    tone?: string;
+    model?: string;
+    cost_usd?: number;
+    approved?: boolean;
+  };
   created_at?: string;
 }
 
@@ -1014,13 +1041,72 @@ export async function fetchLeads(params?: {
 }): Promise<PaginatedLeadsResponse> {
   const query = new URLSearchParams();
   if (params?.page) query.set("page", params.page.toString());
-  if (params?.page_size) query.set("page_size", params.page_size.toString());
+  query.set("page_size", (params?.page_size || 100).toString());
   if (params?.state && params.state !== "all") query.set("state", params.state);
   if (params?.search) query.set("search", params.search);
 
   const res = await authenticatedFetch(`${API_BASE}/leads?${query.toString()}`, { cache: "no-store" });
   if (!res.ok) {
     throw new Error("Failed to fetch leads");
+  }
+  return res.json();
+}
+
+export async function updateLead(
+  leadId: string,
+  data: { pipeline_state?: string; company_name?: string; draft?: any }
+): Promise<LeadOutItem> {
+  const res = await authenticatedFetch(`${API_BASE}/leads/${leadId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to update lead" }));
+    throw new Error(err.detail || "Failed to update lead");
+  }
+  return res.json();
+}
+
+export async function crawlLeadApi(leadId: string): Promise<any> {
+  const res = await authenticatedFetch(`${API_BASE}/leads/${leadId}/crawl`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to audit lead website" }));
+    throw new Error(err.detail || "Failed to audit lead website");
+  }
+  return res.json();
+}
+
+export async function uploadCsv(file: File): Promise<{
+  search_id: string;
+  filename: string;
+  total_rows_parsed: number;
+  imported_count: number;
+  duplicate_count: number;
+  file_duplicates: number;
+  errors: any[];
+}> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await authenticatedFetch(`${API_BASE}/ingest/csv`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to upload CSV file" }));
+    throw new Error(err.detail || "Failed to upload CSV file");
+  }
+  return res.json();
+}
+
+export async function seedStarterLeads(): Promise<LeadOutItem[]> {
+  const res = await authenticatedFetch(`${API_BASE}/leads/seed-starter`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    return [];
   }
   return res.json();
 }
@@ -1045,13 +1131,67 @@ export interface HubSpotDisconnectResponse {
   message: string;
 }
 
+export interface FieldValidationItem {
+  field: string;
+  leadflow_value?: any;
+  hubspot_property: string;
+  hubspot_value?: any;
+  status: "ready" | "mapped" | "omitted_warning" | "omitted" | "error";
+  is_blocking: boolean;
+  message: string;
+}
+
+export interface HubSpotPreviewResponse {
+  lead_id: string;
+  company_name: string;
+  domain: string;
+  operation: "create" | "update";
+  existing_remote_company_id?: string | null;
+  is_valid: boolean;
+  has_blocking_errors: boolean;
+  field_validations: FieldValidationItem[];
+  warnings: string[];
+  errors: string[];
+}
+
 export interface HubSpotSyncResponse {
   lead_id: string;
   pipeline_state: string;
   remote_company_id?: string | null;
   remote_contact_id?: string | null;
+  company_status?: string;
+  contact_status?: string;
   sync_status: string;
   message: string;
+  warnings?: string[];
+  field_validations?: FieldValidationItem[];
+  correlation_id?: string | null;
+}
+
+export interface HubSpotSyncHistoryItem {
+  id: string;
+  lead_id: string;
+  company_name?: string | null;
+  domain?: string | null;
+  provider: string;
+  remote_company_id?: string | null;
+  remote_contact_id?: string | null;
+  sync_status: string;
+  created_at: string;
+  initiated_by_user?: string | null;
+  company_status?: string | null;
+  contact_status?: string | null;
+  warnings: string[];
+  omitted_fields: string[];
+  error_message?: string | null;
+  correlation_id?: string | null;
+  retry_eligible: boolean;
+  retry_reason?: string | null;
+}
+
+export interface HubSpotSyncHistoryResponse {
+  items: HubSpotSyncHistoryItem[];
+  total: number;
 }
 
 export async function fetchHubSpotStatus(): Promise<HubSpotStatusResponse> {
@@ -1078,6 +1218,27 @@ export async function disconnectHubSpot(): Promise<HubSpotDisconnectResponse> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Failed to disconnect HubSpot" }));
     throw new Error(err.detail || "Failed to disconnect HubSpot");
+  }
+  return res.json();
+}
+
+export async function fetchHubSpotSyncPreview(leadId: string): Promise<HubSpotPreviewResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/settings/integrations/hubspot/preview/${leadId}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: "Failed to generate HubSpot sync preview" }));
+    throw new Error(err.detail || "Failed to generate HubSpot sync preview");
+  }
+  return res.json();
+}
+
+export async function fetchHubSpotSyncHistory(limit: number = 20, offset: number = 0): Promise<HubSpotSyncHistoryResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/settings/integrations/hubspot/history?limit=${limit}&offset=${offset}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error("Failed to fetch HubSpot sync history");
   }
   return res.json();
 }

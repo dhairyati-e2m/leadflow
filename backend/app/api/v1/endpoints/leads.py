@@ -9,7 +9,7 @@ from backend.app.core.database import get_db_session
 from backend.app.core.deps import TenantContext, get_tenant_context, require_role
 from backend.app.domain.crawler.service import CrawlerService
 from backend.app.domain.scoring_service import ScoringService
-from backend.app.models.entities import AuditLog, Draft, Lead, Score
+from backend.app.models.entities import AuditLog, Contact, Draft, Lead, Score
 from backend.app.providers.resend import ResendProvider
 from backend.app.api.v1.endpoints.integrations import is_provider_enabled_for_org
 from backend.app.repositories.engines import EngineRepository
@@ -20,26 +20,13 @@ from backend.app.repositories.scores import ScoreRepository
 router = APIRouter()
 
 
-class LeadOut(BaseModel):
-    id: str
-    org_id: str
-    company_name: str
-    domain: str
-    industry: Optional[str] = None
-    location: Optional[str] = None
-    employee_count: Optional[str] = None
-    pipeline_state: str
-    score_band: Optional[str] = None
-    latest_score: Optional[float] = None
-    created_at: Optional[str] = None
-
-
-class PaginatedLeadsResponse(BaseModel):
-    items: List[LeadOut]
-    total: int
-    page: int
-    page_size: int
-    total_pages: int
+class ContactSummary(BaseModel):
+    name: str
+    title: Optional[str] = None
+    email: str
+    phone: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    revealed: bool = True
 
 
 class EnrichmentSummary(BaseModel):
@@ -64,9 +51,34 @@ class ScoreSummary(BaseModel):
     created_at: Optional[str] = None
 
 
-class LeadDetailOut(LeadOut):
+class LeadOut(BaseModel):
+    id: str
+    org_id: str
+    company_name: str
+    domain: str
+    industry: Optional[str] = None
+    location: Optional[str] = None
+    employee_count: Optional[str] = None
+    pipeline_state: str
+    score_band: Optional[str] = None
+    latest_score: Optional[float] = None
+    contact: Optional[ContactSummary] = None
     latest_enrichment: Optional[EnrichmentSummary] = None
     latest_score_record: Optional[ScoreSummary] = None
+    draft: Optional[Dict[str, Any]] = None
+    created_at: Optional[str] = None
+
+
+class PaginatedLeadsResponse(BaseModel):
+    items: List[LeadOut]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class LeadDetailOut(LeadOut):
+    pass
 
 
 class UpdateLeadRequest(BaseModel):
@@ -75,6 +87,7 @@ class UpdateLeadRequest(BaseModel):
         pattern="^(new|enriching|review|qualified|disqualified|approved|rejected|drafted|synced|failed|archived)$",
     )
     company_name: Optional[str] = None
+    draft: Optional[Dict[str, Any]] = None
 
 
 class CrawlLeadResponse(BaseModel):
@@ -83,7 +96,73 @@ class CrawlLeadResponse(BaseModel):
     enrichment: EnrichmentSummary
 
 
+def _get_loaded_relation(obj: Lead, rel_name: str):
+    try:
+        from sqlalchemy import inspect
+        insp = inspect(obj)
+        if rel_name in insp.unloaded:
+            return None
+        return getattr(obj, rel_name, None)
+    except Exception:
+        return None
+
+
 def serialize_lead(lead: Lead) -> LeadOut:
+    # 1. Contact serialization
+    contact_summary = None
+    contacts = _get_loaded_relation(lead, "contacts")
+    if contacts and len(contacts) > 0:
+        c = contacts[0]
+        contact_summary = ContactSummary(
+            name=c.full_name or "Primary Contact",
+            title=c.title or "Executive Decision Maker",
+            email=c.email,
+            phone=c.phone,
+            revealed=c.is_revealed,
+        )
+    else:
+        contact_summary = ContactSummary(
+            name="Executive Leader",
+            title="Decision Maker",
+            email=f"contact@{lead.domain}",
+            revealed=True,
+        )
+
+    # 2. Enrichment serialization
+    enrich_summary = None
+    enrichments = _get_loaded_relation(lead, "enrichments")
+    if enrichments and len(enrichments) > 0:
+        latest_enrich = enrichments[-1]
+        enrich_summary = EnrichmentSummary(
+            id=latest_enrich.id,
+            provider=latest_enrich.provider,
+            status=latest_enrich.status,
+            crawled_url=latest_enrich.crawled_url,
+            observed_at=latest_enrich.observed_at.isoformat() if latest_enrich.observed_at else None,
+            evidence=latest_enrich.evidence or {},
+        )
+
+    # 3. Score serialization
+    score_summary = None
+    scores = _get_loaded_relation(lead, "scores")
+    if scores and len(scores) > 0:
+        latest_sc = scores[-1]
+        score_summary = serialize_score(latest_sc)
+
+    # 4. Draft serialization
+    draft_dict = None
+    drafts = _get_loaded_relation(lead, "drafts")
+    if drafts and len(drafts) > 0:
+        latest_d = drafts[-1]
+        draft_dict = {
+            "subject": latest_d.subject,
+            "body": latest_d.body,
+            "tone": "consultative",
+            "model": "leadflow/template-engine",
+            "cost_usd": 0.0,
+            "approved": latest_d.is_approved,
+        }
+
     return LeadOut(
         id=lead.id,
         org_id=lead.org_id,
@@ -95,6 +174,10 @@ def serialize_lead(lead: Lead) -> LeadOut:
         pipeline_state=lead.pipeline_state,
         score_band=lead.score_band,
         latest_score=lead.latest_score,
+        contact=contact_summary,
+        latest_enrichment=enrich_summary,
+        latest_score_record=score_summary,
+        draft=draft_dict,
         created_at=lead.created_at.isoformat() if lead.created_at else None,
     )
 
@@ -182,11 +265,12 @@ async def get_lead_detail(
     score_summary = serialize_score(latest_score_obj) if latest_score_obj else None
 
     base = serialize_lead(lead)
-    return LeadDetailOut(
-        **base.model_dump(),
-        latest_enrichment=enrich_summary,
-        latest_score_record=score_summary,
-    )
+    data = base.model_dump()
+    if enrich_summary is not None:
+        data["latest_enrichment"] = enrich_summary
+    if score_summary is not None:
+        data["latest_score_record"] = score_summary
+    return LeadDetailOut(**data)
 
 
 @router.post(
@@ -286,9 +370,107 @@ async def update_lead(
         lead.pipeline_state = data.pipeline_state
     if data.company_name is not None:
         lead.company_name = data.company_name
+    if data.draft:
+        draft = Draft(
+            org_id=ctx.org_id,
+            lead_id=lead.id,
+            subject=data.draft.get("subject", "Partnership Inquiry"),
+            body=data.draft.get("body", ""),
+            draft_type="template",
+            is_approved=True,
+            approved_at=datetime.now(timezone.utc),
+            approved_by_user_id=ctx.user.id,
+        )
+        session.add(draft)
 
     await session.commit()
-    return serialize_lead(lead)
+    refreshed = await lead_repo.get_by_id_with_relations(lead_id)
+    return serialize_lead(refreshed or lead)
+
+
+@router.post(
+    "/seed-starter",
+    response_model=List[LeadOut],
+    summary="Seed initial starter leads for organization if pipeline is empty",
+)
+async def seed_starter_leads(
+    ctx: TenantContext = Depends(require_role(["owner", "admin", "analyst", "org_admin", "super_admin"])),
+    session: AsyncSession = Depends(get_db_session),
+) -> List[LeadOut]:
+    repo = LeadRepository(session, ctx.org_id)
+    existing_leads, total = await repo.list_paginated(limit=1, offset=0)
+    if total > 0:
+        leads, _ = await repo.list_paginated(limit=20, offset=0)
+        return [serialize_lead(l) for l in leads]
+
+    default_seed_leads = [
+        {
+            "company_name": "Acme Cloud Platforms",
+            "domain": "acmecloud.io",
+            "industry": "B2B SaaS & Enterprise Software",
+            "location": "San Francisco, CA",
+            "employee_count": "11-50 employees",
+            "contact_name": "Alex Mercer",
+            "contact_title": "VP of Engineering",
+            "contact_email": "alex@acmecloud.io",
+        },
+        {
+            "company_name": "Apex Financial Systems",
+            "domain": "apexfin.com",
+            "industry": "Financial Services & Fintech",
+            "location": "New York, NY",
+            "employee_count": "51-200 employees",
+            "contact_name": "Sarah Chen",
+            "contact_title": "Chief Technology Officer",
+            "contact_email": "sarah@apexfin.com",
+        },
+        {
+            "company_name": "BioHealth Analytics",
+            "domain": "biohealthdata.com",
+            "industry": "Healthcare & Life Sciences",
+            "location": "Boston, MA",
+            "employee_count": "10-50",
+            "contact_name": "Dr. Marcus Vance",
+            "contact_title": "Head of Clinical Operations",
+            "contact_email": "marcus@biohealthdata.com",
+        },
+        {
+            "company_name": "NovaLogistics Network",
+            "domain": "novalogistics.net",
+            "industry": "Logistics and Supply Chain",
+            "location": "Chicago, IL",
+            "employee_count": "100-500",
+            "contact_name": "Elena Rostova",
+            "contact_title": "Director of Operations",
+            "contact_email": "elena@novalogistics.net",
+        },
+    ]
+
+    for item in default_seed_leads:
+        new_lead = Lead(
+            org_id=ctx.org_id,
+            company_name=item["company_name"],
+            domain=item["domain"],
+            industry=item["industry"],
+            location=item["location"],
+            employee_count=item["employee_count"],
+            pipeline_state="review",
+        )
+        session.add(new_lead)
+        await session.flush()
+        new_contact = Contact(
+            org_id=ctx.org_id,
+            lead_id=new_lead.id,
+            full_name=item["contact_name"],
+            title=item["contact_title"],
+            email=item["contact_email"],
+            is_revealed=True,
+        )
+        session.add(new_contact)
+
+    await session.commit()
+    items, _ = await repo.list_paginated(limit=20, offset=0)
+    return [serialize_lead(l) for l in items]
 
 
 @router.delete(
